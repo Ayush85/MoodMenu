@@ -1,0 +1,61 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id, itemId } = await params;
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { id, ownerId: session.user.id },
+  });
+
+  if (!restaurant) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const data = await req.json();
+
+  const updated = await prisma.menuItem.update({
+    where: { id: itemId },
+    data: {
+      name: data.name,
+      description: data.description,
+      price: data.price !== undefined ? parseFloat(data.price) : undefined,
+      image: data.image,
+      tags: data.tags,
+      isAvailable: data.isAvailable,
+    },
+  });
+
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string; itemId: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id, itemId } = await params;
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { id, ownerId: session.user.id },
+  });
+
+  if (!restaurant) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  await prisma.menuItem.delete({ where: { id: itemId } });
+
+  return NextResponse.json({ success: true });
+}

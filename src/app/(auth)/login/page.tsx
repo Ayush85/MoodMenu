@@ -4,6 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { getSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,7 +27,13 @@ export default function LoginPage() {
       setError("Invalid email or password");
       setLoading(false);
     } else {
-      router.push("/dashboard");
+      const session = await getSession();
+      const isStaff = session?.user?.actorType === "STAFF";
+      if (isStaff && session.user.restaurantId) {
+        router.push(`/dashboard/restaurant/${session.user.restaurantId}/staff`);
+      } else {
+        router.push("/dashboard");
+      }
     }
   }
 

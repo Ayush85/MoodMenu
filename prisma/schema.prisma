@@ -19,6 +19,20 @@ enum CallStatus {
   RESOLVED
 }
 
+enum OrderStatus {
+  NEW
+  PREPARING
+  SERVED
+  PAID
+  CANCELED
+}
+
+enum StaffRole {
+  WAITER
+  COOK
+  CHEF
+}
+
 model User {
   id            String       @id @default(cuid())
   email         String       @unique
@@ -46,8 +60,23 @@ model Restaurant {
   moodRules     MoodRule[]
   tables        RestaurantTable[]
   waiterCalls   WaiterCall[]
+  orders        OrderTicket[]
+  staffMembers  RestaurantStaff[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+}
+
+model RestaurantStaff {
+  id            String       @id @default(cuid())
+  name          String
+  email         String       @unique
+  password      String?
+  phone         String?
+  role          StaffRole
+  isActive      Boolean      @default(true)
+  restaurantId  String
+  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
 }
 
 model RestaurantTable {
@@ -57,6 +86,7 @@ model RestaurantTable {
   restaurantId  String
   restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   waiterCalls   WaiterCall[]
+  orders        OrderTicket[]
 
   @@unique([restaurantId, number])
 }
@@ -71,6 +101,30 @@ model WaiterCall {
   restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   createdAt     DateTime     @default(now())
   resolvedAt    DateTime?
+}
+
+model OrderTicket {
+  id            String         @id @default(cuid())
+  restaurantId  String
+  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId       String
+  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  status        OrderStatus    @default(NEW)
+  note          String?
+  total         Float          @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         OrderLine[]
+}
+
+model OrderLine {
+  id            String       @id @default(cuid())
+  orderId       String
+  order         OrderTicket  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemName      String
+  quantity      Int          @default(1)
+  unitPrice     Float
+  lineTotal     Float
 }
 
 model Category {

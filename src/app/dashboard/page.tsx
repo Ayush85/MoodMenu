@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 interface Restaurant {
   id: string;
@@ -12,8 +13,10 @@ interface Restaurant {
 }
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const isStaff = session?.user?.actorType === "STAFF";
 
   useEffect(() => {
     fetch("/api/restaurants")
@@ -36,12 +39,14 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Your Restaurants</h1>
-        <Link
-          href="/dashboard/restaurant/new"
-          className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition"
-        >
-          + Add Restaurant
-        </Link>
+        {!isStaff && (
+          <Link
+            href="/dashboard/restaurant/new"
+            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+          >
+            + Add Restaurant
+          </Link>
+        )}
       </div>
 
       {restaurants.length === 0 ? (
@@ -51,14 +56,18 @@ export default function DashboardPage() {
             No restaurants yet
           </h2>
           <p className="text-gray-500 mb-6">
-            Create your first restaurant to start building your smart menu.
+            {isStaff
+              ? "No restaurant is assigned to your staff account yet."
+              : "Create your first restaurant to start building your smart menu."}
           </p>
-          <Link
-            href="/dashboard/restaurant/new"
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition inline-block"
-          >
-            Create Restaurant
-          </Link>
+          {!isStaff && (
+            <Link
+              href="/dashboard/restaurant/new"
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition inline-block"
+            >
+              Create Restaurant
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

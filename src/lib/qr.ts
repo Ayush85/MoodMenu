@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 
 export async function generateMenuQR(slug: string, tableNumber?: number): Promise<string> {
-  const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+  const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
   let menuUrl = `${baseUrl}/menu/${slug}`;
   if (tableNumber) menuUrl += `?table=${tableNumber}`;
 

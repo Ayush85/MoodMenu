@@ -8,6 +8,15 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (session.user.actorType === "STAFF" && session.user.restaurantId) {
+    const staffRestaurant = await prisma.restaurant.findMany({
+      where: { id: session.user.restaurantId },
+      include: { categories: { include: { items: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+    return NextResponse.json(staffRestaurant);
+  }
+
   const restaurants = await prisma.restaurant.findMany({
     where: { ownerId: session.user.id },
     include: { categories: { include: { items: true } } },
@@ -21,6 +30,10 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { name, city, slug } = await req.json();

@@ -32,7 +32,9 @@ interface Props {
   theme: MoodTheme;
   weather: WeatherData | null;
   ruleName: string;
+  greeting: string;
   tableNumber: number | null;
+  autoOpenWifiPrompt?: boolean;
 }
 
 function getWeatherEmoji(main: string): string {
@@ -43,14 +45,6 @@ function getWeatherEmoji(main: string): string {
   return map[main] || "🌤️";
 }
 
-function getTimeGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning";
-  if (hour < 17) return "Good Afternoon";
-  if (hour < 21) return "Good Evening";
-  return "Late Night Menu";
-}
-
 export default function MenuClient({
   restaurant,
   categories,
@@ -58,7 +52,9 @@ export default function MenuClient({
   theme,
   weather,
   ruleName,
+  greeting,
   tableNumber,
+  autoOpenWifiPrompt = false,
 }: Props) {
   const isDark = theme.mode === "dark";
   const totalItems = categories.reduce((acc, c) => acc + c.items.length, 0);
@@ -66,6 +62,19 @@ export default function MenuClient({
   const [callMessage, setCallMessage] = useState("");
   const [showCallModal, setShowCallModal] = useState(false);
   const [showWifiBanner, setShowWifiBanner] = useState(!!restaurant.wifiSsid);
+  const [showWifiPanel, setShowWifiPanel] = useState(
+    !!restaurant.wifiSsid && autoOpenWifiPrompt
+  );
+
+  async function copyWifi(value: string | null | undefined, label: string) {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      alert(`${label} copied`);
+    } catch {
+      alert(`Could not copy ${label.toLowerCase()}`);
+    }
+  }
 
   async function callWaiter() {
     if (!tableNumber) return;
@@ -129,6 +138,65 @@ export default function MenuClient({
         </div>
       )}
 
+      {/* WiFi access helper */}
+      {restaurant.wifiSsid && (
+        <div className="max-w-lg mx-auto px-5 pt-4">
+          <button
+            onClick={() => setShowWifiPanel((v) => !v)}
+            className="w-full text-left rounded-2xl px-4 py-3 border transition"
+            style={{
+              backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#ffffff",
+              borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold">WiFi Access</p>
+                <p className="text-xs opacity-60">Tap to see SSID and password</p>
+              </div>
+              <span className="text-xs font-semibold opacity-70">{showWifiPanel ? "Hide" : "Open"}</span>
+            </div>
+          </button>
+
+          {showWifiPanel && (
+            <div
+              className="mt-3 rounded-2xl p-4"
+              style={{
+                backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
+                border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.06)",
+              }}
+            >
+              <p className="text-sm font-semibold mb-3">Use the details below to connect</p>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-sm"><span className="opacity-60">SSID:</span> <span className="font-mono font-semibold">{restaurant.wifiSsid}</span></p>
+                <button
+                  onClick={() => copyWifi(restaurant.wifiSsid, "SSID")}
+                  className="text-xs px-2 py-1 rounded-md"
+                  style={{ backgroundColor: theme.primary + "1F", color: theme.primary }}
+                >
+                  Copy
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <p className="text-sm"><span className="opacity-60">Password:</span> <span className="font-mono font-semibold">{restaurant.wifiPassword || "(Open network)"}</span></p>
+                {restaurant.wifiPassword && (
+                  <button
+                    onClick={() => copyWifi(restaurant.wifiPassword, "Password")}
+                    className="text-xs px-2 py-1 rounded-md"
+                    style={{ backgroundColor: theme.primary + "1F", color: theme.primary }}
+                  >
+                    Copy
+                  </button>
+                )}
+              </div>
+              <p className="text-xs opacity-60">
+                If WiFi QR does not auto-connect on your phone, open WiFi settings and paste the password.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Hero Header */}
       <header
         className="relative overflow-hidden"
@@ -167,7 +235,7 @@ export default function MenuClient({
           </div>
 
           {/* Restaurant info */}
-          <p className="text-sm opacity-50 mb-1">{getTimeGreeting()}</p>
+          <p className="text-sm opacity-50 mb-1">{greeting}</p>
           <h1 className="text-3xl font-extrabold tracking-tight">{restaurant.name}</h1>
           <div className="flex items-center gap-3 mt-2">
             <span className="text-sm opacity-60">{restaurant.city}</span>

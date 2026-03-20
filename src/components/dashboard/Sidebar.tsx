@@ -8,18 +8,24 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
+  const isStaff = session?.user?.actorType === "STAFF";
 
-  const links = [
-    { href: "/dashboard", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
-    { href: "/dashboard/restaurant/new", label: "Add Restaurant", icon: "M12 4v16m8-8H4" },
-  ];
+  const links = isStaff
+    ? [
+        { href: "/dashboard", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+        { href: session?.user?.restaurantId ? `/dashboard/restaurant/${session.user.restaurantId}/staff` : "/dashboard", label: "Staff Panel", icon: "M17 20h5V4H2v16h5m10 0v-8a2 2 0 00-2-2H9a2 2 0 00-2 2v8m10 0H7" },
+      ]
+    : [
+        { href: "/dashboard", label: "Overview", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
+        { href: "/dashboard/restaurant/new", label: "Add Restaurant", icon: "M12 4v16m8-8H4" },
+      ];
 
   return (
     <aside className="w-64 bg-gray-900 text-white min-h-screen p-6 flex flex-col">
       <Link href="/dashboard" className="text-2xl font-bold text-orange-400 mb-2">
         MoodMenu
       </Link>
-      <span className="text-xs text-gray-500 font-mono mb-8">Restaurant Admin</span>
+      <span className="text-xs text-gray-500 font-mono mb-8">{isStaff ? "Restaurant Staff" : "Restaurant Admin"}</span>
 
       <nav className="flex-1 space-y-2">
         {links.map((link) => (

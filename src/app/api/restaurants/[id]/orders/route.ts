@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+interface CreateOrderItem {
+  itemName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 type AccessInfo =
   | { kind: "OWNER" }
   | { kind: "STAFF"; role: "WAITER" | "COOK" | "CHEF" };
@@ -34,6 +40,7 @@ export async function GET(
   }
 
   const { id } = await params;
+
   const access = await getRestaurantAccess(id, {
     id: session.user.id,
     actorType: session.user.actorType,
@@ -43,21 +50,20 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (access.kind === "STAFF" && access.role !== "WAITER") {
-    return NextResponse.json({ error: "Only waiters can access waiter calls" }, { status: 403 });
-  }
-
-  const calls = await prisma.waiterCall.findMany({
+  const orders = await prisma.orderTicket.findMany({
     where: { restaurantId: id },
-    include: { table: true },
+    include: {
+      table: true,
+      items: true,
+    },
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: 100,
   });
 
-  return NextResponse.json(calls);
+  return NextResponse.json(orders);
 }
 
-export async function PATCH(
+export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -67,6 +73,16 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const body = await req.json();
+
+  const tableId = body?.tableId as string | undefined;
+  const note = body?.note as string | undefined;
+  const items = (body?.items || []) as CreateOrderItem[];
+
+  if (!tableId || items.length === 0) {
+    return NextResponse.json({ error: "Table and at least one item are required" }, { status: 400 });
+  }
+
   const access = await getRestaurantAccess(id, {
     id: session.user.id,
     actorType: session.user.actorType,
@@ -75,19 +91,56 @@ export async function PATCH(
   if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (access.kind === "STAFF" && access.role !== "WAITER") {
-    return NextResponse.json({ error: "Only waiters can update waiter calls" }, { status: 403 });
-  }
-  const { callId, status } = await req.json();
 
-  const call = await prisma.waiterCall.update({
-    where: { id: callId, restaurantId: id },
-    data: {
-      status,
-      resolvedAt: status === "RESOLVED" ? new Date() : undefined,
-    },
-    include: { table: true },
+  if (access.kind === "STAFF" && access.role !== "WAITER") {
+    return NextResponse.json({ error: "Only waiters can take new orders" }, { status: 403 });
+  }
+
+  const table = await prisma.restaurantTable.findFirst({
+    where: { id: tableId, restaurantId: id },
+    select: { id: true },
   });
 
-  return NextResponse.json(call);
+  if (!table) {
+    return NextResponse.json({ error: "Table not found" }, { status: 404 });
+  }
+
+  const normalizedItems = items
+    .map((item) => ({
+      itemName: (item.itemName || "").trim(),
+      quantity: Number(item.quantity || 0),
+      unitPrice: Number(item.unitPrice || 0),
+    }))
+    .filter((item) => item.itemName && item.quantity > 0);
+
+  if (normalizedItems.length === 0) {
+    return NextResponse.json({ error: "Order items are invalid" }, { status: 400 });
+  }
+
+  const lineItems = normalizedItems.map((item) => ({
+    itemName: item.itemName,
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    lineTotal: item.unitPrice * item.quantity,
+  }));
+
+  const total = lineItems.reduce((sum, line) => sum + line.lineTotal, 0);
+
+  const order = await prisma.orderTicket.create({
+    data: {
+      restaurantId: id,
+      tableId,
+      note: note?.trim() || null,
+      total,
+      items: {
+        create: lineItems,
+      },
+    },
+    include: {
+      table: true,
+      items: true,
+    },
+  });
+
+  return NextResponse.json(order, { status: 201 });
 }

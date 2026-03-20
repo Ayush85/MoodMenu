@@ -7,12 +7,19 @@ import MenuClient from "@/components/menu/MenuClient";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ table?: string }>;
+  searchParams: Promise<{ table?: string; wifi?: string }>;
+}
+
+function getTimeGreetingFromHour(hour: number): string {
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  if (hour < 21) return "Good Evening";
+  return "Late Night Menu";
 }
 
 export default async function PublicMenuPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { table: tableParam } = await searchParams;
+  const { table: tableParam, wifi: wifiParam } = await searchParams;
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
@@ -44,6 +51,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   }));
 
   const mood = evaluateMood(rules, weather);
+  const greeting = getTimeGreetingFromHour(new Date().getHours());
 
   // Identify featured items
   const featuredItems = restaurant.categories
@@ -90,7 +98,9 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       theme={theme}
       weather={mood.weather}
       ruleName={mood.ruleName}
+      greeting={greeting}
       tableNumber={tableParam ? parseInt(tableParam) : null}
+      autoOpenWifiPrompt={wifiParam === "1"}
     />
   );
 }

@@ -12,9 +12,15 @@ export async function GET(
   }
 
   const { id } = await params;
+  const isStaff = session.user.actorType === "STAFF";
+  const whereClause = isStaff
+    ? { id, staffMembers: { some: { id: session.user.id, isActive: true } } }
+    : { id, ownerId: session.user.id };
+
   const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+    where: whereClause,
     include: {
+      tables: { orderBy: { number: "asc" } },
       categories: {
         orderBy: { order: "asc" },
         include: { items: { orderBy: { createdAt: "asc" } } },
@@ -37,6 +43,9 @@ export async function PATCH(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await params;
@@ -71,6 +80,9 @@ export async function DELETE(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await params;

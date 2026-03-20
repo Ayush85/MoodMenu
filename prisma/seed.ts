@@ -6,44 +6,70 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  // Create super admin
-  const adminPassword = await bcrypt.hash("admin123", 12);
+  // Create requested super admin
+  const superAdminPassword = await bcrypt.hash("Admin@123", 12);
   const superAdmin = await prisma.user.upsert({
-    where: { email: "admin@moodmenu.com" },
-    update: {},
-    create: {
-      email: "admin@moodmenu.com",
-      name: "Super Admin",
-      password: adminPassword,
+    where: { email: "ayush85.dev@gmail.com" },
+    update: {
+      name: "Ayush Super Admin",
+      password: superAdminPassword,
       role: "SUPER_ADMIN",
+      isActive: true,
+    },
+    create: {
+      email: "ayush85.dev@gmail.com",
+      name: "Ayush Super Admin",
+      password: superAdminPassword,
+      role: "SUPER_ADMIN",
+      isActive: true,
     },
   });
-  console.log("Super Admin created:", superAdmin.email);
+  console.log("Super Admin ready:", superAdmin.email);
 
-  // Create demo restaurant owner
-  const demoPassword = await bcrypt.hash("demo123", 12);
-  const demoUser = await prisma.user.upsert({
-    where: { email: "demo@moodmenu.com" },
-    update: {},
-    create: {
-      email: "demo@moodmenu.com",
-      name: "Demo Owner",
-      password: demoPassword,
+  // Create requested admin user
+  const adminPassword = await bcrypt.hash("admin@123", 12);
+  const adminUser = await prisma.user.upsert({
+    where: { email: "ayushrestha8585@gmail.com" },
+    update: {
+      name: "Ayush Admin",
+      password: adminPassword,
       role: "ADMIN",
+      isActive: true,
+    },
+    create: {
+      email: "ayushrestha8585@gmail.com",
+      name: "Ayush Admin",
+      password: adminPassword,
+      role: "ADMIN",
+      isActive: true,
     },
   });
 
-  // Create demo restaurant
+  // Create one test restaurant for the admin user
   const restaurant = await prisma.restaurant.upsert({
-    where: { slug: "demo" },
-    update: {},
-    create: {
-      name: "Momo House Manthali",
-      slug: "demo",
+    where: { slug: "ayush-test-kitchen" },
+    update: {
+      name: "Ayush Test Kitchen",
       city: "Kathmandu",
-      ownerId: demoUser.id,
+      ownerId: adminUser.id,
+      wifiSsid: "MoodMenu-Test-WiFi",
+      wifiPassword: "moodmenu-test-123",
+    },
+    create: {
+      name: "Ayush Test Kitchen",
+      slug: "ayush-test-kitchen",
+      city: "Kathmandu",
+      ownerId: adminUser.id,
+      wifiSsid: "MoodMenu-Test-WiFi",
+      wifiPassword: "moodmenu-test-123",
     },
   });
+
+  // Keep seed reruns clean and deterministic for this restaurant.
+  await prisma.waiterCall.deleteMany({ where: { restaurantId: restaurant.id } });
+  await prisma.restaurantTable.deleteMany({ where: { restaurantId: restaurant.id } });
+  await prisma.moodRule.deleteMany({ where: { restaurantId: restaurant.id } });
+  await prisma.category.deleteMany({ where: { restaurantId: restaurant.id } });
 
   // Create categories
   const momos = await prisma.category.create({
@@ -82,10 +108,31 @@ async function main() {
     ],
   });
 
-  console.log("Seeded demo restaurant with menu items and mood rules");
+  // Create test tables and one sample waiter call.
+  const table1 = await prisma.restaurantTable.create({
+    data: { number: 1, label: "Window", restaurantId: restaurant.id },
+  });
+  await prisma.restaurantTable.create({
+    data: { number: 2, label: "Family", restaurantId: restaurant.id },
+  });
+  await prisma.restaurantTable.create({
+    data: { number: 3, label: "Patio", restaurantId: restaurant.id },
+  });
+
+  await prisma.waiterCall.create({
+    data: {
+      status: "PENDING",
+      message: "Need water refill",
+      tableId: table1.id,
+      restaurantId: restaurant.id,
+    },
+  });
+
+  console.log("Seeded requested test restaurant with menu items, rules, and tables");
   console.log("\n--- Login Credentials ---");
-  console.log("Super Admin: admin@moodmenu.com / admin123");
-  console.log("Demo Owner:  demo@moodmenu.com / demo123");
+  console.log("Super Admin: ayush85.dev@gmail.com / Admin@123");
+  console.log("Admin User:  ayushrestha8585@gmail.com / admin@123");
+  console.log("Restaurant:  Ayush Test Kitchen (slug: ayush-test-kitchen)");
 }
 
 main()

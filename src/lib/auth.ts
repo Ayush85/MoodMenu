@@ -15,21 +15,43 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
+        const email = String(credentials.email).toLowerCase().trim();
+        const password = String(credentials.password);
+
         const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
+          where: { email },
         });
 
-        if (!user || !user.password) return null;
-        if (!user.isActive) return null;
+        if (user?.password && user.isActive) {
+          const isValid = await bcrypt.compare(password, user.password);
+          if (isValid) {
+            return {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+              actorType: "USER" as const,
+            };
+          }
+        }
 
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.password
-        );
+        const staff = await prisma.restaurantStaff.findUnique({
+          where: { email },
+        });
 
-        if (!isValid) return null;
+        if (!staff?.password || !staff.isActive) return null;
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        const isStaffValid = await bcrypt.compare(password, staff.password);
+        if (!isStaffValid) return null;
+
+        return {
+          id: staff.id,
+          email: staff.email,
+          name: staff.name,
+          role: staff.role,
+          actorType: "STAFF" as const,
+          restaurantId: staff.restaurantId,
+        };
       },
     }),
   ],
@@ -42,6 +64,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.actorType = user.actorType;
+        token.restaurantId = user.restaurantId;
       }
       return token;
     },
@@ -49,6 +73,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.actorType = token.actorType as "USER" | "STAFF" | undefined;
+        session.user.restaurantId = token.restaurantId as string | undefined;
       }
       return session;
     },

@@ -7,10 +7,12 @@ import MenuClient from "@/components/menu/MenuClient";
 
 interface Props {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ table?: string }>;
 }
 
-export default async function PublicMenuPage({ params }: Props) {
+export default async function PublicMenuPage({ params, searchParams }: Props) {
   const { slug } = await params;
+  const { table: tableParam } = await searchParams;
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
@@ -61,6 +63,9 @@ export default async function PublicMenuPage({ params }: Props) {
         name: restaurant.name,
         city: restaurant.city,
         logo: restaurant.logo,
+        slug: restaurant.slug,
+        wifiSsid: restaurant.wifiSsid,
+        wifiPassword: restaurant.wifiPassword,
       }}
       categories={restaurant.categories.map((cat) => ({
         id: cat.id,
@@ -85,6 +90,7 @@ export default async function PublicMenuPage({ params }: Props) {
       theme={theme}
       weather={mood.weather}
       ruleName={mood.ruleName}
+      tableNumber={tableParam ? parseInt(tableParam) : null}
     />
   );
 }

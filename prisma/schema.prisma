@@ -13,6 +13,12 @@ enum Role {
   CUSTOMER
 }
 
+enum CallStatus {
+  PENDING
+  ACKNOWLEDGED
+  RESOLVED
+}
+
 model User {
   id            String       @id @default(cuid())
   email         String       @unique
@@ -32,12 +38,39 @@ model Restaurant {
   latitude      Float?
   longitude     Float?
   logo          String?
+  wifiSsid      String?
+  wifiPassword  String?
   ownerId       String
   owner         User         @relation(fields: [ownerId], references: [id])
   categories    Category[]
   moodRules     MoodRule[]
+  tables        RestaurantTable[]
+  waiterCalls   WaiterCall[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+}
+
+model RestaurantTable {
+  id            String       @id @default(cuid())
+  number        Int
+  label         String?
+  restaurantId  String
+  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  waiterCalls   WaiterCall[]
+
+  @@unique([restaurantId, number])
+}
+
+model WaiterCall {
+  id            String       @id @default(cuid())
+  status        CallStatus   @default(PENDING)
+  message       String?
+  tableId       String
+  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  restaurantId  String
+  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  resolvedAt    DateTime?
 }
 
 model Category {

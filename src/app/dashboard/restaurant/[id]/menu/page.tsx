@@ -151,7 +151,19 @@ export default function MenuManagePage() {
           <h1 className="text-3xl font-bold text-gray-900">{restaurant.name}</h1>
           <p className="text-gray-500">{restaurant.city}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 flex-wrap">
+          <Link
+            href={`/dashboard/restaurant/${id}/tables`}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Tables & WiFi
+          </Link>
+          <Link
+            href={`/dashboard/restaurant/${id}/staff`}
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+          >
+            Staff Panel
+          </Link>
           <Link
             href={`/dashboard/restaurant/${id}/mood`}
             className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"

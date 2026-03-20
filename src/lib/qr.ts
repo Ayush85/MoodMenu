@@ -1,17 +1,24 @@
 import QRCode from "qrcode";
 
-export async function generateQRCode(slug: string): Promise<string> {
+export async function generateMenuQR(slug: string, tableNumber?: number): Promise<string> {
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-  const menuUrl = `${baseUrl}/menu/${slug}`;
+  let menuUrl = `${baseUrl}/menu/${slug}`;
+  if (tableNumber) menuUrl += `?table=${tableNumber}`;
 
-  const dataUrl = await QRCode.toDataURL(menuUrl, {
+  return QRCode.toDataURL(menuUrl, {
     width: 400,
     margin: 2,
-    color: {
-      dark: "#1F2937",
-      light: "#FFFFFF",
-    },
+    color: { dark: "#1F2937", light: "#FFFFFF" },
   });
+}
 
-  return dataUrl;
+export async function generateWifiQR(ssid: string, password: string): Promise<string> {
+  // Standard WiFi QR format — phones auto-recognize and connect
+  const wifiString = `WIFI:T:WPA;S:${ssid};P:${password};;`;
+
+  return QRCode.toDataURL(wifiString, {
+    width: 400,
+    margin: 2,
+    color: { dark: "#1F2937", light: "#FFFFFF" },
+  });
 }

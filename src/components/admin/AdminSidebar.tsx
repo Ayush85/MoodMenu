@@ -14,29 +14,33 @@ export default function AdminSidebar() {
   ];
 
   return (
-    <aside className="w-64 bg-slate-900 text-white min-h-screen p-6 flex flex-col">
-      <Link href="/admin" className="text-2xl font-bold text-red-400 mb-2">
-        MoodMenu
-      </Link>
-      <span className="text-xs text-slate-400 font-mono mb-8 border border-red-500/30 bg-red-500/10 text-red-400 px-2 py-1 rounded inline-block w-fit">
-        SUPER ADMIN
-      </span>
+    <aside className="w-full bg-slate-900 text-white px-3 py-3 sm:px-4 sm:py-4 md:w-64 md:min-h-screen md:p-6 md:flex md:flex-col md:shrink-0">
+      <div className="mb-3 md:mb-8 flex items-start justify-between gap-3 md:block">
+        <div>
+        <Link href="/admin" className="text-xl sm:text-2xl font-bold text-red-400 mb-2 block">
+          MoodMenu
+        </Link>
+        <span className="text-xs text-slate-400 font-mono border border-red-500/30 bg-red-500/10 text-red-400 px-2 py-1 rounded inline-block w-fit">
+          SUPER ADMIN
+        </span>
+        </div>
+      </div>
 
-      <nav className="flex-1 space-y-2">
+      <nav className="flex gap-2 overflow-x-auto pb-1 md:flex-1 md:block md:space-y-2 md:overflow-visible md:pb-0">
         {links.map((link) => (
           <Link
             key={link.href}
             href={link.href}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+            className={`shrink-0 flex items-center gap-2.5 px-3 py-2 rounded-lg transition whitespace-nowrap md:gap-3 md:px-4 md:py-3 ${
               pathname === link.href
                 ? "bg-red-500 text-white"
                 : "text-slate-300 hover:bg-slate-800"
             }`}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={link.icon} />
             </svg>
-            {link.label}
+            <span className="text-sm md:text-base">{link.label}</span>
           </Link>
         ))}
       </nav>

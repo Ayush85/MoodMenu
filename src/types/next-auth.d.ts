@@ -5,6 +5,7 @@ declare module "next-auth" {
     role?: string;
     actorType?: "USER" | "STAFF";
     restaurantId?: string;
+    restaurantIds?: string[];
   }
   interface Session {
     user: {
@@ -14,6 +15,7 @@ declare module "next-auth" {
       role: string;
       actorType?: "USER" | "STAFF";
       restaurantId?: string;
+      restaurantIds?: string[];
     };
   }
 }
@@ -24,5 +26,6 @@ declare module "next-auth/jwt" {
     role?: string;
     actorType?: "USER" | "STAFF";
     restaurantId?: string;
+    restaurantIds?: string[];
   }
 }

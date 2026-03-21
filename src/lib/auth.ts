@@ -25,12 +25,19 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (user?.password && user.isActive) {
           const isValid = await bcrypt.compare(password, user.password);
           if (isValid) {
+            const ownedRestaurants = await prisma.restaurant.findMany({
+              where: { ownerId: user.id },
+              select: { id: true },
+              orderBy: { createdAt: "desc" },
+            });
+
             return {
               id: user.id,
               email: user.email,
               name: user.name,
               role: user.role,
               actorType: "USER" as const,
+              restaurantIds: ownedRestaurants.map((r) => r.id),
             };
           }
         }
@@ -51,6 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: staff.role,
           actorType: "STAFF" as const,
           restaurantId: staff.restaurantId,
+          restaurantIds: [staff.restaurantId],
         };
       },
     }),
@@ -66,6 +74,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.role = user.role;
         token.actorType = user.actorType;
         token.restaurantId = user.restaurantId;
+        token.restaurantIds = user.restaurantIds;
       }
       return token;
     },
@@ -75,6 +84,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as string;
         session.user.actorType = token.actorType as "USER" | "STAFF" | undefined;
         session.user.restaurantId = token.restaurantId as string | undefined;
+        session.user.restaurantIds = Array.isArray(token.restaurantIds)
+          ? (token.restaurantIds as string[])
+          : undefined;
       }
       return session;
     },

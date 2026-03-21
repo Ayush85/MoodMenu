@@ -2,22 +2,22 @@ import Link from "next/link";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-orange-50 via-white to-purple-50">
+    <div className="min-h-screen bg-linear-to-br from-orange-50 via-white to-purple-50 overflow-x-hidden">
       {/* Nav */}
-      <nav className="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-        <span className="text-2xl font-bold text-gray-900">
+      <nav className="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 flex items-center justify-between gap-3">
+        <span className="text-xl sm:text-2xl font-bold text-gray-900 whitespace-nowrap">
           <span className="text-orange-500">Mood</span>Menu
         </span>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Link
             href="/login"
-            className="text-gray-600 hover:text-gray-900 font-medium px-4 py-2 transition"
+            className="text-gray-600 hover:text-gray-900 font-medium px-3 sm:px-4 py-2 text-sm sm:text-base transition"
           >
             Sign In
           </Link>
           <Link
             href="/register"
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-2 rounded-lg transition"
+            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-4 sm:px-6 py-2 rounded-lg text-sm sm:text-base transition"
           >
             Get Started
           </Link>
@@ -25,31 +25,31 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="max-w-6xl mx-auto px-6 pt-20 pb-32 text-center">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-16 sm:pb-24 lg:pb-32 text-center">
         <div className="inline-block bg-purple-100 text-purple-700 text-sm font-medium px-4 py-1.5 rounded-full mb-6">
           Emotional Engineering for Local Cafes
         </div>
-        <h1 className="text-5xl md:text-7xl font-bold text-gray-900 leading-tight mb-6">
+        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-gray-900 leading-tight mb-6">
           Your menu has a{" "}
           <span className="text-transparent bg-clip-text bg-linear-to-r from-orange-500 to-purple-600">
             mood
           </span>
         </h1>
-        <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10">
+        <p className="text-base sm:text-xl text-gray-500 max-w-2xl mx-auto mb-8 sm:mb-10">
           Build beautiful digital menus that adapt to the weather and time of day.
           Rainy evening? Warm dark mode with hot momo featured.
           Sunny afternoon? Bright colors with iced drinks up top.
         </p>
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
           <Link
             href="/register"
-            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-8 py-4 rounded-xl text-lg transition shadow-lg shadow-orange-500/25"
+            className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg transition shadow-lg shadow-orange-500/25"
           >
             Create Your Menu
           </Link>
           <Link
             href="/menu/demo"
-            className="bg-white hover:bg-gray-50 text-gray-900 font-semibold px-8 py-4 rounded-xl text-lg transition border border-gray-200"
+            className="bg-white hover:bg-gray-50 text-gray-900 font-semibold px-6 sm:px-8 py-3.5 sm:py-4 rounded-xl text-base sm:text-lg transition border border-gray-200"
           >
             See Demo
           </Link>
@@ -57,7 +57,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section className="max-w-6xl mx-auto px-6 pb-32">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24 lg:pb-32">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
             <div className="text-4xl mb-4">📱</div>
@@ -90,7 +90,7 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="max-w-6xl mx-auto px-6 pb-32">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-24 lg:pb-32">
         <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">
           How it works
         </h2>
@@ -113,17 +113,17 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="max-w-6xl mx-auto px-6 pb-20">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-14 sm:pb-20">
         <div className="bg-linear-to-r from-orange-500 to-purple-600 rounded-3xl p-12 text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">
             Ready to give your menu a mood?
           </h2>
-          <p className="text-lg opacity-90 mb-8">
+          <p className="text-base sm:text-lg opacity-90 mb-8">
             Free to start. Set up in under 5 minutes.
           </p>
           <Link
             href="/register"
-            className="bg-white text-gray-900 font-semibold px-8 py-4 rounded-xl text-lg transition hover:bg-gray-100 inline-block"
+            className="bg-white text-gray-900 font-semibold px-8 py-3.5 rounded-xl text-base sm:text-lg transition hover:bg-gray-100 inline-block"
           >
             Get Started Free
           </Link>
@@ -131,7 +131,7 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="max-w-6xl mx-auto px-6 py-8 text-center text-gray-400 text-sm border-t border-gray-100">
+      <footer className="max-w-6xl mx-auto px-4 sm:px-6 py-8 text-center text-gray-400 text-sm border-t border-gray-100">
         MoodMenu — Smart digital menus for restaurants in Nepal
       </footer>
     </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { isValidEmail, normalizeEmail, validatePassword } from "@/lib/password-policy";
 
 const allowedRoles = ["WAITER", "COOK", "CHEF"] as const;
 
@@ -77,13 +78,22 @@ export async function POST(
 
   const body = await req.json();
   const name = (body?.name || "").trim();
-  const email = String(body?.email || "").toLowerCase().trim();
+  const email = normalizeEmail(String(body?.email || ""));
   const password = String(body?.password || "");
   const phone = (body?.phone || "").trim();
   const role = body?.role as StaffRole;
 
   if (!name || !email || !password || !role || !allowedRoles.includes(role)) {
     return NextResponse.json({ error: "Name, email, password and valid role are required" }, { status: 400 });
+  }
+
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+  }
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
   }
 
   const existing = await prisma.restaurantStaff.findUnique({ where: { email } });
@@ -148,7 +158,15 @@ export async function PATCH(
     return NextResponse.json({ error: "Staff not found" }, { status: 404 });
   }
 
-  const passwordHash = password ? await bcrypt.hash(password, 12) : undefined;
+  const trimmedPassword = typeof password === "string" ? password.trim() : undefined;
+  if (trimmedPassword) {
+    const passwordError = validatePassword(trimmedPassword);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
+    }
+  }
+
+  const passwordHash = trimmedPassword ? await bcrypt.hash(trimmedPassword, 12) : undefined;
 
   const updated = await prisma.restaurantStaff.update({
     where: { id: staffId },

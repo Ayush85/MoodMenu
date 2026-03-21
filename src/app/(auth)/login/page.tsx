@@ -29,8 +29,9 @@ export default function LoginPage() {
     } else {
       const session = await getSession();
       const isStaff = session?.user?.actorType === "STAFF";
-      if (isStaff && session.user.restaurantId) {
-        router.push(`/dashboard/restaurant/${session.user.restaurantId}/staff`);
+      const primaryRestaurantId = session?.user?.restaurantId || session?.user?.restaurantIds?.[0];
+      if (isStaff && primaryRestaurantId) {
+        router.push(`/dashboard/restaurant/${primaryRestaurantId}/staff`);
       } else {
         router.push("/dashboard");
       }
@@ -38,12 +39,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4 py-8">
+      <div className="w-full max-w-md surface-card p-6 sm:p-8">
+        <h1 className="page-title text-center mb-2">
           Welcome back
         </h1>
-        <p className="text-gray-500 text-center mb-8">
+        <p className="page-subtitle text-center mb-8">
           Sign in to your MoodMenu account
         </p>
 
@@ -62,7 +63,7 @@ export default function LoginPage() {
               type="email"
               name="email"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="control-input"
               placeholder="you@restaurant.com"
             />
           </div>
@@ -74,14 +75,14 @@ export default function LoginPage() {
               type="password"
               name="password"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+              className="control-input"
               placeholder="••••••••"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+            className="btn-primary w-full py-3"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>

@@ -83,11 +83,11 @@ export default function TablesPage() {
   }
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="page-shell max-w-5xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Tables & WiFi</h1>
-          <p className="text-gray-500 mt-1">{restaurant?.name}</p>
+          <h1 className="page-title">Tables & WiFi</h1>
+          <p className="page-subtitle mt-1">{restaurant?.name}</p>
         </div>
         <Link
           href={`/dashboard/restaurant/${id}/menu`}
@@ -98,12 +98,12 @@ export default function TablesPage() {
       </div>
 
       {/* WiFi Configuration */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+      <div className="surface-card p-4 sm:p-6 mb-6 sm:mb-8">
         <h2 className="text-lg font-bold text-gray-900 mb-4">WiFi Settings</h2>
         <p className="text-sm text-gray-500 mb-4">
           Customers will see a &quot;Connect to WiFi&quot; button when they scan the QR code.
         </p>
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">WiFi Name (SSID)</label>
             <input
@@ -111,7 +111,7 @@ export default function TablesPage() {
               value={wifiSsid}
               onChange={(e) => setWifiSsid(e.target.value)}
               placeholder="RestaurantWiFi"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+              className="control-input !py-3"
             />
           </div>
           <div>
@@ -121,33 +121,33 @@ export default function TablesPage() {
               value={wifiPassword}
               onChange={(e) => setWifiPassword(e.target.value)}
               placeholder="password123"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+              className="control-input !py-3"
             />
           </div>
         </div>
         <button
           onClick={saveWifi}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-lg font-semibold transition text-sm"
+          className="btn-primary"
         >
           {wifiSaved ? "Saved!" : "Save WiFi Settings"}
         </button>
       </div>
 
       {/* Add Tables */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+      <div className="surface-card p-4 sm:p-6 mb-6 sm:mb-8">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Add Tables</h2>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="number"
             value={tableCount}
             onChange={(e) => setTableCount(e.target.value)}
             min="1"
             max="100"
-            className="w-24 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none text-center"
+            className="control-input w-full sm:w-24 !py-3 text-center"
           />
           <button
             onClick={addTables}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+            className="btn-primary w-full sm:w-auto"
           >
             Add {tableCount} Table{parseInt(tableCount) !== 1 ? "s" : ""}
           </button>
@@ -155,7 +155,7 @@ export default function TablesPage() {
       </div>
 
       {/* Tables Grid */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+      <div className="surface-card p-4 sm:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-gray-900">
             Tables ({tables.length})
@@ -165,7 +165,7 @@ export default function TablesPage() {
         {tables.length === 0 ? (
           <p className="text-gray-400 text-sm py-4">No tables yet. Add some above.</p>
         ) : (
-          <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {tables.map((table) => (
               <div
                 key={table.id}

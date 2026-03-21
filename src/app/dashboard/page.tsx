@@ -36,13 +36,13 @@ export default function DashboardPage() {
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Your Restaurants</h1>
+    <div className="page-shell">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+        <h1 className="page-title">Your Restaurants</h1>
         {!isStaff && (
           <Link
             href="/dashboard/restaurant/new"
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+            className="btn-primary w-full sm:w-auto text-center"
           >
             + Add Restaurant
           </Link>
@@ -50,7 +50,7 @@ export default function DashboardPage() {
       </div>
 
       {restaurants.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+        <div className="surface-card p-8 sm:p-12 text-center">
           <div className="text-6xl mb-4">🍽️</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
             No restaurants yet
@@ -63,7 +63,7 @@ export default function DashboardPage() {
           {!isStaff && (
             <Link
               href="/dashboard/restaurant/new"
-              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition inline-block"
+              className="btn-primary inline-flex w-full sm:w-auto"
             >
               Create Restaurant
             </Link>
@@ -80,7 +80,7 @@ export default function DashboardPage() {
               <Link
                 key={r.id}
                 href={`/dashboard/restaurant/${r.id}/menu`}
-                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition group"
+                className="surface-card p-6 hover:shadow-md transition group"
               >
                 <h3 className="text-xl font-bold text-gray-900 group-hover:text-orange-500 transition">
                   {r.name}

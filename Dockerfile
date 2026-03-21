@@ -33,8 +33,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/src/generated ./src/generated
 
-# Copy full node_modules for prisma CLI runtime
-COPY --from=builder /app/node_modules ./node_modules
+# Copy full node_modules for prisma CLI runtime.
+# Use deps stage so this layer is cached unless package-lock changes.
+COPY --from=deps /app/node_modules ./node_modules
 
 # Copy entrypoint
 COPY docker-entrypoint.sh ./docker-entrypoint.sh

@@ -54,14 +54,22 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const greeting = getTimeGreetingFromHour(new Date().getHours());
 
   // Identify featured items
-  const featuredItems = restaurant.categories
-    .flatMap((cat) => cat.items)
+  const allItems = restaurant.categories.flatMap((cat) => cat.items);
+
+  const featuredItems = allItems
     .filter((item) =>
       mood.featuredTags.some((tag) =>
         item.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
       )
     )
     .slice(0, 6);
+
+  const specialTags = ["special", "today", "chef", "signature", "popular"];
+  const todaysSpecials = allItems
+    .filter((item) => item.tags.some((tag) => specialTags.includes(tag.toLowerCase())))
+    .slice(0, 6);
+
+  const resolvedTodaysSpecials = (todaysSpecials.length > 0 ? todaysSpecials : featuredItems).slice(0, 6);
 
   const theme = mood.theme || DEFAULT_THEME;
 
@@ -88,6 +96,14 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         })),
       }))}
       featuredItems={featuredItems.map((item) => ({
+        id: item.id,
+        name: item.name,
+        description: item.description,
+        price: item.price,
+        image: item.image,
+        tags: item.tags,
+      }))}
+      todaysSpecials={resolvedTodaysSpecials.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description,

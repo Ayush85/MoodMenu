@@ -78,6 +78,7 @@ export default function StaffPage() {
   const [orderStatusFilter, setOrderStatusFilter] = useState<"ALL" | OrderTicket["status"]>("ALL");
   const [orderTableFilter, setOrderTableFilter] = useState("");
   const [savingOrder, setSavingOrder] = useState(false);
+  const [showComposer, setShowComposer] = useState(false);
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffEmail, setNewStaffEmail] = useState("");
@@ -85,13 +86,16 @@ export default function StaffPage() {
   const [newStaffPhone, setNewStaffPhone] = useState("");
   const [newStaffRole, setNewStaffRole] = useState<StaffMember["role"]>("WAITER");
   const [addingStaff, setAddingStaff] = useState(false);
-  const [connected, setConnected] = useState(false);
   const [prevCallCount, setPrevCallCount] = useState(0);
   const actorType = session?.user?.actorType;
   const staffRole = session?.user?.role as "WAITER" | "COOK" | "CHEF" | undefined;
   const canManageStaff = actorType === "USER";
   const canUseCalls = actorType === "USER" || staffRole === "WAITER";
   const canTakeOrders = actorType === "USER" || staffRole === "WAITER";
+  const [showStaffSection, setShowStaffSection] = useState(false);
+  const [visibleOrders, setVisibleOrders] = useState(6);
+  const [visibleCalls, setVisibleCalls] = useState(6);
+  const [simpleView, setSimpleView] = useState(true);
 
   useEffect(() => {
     if (!canUseCalls && activeTab === "calls") {
@@ -102,7 +106,6 @@ export default function StaffPage() {
   // SSE for real-time pending calls
   useEffect(() => {
     if (!canUseCalls) {
-      setConnected(false);
       return;
     }
 
@@ -110,10 +113,6 @@ export default function StaffPage() {
 
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
-      if (data.type === "connected") {
-        setConnected(true);
-      }
 
       if (data.type === "calls") {
         const newCalls = data.calls as WaiterCall[];
@@ -129,7 +128,7 @@ export default function StaffPage() {
     };
 
     eventSource.onerror = () => {
-      setConnected(false);
+      // Keep stream graceful; browser reconnect behavior handles transient drops.
     };
 
     return () => eventSource.close();
@@ -192,13 +191,6 @@ export default function StaffPage() {
       const title = `Waiter Call: Table ${call.tableNumber}`;
       const body = call.message || "Customer requested assistance";
       new Notification(title, { body });
-    }
-  }
-
-  async function enableNotifications() {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission === "default") {
-      await Notification.requestPermission();
     }
   }
 
@@ -298,11 +290,30 @@ export default function StaffPage() {
     });
   }, [orders, orderStatusFilter, orderTableFilter]);
 
+  const visibleFilteredOrders = filteredOrders.slice(0, visibleOrders);
+  const visibleAllCalls = allCalls.slice(0, visibleCalls);
+
   const paidRevenue = useMemo(() => {
     return orders
       .filter((o) => o.status === "PAID")
       .reduce((sum, o) => sum + o.total, 0);
   }, [orders]);
+
+  const activeOrderQueue = useMemo(() => {
+    return orders.filter((o) => o.status === "NEW" || o.status === "PREPARING").length;
+  }, [orders]);
+
+  const readyToCloseCount = useMemo(() => {
+    return orders.filter((o) => o.status === "SERVED").length;
+  }, [orders]);
+
+  useEffect(() => {
+    setVisibleOrders(6);
+  }, [orderStatusFilter, orderTableFilter, orders]);
+
+  useEffect(() => {
+    setVisibleCalls(6);
+  }, [allCalls]);
 
   async function submitOrder() {
     if (!selectedTableId || orderDraft.length === 0) return;
@@ -360,6 +371,45 @@ export default function StaffPage() {
       return status === "PREPARING" || status === "SERVED" || status === "CANCELED";
     }
     return false;
+  }
+
+  function getOrderActionStatuses(order: OrderTicket): OrderTicket["status"][] {
+    if (actorType === "USER") {
+      return ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"];
+    }
+
+    if (staffRole === "WAITER") {
+      return ["SERVED", "PAID", "CANCELED"];
+    }
+
+    if (staffRole === "COOK" || staffRole === "CHEF") {
+      return ["PREPARING", "SERVED", "CANCELED"];
+    }
+
+    return [];
+  }
+
+  function getNextSuggestedStatus(order: OrderTicket): OrderTicket["status"] | null {
+    if (actorType === "USER") {
+      if (order.status === "NEW") return "PREPARING";
+      if (order.status === "PREPARING") return "SERVED";
+      if (order.status === "SERVED") return "PAID";
+      return null;
+    }
+
+    if (staffRole === "WAITER") {
+      if (order.status === "NEW" || order.status === "PREPARING") return "SERVED";
+      if (order.status === "SERVED") return "PAID";
+      return null;
+    }
+
+    if (staffRole === "COOK" || staffRole === "CHEF") {
+      if (order.status === "NEW") return "PREPARING";
+      if (order.status === "PREPARING") return "SERVED";
+      return null;
+    }
+
+    return null;
   }
 
   function clearDraft() {
@@ -457,471 +507,474 @@ export default function StaffPage() {
     return `${Math.floor(minutes / 60)}h ago`;
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Staff Panel</h1>
-          <p className="text-gray-500 mt-1">Live waiter calls and quick order taking</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={enableNotifications}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            Enable Alerts
-          </button>
-          <span className={`w-3 h-3 rounded-full ${connected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
-          <span className="text-sm text-gray-500">{connected ? "Live" : "Disconnected"}</span>
-        </div>
-      </div>
+  const focusCall = pendingCalls[0] || null;
 
-      <div className="mb-6 flex gap-2">
+  return (
+    <div className="page-shell space-y-4 sm:space-y-5">
+      <header className="surface-card p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="page-title !text-2xl sm:!text-3xl">Staff Panel</h1>
+            <p className="page-subtitle mt-1">Action-first view for calls and orders</p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-slate-900 text-white font-semibold">
+              {actorType === "USER" ? "Admin" : (staffRole || "Staff")}
+            </span>
+            <button
+              onClick={() => setSimpleView((v) => !v)}
+              className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700"
+            >
+              {simpleView ? "Detailed View" : "Simple View"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600">Pending Calls</p>
+            <p className="text-2xl font-extrabold text-red-900 leading-none mt-1">{pendingCalls.length}</p>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Active Queue</p>
+            <p className="text-2xl font-extrabold text-amber-900 leading-none mt-1">{activeOrderQueue}</p>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Ready to Close</p>
+            <p className="text-2xl font-extrabold text-emerald-900 leading-none mt-1">{readyToCloseCount}</p>
+          </div>
+          <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-600">Paid Revenue</p>
+            <p className="text-2xl font-extrabold text-violet-900 leading-none mt-1">Rs. {paidRevenue}</p>
+          </div>
+        </div>
+      </header>
+
+      <div className="surface-card p-2 flex gap-2">
         {canUseCalls && (
           <button
             onClick={() => setActiveTab("calls")}
-            className={`px-4 py-2 rounded-xl font-semibold text-sm ${activeTab === "calls" ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-700"}`}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "calls" ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
           >
-            Waiter Calls
+            Calls Desk
           </button>
         )}
         <button
           onClick={() => setActiveTab("orders")}
-          className={`px-4 py-2 rounded-xl font-semibold text-sm ${activeTab === "orders" ? "bg-gray-900 text-white" : "bg-white border border-gray-200 text-gray-700"}`}
+          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "orders" ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
         >
-          Orders
+          Orders Desk
         </button>
       </div>
 
-      <section className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Staff Management</h2>
-            <p className="text-sm text-gray-500">{canManageStaff ? "Admin can manage waiter and cook/chef counters here" : "Current active staff counters"}</p>
-          </div>
-          <div className="flex gap-3">
-            <div className="rounded-xl bg-blue-50 border border-blue-200 px-4 py-2">
-              <p className="text-xs text-blue-700 font-semibold">Waiter Counter</p>
-              <p className="text-xl font-extrabold text-blue-900">{activeWaiterCount}</p>
-            </div>
-            <div className="rounded-xl bg-orange-50 border border-orange-200 px-4 py-2">
-              <p className="text-xs text-orange-700 font-semibold">Cook/Chef Counter</p>
-              <p className="text-xl font-extrabold text-orange-900">{activeKitchenCount}</p>
-            </div>
-          </div>
-        </div>
-
-        {canManageStaff && (
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
-            <input
-              value={newStaffName}
-              onChange={(e) => setNewStaffName(e.target.value)}
-              placeholder="Staff name"
-              className="px-3 py-2 rounded-xl border border-gray-300"
-            />
-            <input
-              value={newStaffEmail}
-              onChange={(e) => setNewStaffEmail(e.target.value)}
-              placeholder="Email"
-              className="px-3 py-2 rounded-xl border border-gray-300"
-            />
-            <input
-              type="password"
-              value={newStaffPassword}
-              onChange={(e) => setNewStaffPassword(e.target.value)}
-              placeholder="Password"
-              className="px-3 py-2 rounded-xl border border-gray-300"
-            />
-            <input
-              value={newStaffPhone}
-              onChange={(e) => setNewStaffPhone(e.target.value)}
-              placeholder="Phone (optional)"
-              className="px-3 py-2 rounded-xl border border-gray-300"
-            />
-            <select
-              value={newStaffRole}
-              onChange={(e) => setNewStaffRole(e.target.value as StaffMember["role"])}
-              className="px-3 py-2 rounded-xl border border-gray-300 bg-white"
-            >
-              <option value="WAITER">Waiter</option>
-              <option value="COOK">Cook</option>
-              <option value="CHEF">Chef</option>
-            </select>
-            <button
-              onClick={addStaffMember}
-              disabled={addingStaff || !newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()}
-              className="px-4 py-2 rounded-xl bg-gray-900 text-white font-semibold disabled:opacity-50"
-            >
-              {addingStaff ? "Adding..." : "Add Staff"}
-            </button>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          {staff.length === 0 ? (
-            <p className="text-sm text-gray-400">No staff members added yet.</p>
-          ) : (
-            staff.map((member) => (
-              <div key={member.id} className="border border-gray-200 rounded-xl px-3 py-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="font-semibold text-gray-900">{member.name}</p>
-                  <p className="text-xs text-gray-500">{member.phone || "No phone"}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-gray-500 font-mono">{member.email}</span>
-                  {canManageStaff && (
-                    <>
-                      <select
-                        value={member.role}
-                        onChange={(e) => updateStaffMember(member.id, { role: e.target.value as StaffMember["role"] })}
-                        className="text-sm border border-gray-300 rounded-lg px-2 py-1 bg-white"
-                      >
-                        <option value="WAITER">Waiter</option>
-                        <option value="COOK">Cook</option>
-                        <option value="CHEF">Chef</option>
-                      </select>
-                      <button
-                        onClick={() => updateStaffMember(member.id, { isActive: !member.isActive })}
-                        className={`text-xs px-3 py-1 rounded-full ${member.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}
-                      >
-                        {member.isActive ? "Active" : "Inactive"}
-                      </button>
-                      <button
-                        onClick={() => deleteStaffMember(member.id)}
-                        className="text-xs px-3 py-1 rounded-full bg-red-100 text-red-700"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        onClick={() => resetStaffPassword(member.id)}
-                        className="text-xs px-3 py-1 rounded-full bg-indigo-100 text-indigo-700"
-                      >
-                        Reset Password
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
       {activeTab === "calls" && canUseCalls && (
-        <>
-          {pendingCalls.length > 0 ? (
-            <div className="space-y-4 mb-10">
-              <h2 className="text-lg font-bold text-red-600 flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                Active Calls ({pendingCalls.length})
-              </h2>
-              {pendingCalls.map((call) => (
-                <div
-                  key={call.id}
-                  className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-red-500 text-white rounded-2xl flex items-center justify-center">
-                      <span className="text-2xl font-extrabold">{call.tableNumber}</span>
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <div className="lg:col-span-7 space-y-4">
+            <div className="surface-card p-4 sm:p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-bold text-slate-900">Priority Call</h2>
+                <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-semibold">
+                  {pendingCalls.length} waiting
+                </span>
+              </div>
+
+              {focusCall ? (
+                <div className="rounded-2xl border-2 border-red-200 bg-red-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-14 h-14 rounded-2xl bg-red-500 text-white flex items-center justify-center font-extrabold text-2xl shrink-0">
+                      {focusCall.tableNumber}
                     </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-red-900">
-                        {call.tableLabel || `Table ${call.tableNumber}`}
-                      </h3>
-                      {call.message && (
-                        <p className="text-red-700 mt-1">&quot;{call.message}&quot;</p>
-                      )}
-                      <p className="text-sm text-red-400 mt-1">{timeAgo(call.createdAt)}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-bold text-red-900">{focusCall.tableLabel || `Table ${focusCall.tableNumber}`}</p>
+                      {!simpleView && focusCall.message && <p className="text-red-700 mt-1">{focusCall.message}</p>}
+                      {!simpleView && <p className="text-xs text-red-500 mt-2">Requested {timeAgo(focusCall.createdAt)}</p>}
                     </div>
                   </div>
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-2 gap-2 mt-4">
                     <button
-                      onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
-                      className="bg-yellow-500 hover:bg-yellow-600 text-white px-5 py-3 rounded-xl font-semibold transition"
+                      onClick={() => updateCallStatus(focusCall.id, "ACKNOWLEDGED")}
+                      className="rounded-xl bg-amber-500 text-white text-sm font-semibold py-2.5"
                     >
                       On My Way
                     </button>
                     <button
-                      onClick={() => updateCallStatus(call.id, "RESOLVED")}
-                      className="bg-green-500 hover:bg-green-600 text-white px-5 py-3 rounded-xl font-semibold transition"
+                      onClick={() => updateCallStatus(focusCall.id, "RESOLVED")}
+                      className="rounded-xl bg-emerald-500 text-white text-sm font-semibold py-2.5"
                     >
-                      Done
+                      Resolved
                     </button>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-12 text-center mb-10">
-              <div className="text-5xl mb-4">✅</div>
-              <h2 className="text-xl font-bold text-green-900">All Clear</h2>
-              <p className="text-green-600 mt-1">No pending waiter calls right now</p>
-            </div>
-          )}
-
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">Recent Call History</h2>
-            </div>
-            <div className="divide-y divide-gray-50">
-              {allCalls.length === 0 ? (
-                <div className="px-6 py-8 text-center text-gray-400 text-sm">
-                  No waiter calls yet
-                </div>
               ) : (
-                allCalls.map((call) => (
-                  <div key={call.id} className="px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-sm ${
-                        call.status === "PENDING" ? "bg-red-500" :
-                        call.status === "ACKNOWLEDGED" ? "bg-yellow-500" : "bg-green-500"
-                      }`}>
-                        {call.table?.number || "?"}
+                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
+                  <p className="text-2xl mb-2">All clear</p>
+                  <p className="text-sm text-emerald-700 font-medium">No active waiter calls</p>
+                </div>
+              )}
+            </div>
+
+            <div className="surface-card overflow-hidden">
+              <div className="px-4 sm:px-5 py-3 border-b border-slate-100">
+                <h3 className="text-sm font-bold text-slate-900">Call Queue</h3>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {pendingCalls.length === 0 ? (
+                  <div className="px-4 sm:px-5 py-5 text-sm text-slate-400">No queue right now</div>
+                ) : (
+                  pendingCalls.slice(0, 5).map((call) => (
+                    <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-slate-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
+                        {!simpleView && <p className="text-xs text-slate-500">{timeAgo(call.createdAt)}</p>}
                       </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">
-                          {call.table?.label || `Table ${call.table?.number}`}
-                        </p>
-                        {call.message && (
-                          <p className="text-sm text-gray-500">{call.message}</p>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
+                        className="text-xs px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 bg-amber-50"
+                      >
+                        Acknowledge
+                      </button>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="lg:col-span-5 surface-card overflow-hidden">
+            <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">Recent Call History</h3>
+              {!simpleView && <span className="text-xs text-slate-400">{allCalls.length} total</span>}
+            </div>
+            <div className="divide-y divide-slate-100">
+              {allCalls.length === 0 ? (
+                <div className="px-4 sm:px-5 py-8 text-center text-sm text-slate-400">No waiter calls yet</div>
+              ) : (
+                visibleAllCalls.map((call) => (
+                  <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">{call.table?.label || `Table ${call.table?.number}`}</p>
+                      {!simpleView && call.message && <p className="text-xs text-slate-500 truncate">{call.message}</p>}
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
                         call.status === "PENDING" ? "bg-red-100 text-red-700" :
-                        call.status === "ACKNOWLEDGED" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-green-100 text-green-700"
+                        call.status === "ACKNOWLEDGED" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
                       }`}>
                         {call.status}
                       </span>
-                      <span className="text-xs text-gray-400">{timeAgo(call.createdAt)}</span>
+                      {!simpleView && <p className="text-[11px] text-slate-400 mt-1">{timeAgo(call.createdAt)}</p>}
                     </div>
                   </div>
                 ))
               )}
+              {allCalls.length > visibleCalls && (
+                <div className="p-3 border-t border-slate-100">
+                  <button onClick={() => setVisibleCalls((v) => v + 6)} className="btn-soft w-full">
+                    Show More Calls
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        </>
+        </section>
       )}
 
       {activeTab === "orders" && (
-        <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <p className="text-[11px] font-semibold text-slate-500">New</p>
-              <p className="text-2xl font-extrabold text-slate-900">{orderCounts.NEW}</p>
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-[11px] font-semibold text-amber-600">Preparing</p>
-              <p className="text-2xl font-extrabold text-amber-900">{orderCounts.PREPARING}</p>
-            </div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <p className="text-[11px] font-semibold text-emerald-600">Served</p>
-              <p className="text-2xl font-extrabold text-emerald-900">{orderCounts.SERVED}</p>
-            </div>
-            <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3">
-              <p className="text-[11px] font-semibold text-cyan-600">Paid</p>
-              <p className="text-2xl font-extrabold text-cyan-900">{orderCounts.PAID}</p>
-            </div>
-            <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
-              <p className="text-[11px] font-semibold text-violet-600">Paid Revenue</p>
-              <p className="text-2xl font-extrabold text-violet-900">Rs. {paidRevenue}</p>
-            </div>
-          </div>
-
-          {canTakeOrders && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
-              <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
-                <h2 className="text-lg font-bold text-gray-900">Take New Order</h2>
-                <p className="text-xs text-gray-500">Fast mode for table service</p>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                <div className="lg:col-span-2 space-y-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Select Table</label>
-                    <select
-                      value={selectedTableId}
-                      onChange={(e) => setSelectedTableId(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-300 bg-white"
-                    >
-                      <option value="">Choose a table...</option>
-                      {tables.map((table) => (
-                        <option key={table.id} value={table.id}>
-                          {table.label || `Table ${table.number}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">Find Menu Item</label>
-                    <input
-                      value={itemSearch}
-                      onChange={(e) => setItemSearch(e.target.value)}
-                      placeholder="Search by item name"
-                      className="w-full px-3 py-2.5 rounded-xl border border-gray-300"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
-                    {filteredMenuItems.map((item) => (
-                      <div key={item.id} className="border border-gray-200 rounded-xl px-3 py-2.5 flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-sm text-gray-900">{item.name}</p>
-                          <p className="text-xs text-gray-500">Rs. {item.price}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => decrementItem(item.id)}
-                            className="w-7 h-7 rounded-lg border border-gray-300 text-gray-700"
-                          >
-                            -
-                          </button>
-                          <span className="w-6 text-center text-sm font-semibold">{selectedItems[item.id] || 0}</span>
-                          <button
-                            onClick={() => incrementItem(item.id)}
-                            className="w-7 h-7 rounded-lg bg-gray-900 text-white"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    {filteredMenuItems.length === 0 && (
-                      <div className="md:col-span-2 text-center py-6 text-sm text-gray-400 border border-dashed border-gray-300 rounded-xl">
-                        No matching items found
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border border-gray-200 rounded-2xl p-4 bg-slate-50">
-                  <p className="text-sm font-bold text-gray-900 mb-1">Current Draft</p>
-                  <p className="text-xs text-gray-500 mb-3">
-                    {selectedTable ? (selectedTable.label || `Table ${selectedTable.number}`) : "No table selected"}
-                  </p>
-
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mb-3">
-                    {orderDraft.length === 0 ? (
-                      <p className="text-sm text-gray-400">No items added yet</p>
-                    ) : (
-                      orderDraft.map((row) => (
-                        <div key={row.itemId} className="flex justify-between text-sm">
-                          <span>{row.quantity} x {row.itemName}</span>
-                          <span className="font-semibold">Rs. {row.lineTotal}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  <label className="block text-xs font-semibold text-gray-600 mb-1">Order Note</label>
-                  <textarea
-                    value={orderNote}
-                    onChange={(e) => setOrderNote(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-xl border border-gray-300 text-sm mb-3"
-                    placeholder="No onion, less spicy, allergies..."
-                  />
-
-                  <div className="flex items-center justify-between mb-3 text-sm">
-                    <span className="text-gray-600">Total</span>
-                    <span className="text-lg font-extrabold text-gray-900">Rs. {orderTotal}</span>
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      onClick={clearDraft}
-                      className="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-gray-700 text-sm font-semibold"
-                    >
-                      Clear
-                    </button>
-                    <button
-                      onClick={submitOrder}
-                      disabled={savingOrder || !selectedTableId || orderDraft.length === 0}
-                      className="flex-1 px-3 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold disabled:opacity-50"
-                    >
-                      {savingOrder ? "Saving..." : "Save"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 space-y-3">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h2 className="text-lg font-bold text-gray-900">Recent Orders</h2>
-                <p className="text-xs text-gray-500">
-                  Role: <span className="font-semibold">{actorType === "USER" ? "Admin" : (staffRole || "Staff")}</span>
-                </p>
-              </div>
+        <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+          <div className="xl:col-span-8 space-y-4 order-2 xl:order-1">
+            <div className="surface-card p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap gap-2">
                 {(["ALL", "NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const).map((status) => (
                   <button
                     key={status}
                     onClick={() => setOrderStatusFilter(status)}
-                    className={`text-xs px-3 py-1.5 rounded-full border ${orderStatusFilter === status ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-300"}`}
+                    className={`text-xs px-3 py-1.5 rounded-full border transition ${orderStatusFilter === status ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"}`}
                   >
                     {status}
                   </button>
                 ))}
-                <input
-                  value={orderTableFilter}
-                  onChange={(e) => setOrderTableFilter(e.target.value)}
-                  placeholder="Filter by table"
-                  className="text-xs px-3 py-1.5 rounded-full border border-gray-300"
-                />
+              </div>
+              <input
+                value={orderTableFilter}
+                onChange={(e) => setOrderTableFilter(e.target.value)}
+                placeholder="Filter by table name or number"
+                className="control-input"
+              />
+            </div>
+
+            <div className="surface-card overflow-hidden">
+              <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-base font-bold text-slate-900">Active Order Board</h2>
+                <span className="text-xs text-slate-500">{filteredOrders.length} results</span>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {filteredOrders.length === 0 ? (
+                  <div className="px-4 sm:px-5 py-8 text-center text-sm text-slate-400">No orders found</div>
+                ) : (
+                  visibleFilteredOrders.map((order) => {
+                    const actionStatuses = getOrderActionStatuses(order);
+                    const suggestedStatus = getNextSuggestedStatus(order);
+
+                    return (
+                      <div key={order.id} className="px-4 sm:px-5 py-4 space-y-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-bold text-slate-900">{order.table.label || `Table ${order.table.number}`}</p>
+                            {!simpleView && <p className="text-xs text-slate-500">Created {timeAgo(order.createdAt)}</p>}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!actionStatuses.includes(order.status) && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
+                                {order.status}
+                              </span>
+                            )}
+                            {suggestedStatus && canUpdateStatus(suggestedStatus) && (
+                              <button
+                                onClick={() => updateOrderStatus(order.id, suggestedStatus)}
+                                className="text-xs px-2.5 py-1 rounded-full bg-orange-500 text-white border border-orange-500"
+                              >
+                                Next: {suggestedStatus}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {!simpleView ? (
+                          <>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-slate-700">
+                              {order.items.map((line) => (
+                                <div key={line.id} className="flex items-center justify-between">
+                                  <span>{line.quantity} x {line.itemName}</span>
+                                  <span>Rs. {line.lineTotal}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {order.note && <p className="text-xs text-slate-500">Note: {order.note}</p>}
+                          </>
+                        ) : (
+                          <p className="text-xs text-slate-500">{order.items.length} item(s)</p>
+                        )}
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                          <div className="flex flex-wrap gap-2">
+                            {actionStatuses.map((status) => (
+                              <button
+                                key={status}
+                                onClick={() => updateOrderStatus(order.id, status)}
+                                disabled={!canUpdateStatus(status)}
+                                title={!canUpdateStatus(status) ? "Not allowed for your role" : ""}
+                                className={`text-xs px-2.5 py-1 rounded-full border disabled:opacity-40 ${order.status === status ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300"}`}
+                              >
+                                {status}
+                              </button>
+                            ))}
+                          </div>
+                          <p className="font-bold text-slate-900">Total Rs. {order.total}</p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+
+                {filteredOrders.length > visibleOrders && (
+                  <div className="p-3 border-t border-slate-100">
+                    <button onClick={() => setVisibleOrders((v) => v + 6)} className="btn-soft w-full">
+                      Show More Orders
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="divide-y divide-gray-100">
-              {filteredOrders.length === 0 ? (
-                <div className="px-6 py-8 text-center text-gray-400 text-sm">No orders yet</div>
-              ) : (
-                filteredOrders.map((order) => (
-                  <div key={order.id} className="px-6 py-5">
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div>
-                        <p className="font-bold text-gray-900">{order.table.label || `Table ${order.table.number}`}</p>
-                        <p className="text-xs text-gray-500">{timeAgo(order.createdAt)}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2 justify-end">
-                        {(["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const).map((status) => (
-                          <button
-                            key={status}
-                            onClick={() => updateOrderStatus(order.id, status)}
-                            disabled={!canUpdateStatus(status)}
-                            title={!canUpdateStatus(status) ? "Not allowed for your role" : ""}
-                            className={`text-xs px-2.5 py-1 rounded-full border disabled:opacity-40 ${order.status === status ? "bg-gray-900 text-white border-gray-900" : "bg-white text-gray-600 border-gray-300"}`}
-                          >
-                            {status}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+          </div>
 
-                    <div className="text-sm text-gray-700 space-y-1">
-                      {order.items.map((line) => (
-                        <div key={line.id} className="flex items-center justify-between">
-                          <span>{line.quantity} x {line.itemName}</span>
-                          <span>Rs. {line.lineTotal}</span>
+          <aside className="xl:col-span-4 order-1 xl:order-2 space-y-3">
+            <div className="surface-card p-3 sm:p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-2">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                  <p className="text-[11px] font-semibold text-slate-500">NEW</p>
+                  <p className="text-lg font-extrabold text-slate-900">{orderCounts.NEW}</p>
+                </div>
+                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
+                  <p className="text-[11px] font-semibold text-amber-600">PREP</p>
+                  <p className="text-lg font-extrabold text-amber-900">{orderCounts.PREPARING}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center">
+                  <p className="text-[11px] font-semibold text-emerald-600">SERVED</p>
+                  <p className="text-lg font-extrabold text-emerald-900">{orderCounts.SERVED}</p>
+                </div>
+                <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-center">
+                  <p className="text-[11px] font-semibold text-cyan-600">PAID</p>
+                  <p className="text-lg font-extrabold text-cyan-900">{orderCounts.PAID}</p>
+                </div>
+              </div>
+            </div>
+
+            {canTakeOrders && (
+              <>
+                {!showComposer && (
+                  <button onClick={() => setShowComposer(true)} className="btn-primary w-full xl:hidden">
+                    Open Order Composer
+                  </button>
+                )}
+
+                <div className={`${showComposer ? "block" : "hidden"} xl:block surface-card p-4`}> 
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <h3 className="text-base font-bold text-slate-900">New Order</h3>
+                    <button onClick={() => setShowComposer(false)} className="btn-soft !px-2.5 !py-1 !text-xs xl:hidden">Hide</button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)} className="control-input">
+                      <option value="">Select table</option>
+                      {tables.map((table) => (
+                        <option key={table.id} value={table.id}>{table.label || `Table ${table.number}`}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={itemSearch}
+                      onChange={(e) => setItemSearch(e.target.value)}
+                      placeholder="Search menu item"
+                      className="control-input"
+                    />
+
+                    <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-2">
+                      {filteredMenuItems.map((item) => (
+                        <div key={item.id} className="rounded-lg border border-slate-200 px-2.5 py-2 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-900 truncate">{item.name}</p>
+                            <p className="text-[11px] text-slate-500">Rs. {item.price}</p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button onClick={() => decrementItem(item.id)} className="w-6 h-6 rounded-md border border-slate-300 text-slate-700">-</button>
+                            <span className="w-5 text-center text-sm font-semibold">{selectedItems[item.id] || 0}</span>
+                            <button onClick={() => incrementItem(item.id)} className="w-6 h-6 rounded-md bg-slate-900 text-white">+</button>
+                          </div>
                         </div>
                       ))}
+                      {filteredMenuItems.length === 0 && (
+                        <p className="text-xs text-slate-400 text-center py-3">No matching items</p>
+                      )}
                     </div>
 
-                    {order.note && (
-                      <p className="mt-2 text-sm text-gray-500">Note: {order.note}</p>
-                    )}
-
-                    <p className="mt-2 text-right font-bold text-gray-900">Total Rs. {order.total}</p>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold text-slate-600">Draft for {selectedTable ? (selectedTable.label || `Table ${selectedTable.number}`) : "No table"}</p>
+                      <div className="max-h-28 overflow-y-auto mt-2 space-y-1.5">
+                        {orderDraft.length === 0 ? (
+                          <p className="text-xs text-slate-400">No items selected</p>
+                        ) : (
+                          orderDraft.map((row) => (
+                            <div key={row.itemId} className="flex items-center justify-between text-sm">
+                              <span>{row.quantity} x {row.itemName}</span>
+                              <span className="font-semibold">Rs. {row.lineTotal}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <textarea
+                        value={orderNote}
+                        onChange={(e) => setOrderNote(e.target.value)}
+                        rows={2}
+                        className="control-input !px-3 !py-2 text-sm mt-3"
+                        placeholder="Special note"
+                      />
+                      <div className="flex items-center justify-between mt-3">
+                        <span className="text-sm text-slate-600">Total</span>
+                        <span className="text-lg font-extrabold text-slate-900">Rs. {orderTotal}</span>
+                      </div>
+                      <div className="flex gap-2 mt-3">
+                        <button onClick={clearDraft} className="btn-soft flex-1">Clear</button>
+                        <button onClick={submitOrder} disabled={savingOrder || !selectedTableId || orderDraft.length === 0} className="btn-primary flex-1">
+                          {savingOrder ? "Saving..." : "Save"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                ))
-              )}
+                </div>
+              </>
+            )}
+          </aside>
+        </section>
+      )}
+
+      {canManageStaff && (
+        <section className="surface-card p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-bold text-slate-900">Team Management</h2>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Waiters {activeWaiterCount}</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">Kitchen {activeKitchenCount}</span>
             </div>
+            <button onClick={() => setShowStaffSection((v) => !v)} className="btn-soft !px-3 !py-1.5 !text-xs">
+              {showStaffSection ? "Collapse" : "Expand"}
+            </button>
           </div>
-        </>
+
+          {showStaffSection && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-2.5 mb-4">
+                <input value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Staff name" className="control-input" />
+                <input value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="Email" className="control-input" />
+                <input type="password" value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} placeholder="Password" className="control-input" />
+                <input value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="Phone" className="control-input" />
+                <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as StaffMember["role"])} className="control-input">
+                  <option value="WAITER">Waiter</option>
+                  <option value="COOK">Cook</option>
+                  <option value="CHEF">Chef</option>
+                </select>
+                <button
+                  onClick={addStaffMember}
+                  disabled={addingStaff || !newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()}
+                  className="btn-primary"
+                >
+                  {addingStaff ? "Adding..." : "Add Staff"}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {staff.length === 0 ? (
+                  <p className="text-sm text-slate-400">No staff members added yet.</p>
+                ) : (
+                  staff.map((member) => (
+                    <div key={member.id} className="border border-slate-200 rounded-xl px-3 py-3 flex flex-col gap-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-slate-900">{member.name}</p>
+                          <p className="text-xs text-slate-500">{member.phone || "No phone"}</p>
+                        </div>
+                        <span className="text-xs text-slate-500 font-mono break-all">{member.email}</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={member.role}
+                          onChange={(e) => updateStaffMember(member.id, { role: e.target.value as StaffMember["role"] })}
+                          className="text-sm border border-slate-300 rounded-lg px-2 py-1 bg-white"
+                        >
+                          <option value="WAITER">Waiter</option>
+                          <option value="COOK">Cook</option>
+                          <option value="CHEF">Chef</option>
+                        </select>
+                        <button
+                          onClick={() => updateStaffMember(member.id, { isActive: !member.isActive })}
+                          className={`text-xs px-3 py-1 rounded-full ${member.isActive ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}`}
+                        >
+                          {member.isActive ? "Active" : "Inactive"}
+                        </button>
+                        <button onClick={() => deleteStaffMember(member.id)} className="text-xs px-3 py-1 rounded-full bg-red-100 text-red-700">
+                          Remove
+                        </button>
+                        <button onClick={() => resetStaffPassword(member.id)} className="text-xs px-3 py-1 rounded-full bg-indigo-100 text-indigo-700">
+                          Reset Password
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
+          )}
+        </section>
       )}
     </div>
   );

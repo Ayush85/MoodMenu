@@ -50,8 +50,8 @@ export default function NewRestaurantPage() {
   }
 
   return (
-    <div className="max-w-lg">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">
+    <div className="page-shell max-w-2xl">
+      <h1 className="page-title mb-6 sm:mb-8">
         Create Restaurant
       </h1>
 
@@ -61,7 +61,7 @@ export default function NewRestaurantPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+      <form onSubmit={handleSubmit} className="space-y-6 surface-card p-5 sm:p-8">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Restaurant Name
@@ -70,7 +70,7 @@ export default function NewRestaurantPage() {
             type="text"
             name="name"
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+            className="control-input"
             placeholder="Momo House Manthali"
             onChange={(e) => {
               const slugInput = e.currentTarget.form?.querySelector(
@@ -88,7 +88,7 @@ export default function NewRestaurantPage() {
             type="text"
             name="city"
             required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition"
+            className="control-input"
             placeholder="Kathmandu"
           />
         </div>
@@ -103,7 +103,7 @@ export default function NewRestaurantPage() {
               name="slug"
               required
               pattern="[a-z0-9-]+"
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition font-mono"
+              className="control-input flex-1 font-mono"
               placeholder="momo-house-manthali"
             />
           </div>
@@ -114,7 +114,7 @@ export default function NewRestaurantPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 rounded-lg transition disabled:opacity-50"
+          className="btn-primary w-full py-3"
         >
           {loading ? "Creating..." : "Create Restaurant"}
         </button>

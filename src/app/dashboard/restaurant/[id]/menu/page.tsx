@@ -145,41 +145,41 @@ export default function MenuManagePage() {
   if (!restaurant) return <div>Restaurant not found</div>;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
+    <div className="page-shell">
+      <div className="flex flex-col gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{restaurant.name}</h1>
-          <p className="text-gray-500">{restaurant.city}</p>
+          <h1 className="page-title">{restaurant.name}</h1>
+          <p className="page-subtitle">{restaurant.city}</p>
         </div>
-        <div className="flex gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex gap-2">
           <Link
             href={`/dashboard/restaurant/${id}/tables`}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition text-center"
           >
             Tables & WiFi
           </Link>
           <Link
             href={`/dashboard/restaurant/${id}/staff`}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition text-center"
           >
             Staff Panel
           </Link>
           <Link
             href={`/dashboard/restaurant/${id}/mood`}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition text-center"
           >
             Mood Rules
           </Link>
           <Link
             href={`/dashboard/restaurant/${id}/qr`}
-            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="bg-gray-900 hover:bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition text-center"
           >
             QR Code
           </Link>
           <Link
             href={`/menu/${restaurant.slug}`}
             target="_blank"
-            className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
+            className="btn-primary col-span-2 sm:col-span-1 text-center"
           >
             View Menu
           </Link>
@@ -187,7 +187,7 @@ export default function MenuManagePage() {
       </div>
 
       {/* Add Category */}
-      <div className="flex gap-3 mb-8">
+      <div className="flex flex-col sm:flex-row gap-3 mb-8">
         <input
           type="text"
           value={newCategory}
@@ -198,7 +198,7 @@ export default function MenuManagePage() {
         />
         <button
           onClick={addCategory}
-          className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+          className="btn-primary w-full sm:w-auto"
         >
           Add Category
         </button>
@@ -206,7 +206,7 @@ export default function MenuManagePage() {
 
       {/* Categories & Items */}
       {restaurant.categories.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+        <div className="surface-card p-8 text-center text-gray-500">
           Add a category to start building your menu
         </div>
       ) : (
@@ -214,9 +214,9 @@ export default function MenuManagePage() {
           {restaurant.categories.map((cat) => (
             <div
               key={cat.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden"
+              className="surface-card overflow-hidden"
             >
-              <div className="flex items-center justify-between px-6 py-4 bg-gray-50 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 sm:px-6 py-4 bg-gray-50 border-b">
                 <h2 className="text-lg font-bold text-gray-900">{cat.name}</h2>
                 <div className="flex gap-2">
                   <button
@@ -238,8 +238,8 @@ export default function MenuManagePage() {
 
               {/* Add Item Form */}
               {addingItem === cat.id && (
-                <div className="px-6 py-4 bg-orange-50 border-b space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="px-4 sm:px-6 py-4 bg-orange-50 border-b space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input
                       type="text"
                       placeholder="Item name"
@@ -280,7 +280,7 @@ export default function MenuManagePage() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                   />
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                     <input
                       type="file"
                       accept="image/*"
@@ -291,7 +291,7 @@ export default function MenuManagePage() {
                       <span className="text-green-600 text-xs">Image uploaded</span>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => addItem(cat.id)}
                       className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold"
@@ -311,72 +311,74 @@ export default function MenuManagePage() {
               {/* Items List */}
               <div className="divide-y">
                 {cat.items.length === 0 ? (
-                  <div className="px-6 py-4 text-gray-400 text-sm">
+                  <div className="px-4 sm:px-6 py-4 text-gray-400 text-sm">
                     No items yet
                   </div>
                 ) : (
                   cat.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between px-6 py-4"
+                      className="px-4 sm:px-6 py-4"
                     >
-                      <div className="flex items-center gap-4">
-                        {item.image && (
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-12 h-12 rounded-lg object-cover"
-                          />
-                        )}
-                        <div>
-                          <h3
-                            className={`font-semibold ${
+                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          {item.image && (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-12 h-12 rounded-lg object-cover"
+                            />
+                          )}
+                          <div>
+                            <h3
+                              className={`font-semibold ${
+                                item.isAvailable
+                                  ? "text-gray-900"
+                                  : "text-gray-400 line-through"
+                              }`}
+                            >
+                              {item.name}
+                            </h3>
+                            {item.description && (
+                              <p className="text-gray-500 text-sm">
+                                {item.description}
+                              </p>
+                            )}
+                            {item.tags.length > 0 && (
+                              <div className="flex gap-1 mt-1">
+                                {item.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full"
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+                          <span className="font-bold text-gray-900">
+                            Rs. {item.price}
+                          </span>
+                          <button
+                            onClick={() => toggleAvailability(item)}
+                            className={`text-xs px-3 py-1 rounded-full ${
                               item.isAvailable
-                                ? "text-gray-900"
-                                : "text-gray-400 line-through"
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-500"
                             }`}
                           >
-                            {item.name}
-                          </h3>
-                          {item.description && (
-                            <p className="text-gray-500 text-sm">
-                              {item.description}
-                            </p>
-                          )}
-                          {item.tags.length > 0 && (
-                            <div className="flex gap-1 mt-1">
-                              {item.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                            {item.isAvailable ? "Available" : "Unavailable"}
+                          </button>
+                          <button
+                            onClick={() => deleteItem(item.id)}
+                            className="text-red-400 hover:text-red-500 text-sm"
+                          >
+                            Delete
+                          </button>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="font-bold text-gray-900">
-                          Rs. {item.price}
-                        </span>
-                        <button
-                          onClick={() => toggleAvailability(item)}
-                          className={`text-xs px-3 py-1 rounded-full ${
-                            item.isAvailable
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
-                          {item.isAvailable ? "Available" : "Unavailable"}
-                        </button>
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          className="text-red-400 hover:text-red-500 text-sm"
-                        >
-                          Delete
-                        </button>
                       </div>
                     </div>
                   ))

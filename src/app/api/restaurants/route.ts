@@ -8,9 +8,17 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (session.user.actorType === "STAFF" && session.user.restaurantId) {
+  if (session.user.actorType === "STAFF") {
+    const allowedIds = session.user.restaurantIds?.length
+      ? session.user.restaurantIds
+      : (session.user.restaurantId ? [session.user.restaurantId] : []);
+
+    if (allowedIds.length === 0) {
+      return NextResponse.json([]);
+    }
+
     const staffRestaurant = await prisma.restaurant.findMany({
-      where: { id: session.user.restaurantId },
+      where: { id: { in: allowedIds } },
       include: { categories: { include: { items: true } } },
       orderBy: { createdAt: "desc" },
     });

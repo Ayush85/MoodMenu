@@ -61,13 +61,13 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Super Admin Dashboard</h1>
+    <div className="page-shell">
+      <h1 className="page-title mb-6 sm:mb-8">Super Admin Dashboard</h1>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         {statCards.map((card) => (
-          <div key={card.label} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div key={card.label} className="surface-card p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">{card.label}</p>
@@ -85,7 +85,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Users */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+        <div className="surface-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Recent Users</h2>
             <Link href="/admin/users" className="text-sm text-red-500 hover:text-red-600 font-medium">
@@ -94,7 +94,7 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-gray-50">
             {recentUsers.map((user) => (
-              <div key={user.id} className="px-6 py-4 flex items-center justify-between">
+              <div key={user.id} className="px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                   <p className="font-semibold text-gray-900">{user.name}</p>
                   <p className="text-sm text-gray-500">{user.email}</p>
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Recent Restaurants */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+        <div className="surface-card">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-lg font-bold text-gray-900">Recent Restaurants</h2>
             <Link href="/admin/restaurants" className="text-sm text-red-500 hover:text-red-600 font-medium">
@@ -123,8 +123,8 @@ export default function AdminDashboard() {
           </div>
           <div className="divide-y divide-gray-50">
             {recentRestaurants.map((r) => (
-              <div key={r.id} className="px-6 py-4">
-                <div className="flex items-center justify-between">
+              <div key={r.id} className="px-4 sm:px-6 py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <p className="font-semibold text-gray-900">{r.name}</p>
                     <p className="text-sm text-gray-500">{r.city} &middot; by {r.owner.name}</p>

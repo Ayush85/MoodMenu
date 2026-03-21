@@ -76,11 +76,11 @@ export default function MoodRulesPage() {
   if (!restaurant) return <div>Not found</div>;
 
   return (
-    <div className="max-w-3xl">
-      <div className="flex items-center justify-between mb-8">
+    <div className="page-shell max-w-5xl">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Mood Rules</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="page-title">Mood Rules</h1>
+          <p className="page-subtitle mt-1">
             Configure how your menu adapts to weather & time
           </p>
         </div>
@@ -96,14 +96,14 @@ export default function MoodRulesPage() {
       <div className="space-y-4 mb-10">
         <h2 className="text-lg font-bold text-gray-900">Active Rules</h2>
         {restaurant.moodRules.length === 0 ? (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 text-center text-gray-400">
+          <div className="surface-card p-6 text-center text-gray-400">
             No mood rules yet. Add a preset below to get started.
           </div>
         ) : (
           restaurant.moodRules.map((rule) => (
             <div
               key={rule.id}
-              className="bg-white rounded-xl border border-gray-200 p-5 flex items-center justify-between"
+              className="surface-card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
             >
               <div className="flex items-center gap-4">
                 <div
@@ -112,7 +112,7 @@ export default function MoodRulesPage() {
                 />
                 <div>
                   <h3 className="font-semibold text-gray-900">{rule.name}</h3>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex flex-wrap gap-2 mt-1">
                     {rule.condition.weather && rule.condition.weather.length > 0 && (
                       <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                         Weather: {rule.condition.weather.join(", ")}
@@ -136,7 +136,7 @@ export default function MoodRulesPage() {
               </div>
               <button
                 onClick={() => deleteRule(rule.id)}
-                className="text-red-400 hover:text-red-500 text-sm"
+                className="text-red-400 hover:text-red-500 text-sm self-start sm:self-auto"
               >
                 Remove
               </button>
@@ -155,7 +155,7 @@ export default function MoodRulesPage() {
             <button
               key={key}
               onClick={() => addPreset(key)}
-              className="bg-white rounded-xl border border-gray-200 p-5 text-left hover:border-purple-300 hover:shadow-sm transition group"
+              className="surface-card p-5 text-left hover:border-purple-300 hover:shadow-sm transition group"
             >
               <div className="flex items-center gap-3 mb-2">
                 <div

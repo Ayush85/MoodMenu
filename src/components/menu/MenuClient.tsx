@@ -29,6 +29,7 @@ interface Props {
   };
   categories: CategoryData[];
   featuredItems: MenuItemData[];
+  todaysSpecials: MenuItemData[];
   theme: MoodTheme;
   weather: WeatherData | null;
   ruleName: string;
@@ -49,6 +50,7 @@ export default function MenuClient({
   restaurant,
   categories,
   featuredItems,
+  todaysSpecials,
   theme,
   weather,
   ruleName,
@@ -285,14 +287,19 @@ export default function MenuClient({
           </div>
         )}
 
-        {/* Featured Items */}
+        {/* Weather Picks */}
         {featuredItems.length > 0 && (
           <section className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-lg">✨</span>
-              <h2 className="text-base font-bold" style={{ color: theme.primary }}>
-                Recommended Right Now
-              </h2>
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⛅</span>
+                <h2 className="text-base font-bold" style={{ color: theme.primary }}>
+                  Weather Picks
+                </h2>
+              </div>
+              <p className="text-xs opacity-60 mt-1">
+                Selected by today&apos;s weather mood{ruleName !== "Default" ? `: ${ruleName}` : ""}
+              </p>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-3 -mx-5 px-5 snap-x">
               {featuredItems.map((item) => (
@@ -320,6 +327,57 @@ export default function MenuClient({
                     <p className="font-extrabold text-sm mt-2" style={{ color: theme.primary }}>
                       Rs. {item.price}
                     </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Today's Specials */}
+        {todaysSpecials.length > 0 && (
+          <section className="mb-8">
+            <div className="mb-4">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⭐</span>
+                <h2 className="text-base font-bold" style={{ color: theme.primary }}>
+                  Today&apos;s Specials
+                </h2>
+              </div>
+              <p className="text-xs opacity-60 mt-1">Chef-recommended and high-interest items for today</p>
+            </div>
+            <div className="space-y-3">
+              {todaysSpecials.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex gap-3 p-3 rounded-2xl"
+                  style={{
+                    backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
+                    border: `1.5px solid ${theme.primary}20`,
+                    boxShadow: isDark ? "none" : "0 1px 8px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  {item.image ? (
+                    <img src={item.image} alt={item.name} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                  ) : (
+                    <div
+                      className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
+                      style={{ background: `linear-gradient(135deg, ${theme.primary}12, ${theme.accent}25)` }}
+                    >
+                      <span className="text-xl opacity-50">🍽️</span>
+                    </div>
+                  )}
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-bold text-sm leading-snug">{item.name}</p>
+                      <span className="font-extrabold text-sm whitespace-nowrap" style={{ color: theme.primary }}>
+                        Rs. {item.price}
+                      </span>
+                    </div>
+                    {item.description && (
+                      <p className="text-xs opacity-60 mt-1 line-clamp-2">{item.description}</p>
+                    )}
                   </div>
                 </div>
               ))}

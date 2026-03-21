@@ -143,9 +143,9 @@ export default function QRCodePage() {
   // ========== NORMAL VIEW ==========
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">QR Codes</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">QR Codes</h1>
           <p className="text-gray-500 mt-1">Print table tent cards for your restaurant</p>
         </div>
         <Link href={`/dashboard/restaurant/${id}/menu`} className="text-gray-500 hover:text-gray-700 text-sm">
@@ -154,9 +154,9 @@ export default function QRCodePage() {
       </div>
 
       {/* Customer Flow Explainer */}
-      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-8">
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
         <h3 className="font-bold text-blue-900 mb-3">How it works for customers</h3>
-        <div className="flex gap-6">
+        <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
           {restaurant?.wifiSsid && (
             <div className="flex items-start gap-3">
               <span className="bg-blue-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center shrink-0">1</span>
@@ -189,7 +189,7 @@ export default function QRCodePage() {
 
       {/* WiFi QR */}
       {wifiQR && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 flex items-center gap-8">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
           <img src={wifiQR} alt="WiFi QR" className="w-32 h-32" />
           <div>
             <h3 className="font-bold text-gray-900 text-lg">WiFi QR Code</h3>
@@ -207,7 +207,7 @@ export default function QRCodePage() {
       )}
 
       {!restaurant?.wifiSsid && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-6 mb-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8">
           <p className="text-yellow-800 font-semibold mb-1">WiFi not configured</p>
           <p className="text-yellow-600 text-sm">
             Set up WiFi in{" "}
@@ -220,7 +220,7 @@ export default function QRCodePage() {
       )}
 
       {/* General Menu QR */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 flex items-center gap-8">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-8">
         <img src={generalMenuQR} alt="Menu QR" className="w-32 h-32" />
         <div>
           <h3 className="font-bold text-gray-900 text-lg">General Menu QR</h3>
@@ -232,11 +232,11 @@ export default function QRCodePage() {
       {/* Per-Table QR Cards */}
       {tables.length > 0 ? (
         <>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
             <h2 className="text-lg font-bold text-gray-900">Table Cards ({tables.length})</h2>
             <button
               onClick={() => setPrintMode(true)}
-              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition"
+              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition w-full sm:w-auto"
             >
               Print All Table Cards
             </button>

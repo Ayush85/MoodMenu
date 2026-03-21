@@ -50,11 +50,11 @@ export default function AdminRestaurantsPage() {
   }
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">All Restaurants</h1>
+    <div className="page-shell">
+      <h1 className="page-title mb-6 sm:mb-8">All Restaurants</h1>
 
       {restaurants.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center text-gray-500">
+        <div className="surface-card p-12 text-center text-gray-500">
           No restaurants created yet
         </div>
       ) : (
@@ -64,7 +64,7 @@ export default function AdminRestaurantsPage() {
             return (
               <div
                 key={r.id}
-                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col"
+                className="surface-card p-4 sm:p-6 flex flex-col"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>

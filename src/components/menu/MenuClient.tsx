@@ -67,6 +67,7 @@ export default function MenuClient({
   const [showWifiPanel, setShowWifiPanel] = useState(
     !!restaurant.wifiSsid && autoOpenWifiPrompt
   );
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   async function copyWifi(value: string | null | undefined, label: string) {
     if (!value) return;
@@ -114,7 +115,11 @@ export default function MenuClient({
   return (
     <div
       className="min-h-screen transition-colors duration-700"
-      style={{ backgroundColor: theme.bg, color: theme.text }}
+      style={{
+        backgroundColor: theme.bg,
+        color: theme.text,
+        fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+      }}
     >
       {/* WiFi Connected Banner */}
       {showWifiBanner && restaurant.wifiSsid && (
@@ -133,7 +138,7 @@ export default function MenuClient({
           </div>
           <button
             onClick={() => setShowWifiBanner(false)}
-            className="text-xs opacity-40 hover:opacity-70 px-2"
+            className="text-xs opacity-40 hover:opacity-70 px-2 transition-opacity"
           >
             ✕
           </button>
@@ -145,18 +150,24 @@ export default function MenuClient({
         <div className="max-w-lg mx-auto px-5 pt-4">
           <button
             onClick={() => setShowWifiPanel((v) => !v)}
-            className="w-full text-left rounded-2xl px-4 py-3 border transition"
+            className="w-full text-left rounded-2xl px-4 py-3 transition-all duration-200"
             style={{
               backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#ffffff",
-              borderColor: isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)",
+              border: isDark ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.06)",
+              boxShadow: isDark ? "none" : "0 1px 6px rgba(0,0,0,0.04)",
             }}
           >
             <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold">WiFi Access</p>
-                <p className="text-xs opacity-60">Tap to see SSID and password</p>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: isDark ? "rgba(34,197,94,0.15)" : "rgba(34,197,94,0.1)" }}>
+                  <span className="text-sm">📶</span>
+                </div>
+                <div>
+                  <p className="text-sm font-bold">WiFi Access</p>
+                  <p className="text-xs opacity-50">Tap to see credentials</p>
+                </div>
               </div>
-              <span className="text-xs font-semibold opacity-70">{showWifiPanel ? "Hide" : "Open"}</span>
+              <span className="text-xs font-semibold opacity-60">{showWifiPanel ? "Hide" : "Show"}</span>
             </div>
           </button>
 
@@ -166,34 +177,32 @@ export default function MenuClient({
               style={{
                 backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
                 border: isDark ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.06)",
+                boxShadow: isDark ? "none" : "0 2px 10px rgba(0,0,0,0.04)",
               }}
             >
-              <p className="text-sm font-semibold mb-3">Use the details below to connect</p>
+              <p className="text-sm font-semibold mb-3">Connection details</p>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="text-sm"><span className="opacity-60">SSID:</span> <span className="font-mono font-semibold">{restaurant.wifiSsid}</span></p>
+                <p className="text-sm"><span className="opacity-50">SSID:</span> <span className="font-mono font-semibold">{restaurant.wifiSsid}</span></p>
                 <button
                   onClick={() => copyWifi(restaurant.wifiSsid, "SSID")}
-                  className="text-xs px-2 py-1 rounded-md"
-                  style={{ backgroundColor: theme.primary + "1F", color: theme.primary }}
+                  className="text-xs px-3 py-1 rounded-lg font-medium transition-colors"
+                  style={{ backgroundColor: theme.primary + "18", color: theme.primary }}
                 >
                   Copy
                 </button>
               </div>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <p className="text-sm"><span className="opacity-60">Password:</span> <span className="font-mono font-semibold">{restaurant.wifiPassword || "(Open network)"}</span></p>
+                <p className="text-sm"><span className="opacity-50">Password:</span> <span className="font-mono font-semibold">{restaurant.wifiPassword || "(Open)"}</span></p>
                 {restaurant.wifiPassword && (
                   <button
                     onClick={() => copyWifi(restaurant.wifiPassword, "Password")}
-                    className="text-xs px-2 py-1 rounded-md"
-                    style={{ backgroundColor: theme.primary + "1F", color: theme.primary }}
+                    className="text-xs px-3 py-1 rounded-lg font-medium transition-colors"
+                    style={{ backgroundColor: theme.primary + "18", color: theme.primary }}
                   >
                     Copy
                   </button>
                 )}
               </div>
-              <p className="text-xs opacity-60">
-                If WiFi QR does not auto-connect on your phone, open WiFi settings and paste the password.
-              </p>
             </div>
           )}
         </div>
@@ -204,8 +213,8 @@ export default function MenuClient({
         className="relative overflow-hidden"
         style={{
           background: isDark
-            ? `linear-gradient(135deg, ${theme.primary}22, ${theme.bg})`
-            : `linear-gradient(135deg, ${theme.primary}15, ${theme.accent}30)`,
+            ? `linear-gradient(160deg, ${theme.primary}18, ${theme.bg})`
+            : `linear-gradient(160deg, ${theme.primary}12, ${theme.accent}25, ${theme.bg})`,
         }}
       >
         <div className="max-w-lg mx-auto px-5 pt-8 pb-6">
@@ -213,10 +222,11 @@ export default function MenuClient({
           <div className="flex items-center justify-between mb-5">
             {tableNumber ? (
               <div
-                className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full"
+                className="flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full shadow-sm"
                 style={{
                   backgroundColor: theme.primary,
                   color: "#fff",
+                  boxShadow: `0 2px 10px ${theme.primary}40`,
                 }}
               >
                 <span>🪑</span> Table {tableNumber}
@@ -227,31 +237,35 @@ export default function MenuClient({
               <div
                 className="flex items-center gap-2 text-sm px-4 py-2 rounded-full"
                 style={{
-                  backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+                  backdropFilter: "blur(8px)",
                 }}
               >
                 <span className="text-lg">{getWeatherEmoji(weather.main)}</span>
-                <span className="font-medium">{weather.temp}°C</span>
+                <span className="font-semibold">{weather.temp}°C</span>
               </div>
             )}
           </div>
 
           {/* Restaurant info */}
-          <p className="text-sm opacity-50 mb-1">{greeting}</p>
-          <h1 className="text-3xl font-extrabold tracking-tight">{restaurant.name}</h1>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-sm opacity-60">{restaurant.city}</span>
-            <span className="opacity-30">|</span>
-            <span className="text-sm opacity-60">{totalItems} items</span>
+          <p className="text-sm opacity-40 mb-1 font-medium">{greeting}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight leading-tight">{restaurant.name}</h1>
+          <div className="flex items-center gap-3 mt-2.5">
+            <span className="text-sm opacity-50 flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              {restaurant.city}
+            </span>
+            <span className="opacity-20">•</span>
+            <span className="text-sm opacity-50">{totalItems} items</span>
           </div>
 
           {ruleName !== "Default" && (
             <div
               className="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full mt-4"
               style={{
-                backgroundColor: theme.primary + "20",
+                backgroundColor: theme.primary + "18",
                 color: theme.primary,
-                border: `1px solid ${theme.primary}30`,
+                border: `1px solid ${theme.primary}25`,
               }}
             >
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: theme.primary }} />
@@ -270,20 +284,26 @@ export default function MenuClient({
       <div className="max-w-lg mx-auto px-5 -mt-2">
         {/* Category nav pills */}
         {categories.length > 1 && (
-          <div className="flex gap-2 overflow-x-auto pb-4 -mx-5 px-5 mb-4">
-            {categories.map((cat) => (
-              <a
-                key={cat.id}
-                href={`#cat-${cat.id}`}
-                className="shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-colors"
-                style={{
-                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
-                }}
-              >
-                {cat.name}
-                <span className="ml-1.5 opacity-40">{cat.items.length}</span>
-              </a>
-            ))}
+          <div className="flex gap-2 overflow-x-auto pb-4 -mx-5 px-5 mb-4 snap-x">
+            {categories.map((cat) => {
+              const isActive = activeCategory === cat.id;
+              return (
+                <a
+                  key={cat.id}
+                  href={`#cat-${cat.id}`}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className="shrink-0 text-sm font-medium px-4 py-2 rounded-full transition-all duration-200 snap-start"
+                  style={{
+                    backgroundColor: isActive ? theme.primary : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)"),
+                    color: isActive ? "#fff" : "inherit",
+                    boxShadow: isActive ? `0 2px 8px ${theme.primary}30` : "none",
+                  }}
+                >
+                  {cat.name}
+                  <span className="ml-1.5 opacity-40">{cat.items.length}</span>
+                </a>
+              );
+            })}
           </div>
         )}
 
@@ -297,7 +317,7 @@ export default function MenuClient({
                   Weather Picks
                 </h2>
               </div>
-              <p className="text-xs opacity-60 mt-1">
+              <p className="text-xs opacity-50 mt-1">
                 Selected by today&apos;s weather mood{ruleName !== "Default" ? `: ${ruleName}` : ""}
               </p>
             </div>
@@ -305,10 +325,10 @@ export default function MenuClient({
               {featuredItems.map((item) => (
                 <div
                   key={item.id}
-                  className="shrink-0 w-44 rounded-2xl overflow-hidden snap-start"
+                  className="shrink-0 w-44 rounded-2xl overflow-hidden snap-start transition-transform duration-200 hover:scale-[1.02]"
                   style={{
-                    backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "#ffffff",
-                    border: `1.5px solid ${theme.primary}25`,
+                    backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "#ffffff",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.08)" : theme.primary + "18"}`,
                     boxShadow: isDark ? "none" : "0 2px 12px rgba(0,0,0,0.06)",
                   }}
                 >
@@ -317,9 +337,9 @@ export default function MenuClient({
                   ) : (
                     <div
                       className="w-full h-28 flex items-center justify-center"
-                      style={{ background: `linear-gradient(135deg, ${theme.primary}20, ${theme.accent}40)` }}
+                      style={{ background: `linear-gradient(135deg, ${theme.primary}15, ${theme.accent}30)` }}
                     >
-                      <span className="text-4xl opacity-60">🍽️</span>
+                      <span className="text-4xl opacity-50">🍽️</span>
                     </div>
                   )}
                   <div className="p-3">
@@ -344,16 +364,16 @@ export default function MenuClient({
                   Today&apos;s Specials
                 </h2>
               </div>
-              <p className="text-xs opacity-60 mt-1">Chef-recommended and high-interest items for today</p>
+              <p className="text-xs opacity-50 mt-1">Chef-recommended and high-interest items for today</p>
             </div>
             <div className="space-y-3">
               {todaysSpecials.map((item) => (
                 <div
                   key={item.id}
-                  className="flex gap-3 p-3 rounded-2xl"
+                  className="flex gap-3 p-3 rounded-2xl transition-all duration-200"
                   style={{
-                    backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
-                    border: `1.5px solid ${theme.primary}20`,
+                    backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#ffffff",
+                    border: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : theme.primary + "15"}`,
                     boxShadow: isDark ? "none" : "0 1px 8px rgba(0,0,0,0.04)",
                   }}
                 >
@@ -362,9 +382,9 @@ export default function MenuClient({
                   ) : (
                     <div
                       className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${theme.primary}12, ${theme.accent}25)` }}
+                      style={{ background: `linear-gradient(135deg, ${theme.primary}10, ${theme.accent}20)` }}
                     >
-                      <span className="text-xl opacity-50">🍽️</span>
+                      <span className="text-xl opacity-40">🍽️</span>
                     </div>
                   )}
 
@@ -376,7 +396,7 @@ export default function MenuClient({
                       </span>
                     </div>
                     {item.description && (
-                      <p className="text-xs opacity-60 mt-1 line-clamp-2">{item.description}</p>
+                      <p className="text-xs opacity-50 mt-1 line-clamp-2">{item.description}</p>
                     )}
                   </div>
                 </div>
@@ -391,20 +411,20 @@ export default function MenuClient({
             <div className="flex items-center gap-3 mb-4">
               <h2 className="text-lg font-extrabold">{cat.name}</h2>
               <div className="flex-1 h-px" style={{
-                background: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
               }} />
-              <span className="text-xs font-medium opacity-40">{cat.items.length}</span>
+              <span className="text-xs font-medium opacity-30">{cat.items.length}</span>
             </div>
 
             <div className="space-y-3">
               {cat.items.map((item) => (
                 <div
                   key={item.id}
-                  className="flex gap-4 p-4 rounded-2xl"
+                  className="flex gap-4 p-4 rounded-2xl transition-all duration-200"
                   style={{
-                    backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
+                    backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "#ffffff",
                     boxShadow: isDark ? "none" : "0 1px 8px rgba(0,0,0,0.04)",
-                    border: isDark ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.04)",
+                    border: isDark ? "1px solid rgba(255,255,255,0.05)" : "1px solid rgba(0,0,0,0.04)",
                   }}
                 >
                   {item.image ? (
@@ -412,9 +432,9 @@ export default function MenuClient({
                   ) : (
                     <div
                       className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0"
-                      style={{ background: `linear-gradient(135deg, ${theme.primary}12, ${theme.accent}25)` }}
+                      style={{ background: `linear-gradient(135deg, ${theme.primary}08, ${theme.accent}18)` }}
                     >
-                      <span className="text-2xl opacity-40">🍽️</span>
+                      <span className="text-2xl opacity-30">🍽️</span>
                     </div>
                   )}
 
@@ -427,7 +447,7 @@ export default function MenuClient({
                         </span>
                       </div>
                       {item.description && (
-                        <p className="text-sm opacity-50 mt-1 line-clamp-2">{item.description}</p>
+                        <p className="text-sm opacity-45 mt-1 line-clamp-2">{item.description}</p>
                       )}
                     </div>
                     {item.tags.length > 0 && (
@@ -436,7 +456,7 @@ export default function MenuClient({
                           <span
                             key={tag}
                             className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                            style={{ backgroundColor: theme.primary + "15", color: theme.primary }}
+                            style={{ backgroundColor: theme.primary + "12", color: theme.primary }}
                           >
                             {tag}
                           </span>
@@ -448,8 +468,8 @@ export default function MenuClient({
               ))}
 
               {cat.items.length === 0 && (
-                <div className="text-center py-8 rounded-2xl opacity-40"
-                  style={{ backgroundColor: isDark ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}
+                <div className="text-center py-8 rounded-2xl opacity-30"
+                  style={{ backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}
                 >
                   <p className="text-sm">No items in this category yet</p>
                 </div>
@@ -459,8 +479,8 @@ export default function MenuClient({
         ))}
 
         {/* Footer */}
-        <footer className="text-center py-10 opacity-30">
-          <div className="w-8 h-0.5 mx-auto mb-4 rounded-full" style={{ backgroundColor: theme.primary + "40" }} />
+        <footer className="text-center py-10 opacity-25">
+          <div className="w-8 h-0.5 mx-auto mb-4 rounded-full" style={{ backgroundColor: theme.primary + "30" }} />
           <p className="text-xs">Powered by <span className="font-semibold">MoodMenu</span></p>
         </footer>
 
@@ -474,18 +494,21 @@ export default function MenuClient({
           <div className="max-w-lg w-full">
             {callStatus === "sent" ? (
               <div
-                className="w-full py-4 px-6 rounded-2xl text-center font-bold text-white text-base shadow-xl"
-                style={{ backgroundColor: "#22c55e" }}
+                className="w-full py-4 px-6 rounded-2xl text-center font-bold text-white text-base"
+                style={{
+                  backgroundColor: "#22c55e",
+                  boxShadow: "0 8px 30px rgba(34,197,94,0.35)",
+                }}
               >
                 ✅ Waiter has been called! Please wait...
               </div>
             ) : (
               <button
                 onClick={() => setShowCallModal(true)}
-                className="w-full py-4 px-6 rounded-2xl text-center font-bold text-white text-base shadow-xl transition active:scale-[0.98]"
+                className="w-full py-4 px-6 rounded-2xl text-center font-bold text-white text-base transition-all active:scale-[0.98]"
                 style={{
                   backgroundColor: theme.primary,
-                  boxShadow: `0 8px 30px ${theme.primary}50`,
+                  boxShadow: `0 8px 30px ${theme.primary}40`,
                 }}
               >
                 🔔 Call Waiter
@@ -498,17 +521,22 @@ export default function MenuClient({
       {/* Call Waiter Modal */}
       {showCallModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCallModal(false)} />
+          <div
+            className="absolute inset-0 transition-opacity"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+            onClick={() => setShowCallModal(false)}
+          />
           <div
             className="relative w-full max-w-lg rounded-t-3xl p-6 pb-10"
             style={{
-              backgroundColor: isDark ? "#1e1e1e" : "#ffffff",
+              backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
               color: isDark ? "#fff" : "#000",
+              animation: "slide-up 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
             }}
           >
-            <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-6" />
+            <div className="w-10 h-1 rounded-full mx-auto mb-6" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
             <h3 className="text-xl font-bold mb-2">Call Waiter</h3>
-            <p className="text-sm opacity-60 mb-5">
+            <p className="text-sm opacity-50 mb-5">
               Table {tableNumber} — a staff member will come to your table
             </p>
 
@@ -517,10 +545,10 @@ export default function MenuClient({
               onChange={(e) => setCallMessage(e.target.value)}
               placeholder="Any special request? (optional)"
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border text-sm mb-4 resize-none outline-none focus:ring-2"
+              className="w-full px-4 py-3 rounded-xl border text-sm mb-4 resize-none outline-none transition"
               style={{
-                borderColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)",
-                backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)",
+                borderColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.08)",
+                backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)",
                 color: isDark ? "#fff" : "#000",
               }}
             />
@@ -530,7 +558,7 @@ export default function MenuClient({
                 onClick={() => setShowCallModal(false)}
                 className="flex-1 py-3.5 rounded-xl font-semibold transition text-sm"
                 style={{
-                  backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)",
+                  backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)",
                 }}
               >
                 Cancel
@@ -539,7 +567,10 @@ export default function MenuClient({
                 onClick={callWaiter}
                 disabled={callStatus === "calling"}
                 className="flex-1 py-3.5 rounded-xl font-bold text-white transition text-sm disabled:opacity-50"
-                style={{ backgroundColor: theme.primary }}
+                style={{
+                  backgroundColor: theme.primary,
+                  boxShadow: `0 4px 16px ${theme.primary}30`,
+                }}
               >
                 {callStatus === "calling" ? "Calling..." : "🔔 Call Now"}
               </button>

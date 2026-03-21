@@ -18,7 +18,7 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 md:flex">
+    <div className="min-h-screen md:flex" style={{ background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}>
       <AdminSidebar />
       <main className="flex-1 overflow-x-hidden p-4 sm:p-6 lg:p-8">{children}</main>
     </div>

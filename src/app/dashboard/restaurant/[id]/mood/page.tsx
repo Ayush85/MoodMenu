@@ -67,8 +67,11 @@ export default function MoodRulesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" />
+      <div className="page-shell max-w-5xl">
+        <div className="h-8 w-40 bg-gray-200 rounded-lg animate-pulse mb-6" />
+        <div className="space-y-4">
+          {[1, 2].map((i) => <div key={i} className="surface-card h-24 animate-pulse" />)}
+        </div>
       </div>
     );
   }
@@ -76,57 +79,74 @@ export default function MoodRulesPage() {
   if (!restaurant) return <div>Not found</div>;
 
   return (
-    <div className="page-shell max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+    <div className="page-shell max-w-5xl animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
         <div>
-          <h1 className="page-title">Mood Rules</h1>
+          <h1 className="page-title flex items-center gap-2">
+            <span className="text-2xl">🎨</span> Mood Rules
+          </h1>
           <p className="page-subtitle mt-1">
             Configure how your menu adapts to weather & time
           </p>
         </div>
         <Link
           href={`/dashboard/restaurant/${id}/menu`}
-          className="text-gray-500 hover:text-gray-700 text-sm"
+          className="btn-soft !text-sm"
         >
-          Back to Menu
+          ← Back to Menu
         </Link>
       </div>
 
       {/* Active Rules */}
       <div className="space-y-4 mb-10">
-        <h2 className="text-lg font-bold text-gray-900">Active Rules</h2>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+          Active Rules
+          <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+            {restaurant.moodRules.length}
+          </span>
+        </h2>
         {restaurant.moodRules.length === 0 ? (
-          <div className="surface-card p-6 text-center text-gray-400">
-            No mood rules yet. Add a preset below to get started.
+          <div className="surface-card p-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-violet-50 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">✨</span>
+            </div>
+            <p className="text-gray-500">No mood rules yet. Add a preset below to get started.</p>
           </div>
         ) : (
           restaurant.moodRules.map((rule) => (
             <div
               key={rule.id}
-              className="surface-card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+              className="surface-card p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 group"
             >
               <div className="flex items-center gap-4">
                 <div
-                  className="w-10 h-10 rounded-lg"
-                  style={{ backgroundColor: rule.theme.primary }}
+                  className="w-12 h-12 rounded-xl shrink-0 shadow-sm"
+                  style={{
+                    background: `linear-gradient(135deg, ${rule.theme.primary}, ${rule.theme.accent})`,
+                  }}
                 />
                 <div>
                   <h3 className="font-semibold text-gray-900">{rule.name}</h3>
-                  <div className="flex flex-wrap gap-2 mt-1">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {rule.theme.mode === "dark" && (
+                      <span className="text-[10px] font-semibold bg-gray-900 text-white px-2 py-0.5 rounded-full">
+                        Dark Mode
+                      </span>
+                    )}
                     {rule.condition.weather && rule.condition.weather.length > 0 && (
-                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                        Weather: {rule.condition.weather.join(", ")}
+                      <span className="text-[10px] font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                        {rule.condition.weather.join(", ")}
                       </span>
                     )}
                     {rule.condition.timeRange && (
-                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">
-                        Time: {rule.condition.timeRange[0]} - {rule.condition.timeRange[1]}
+                      <span className="text-[10px] font-semibold bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full">
+                        {rule.condition.timeRange[0]} – {rule.condition.timeRange[1]}
                       </span>
                     )}
                     {rule.featuredTags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full"
+                        className="text-[10px] font-semibold bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full"
                       >
                         {tag}
                       </span>
@@ -136,7 +156,7 @@ export default function MoodRulesPage() {
               </div>
               <button
                 onClick={() => deleteRule(rule.id)}
-                className="text-red-400 hover:text-red-500 text-sm self-start sm:self-auto"
+                className="text-sm text-red-400 hover:text-red-500 transition opacity-60 group-hover:opacity-100 self-start sm:self-auto"
               >
                 Remove
               </button>
@@ -155,32 +175,34 @@ export default function MoodRulesPage() {
             <button
               key={key}
               onClick={() => addPreset(key)}
-              className="surface-card p-5 text-left hover:border-purple-300 hover:shadow-sm transition group"
+              className="surface-card p-5 text-left hover:!shadow-lg hover:-translate-y-0.5 transition-all duration-300 group"
             >
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-3">
                 <div
-                  className="w-8 h-8 rounded-lg"
-                  style={{ backgroundColor: preset.theme.primary }}
+                  className="w-10 h-10 rounded-xl shadow-sm group-hover:scale-110 transition-transform"
+                  style={{
+                    background: `linear-gradient(135deg, ${preset.theme.primary}, ${preset.theme.accent})`,
+                  }}
                 />
-                <h3 className="font-semibold text-gray-900 group-hover:text-purple-600 transition">
+                <h3 className="font-semibold text-gray-900 group-hover:text-violet-600 transition">
                   {preset.name}
                 </h3>
               </div>
-              <div className="flex flex-wrap gap-1">
+              <div className="flex flex-wrap gap-1.5">
                 {preset.condition.weather.length > 0 && (
-                  <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                  <span className="text-[10px] font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                     {preset.condition.weather.join(", ")}
                   </span>
                 )}
                 {preset.condition.timeRange && (
-                  <span className="text-xs bg-purple-50 text-purple-600 px-2 py-0.5 rounded-full">
-                    {preset.condition.timeRange[0]} - {preset.condition.timeRange[1]}
+                  <span className="text-[10px] font-semibold bg-violet-50 text-violet-600 px-2 py-0.5 rounded-full">
+                    {preset.condition.timeRange[0]} – {preset.condition.timeRange[1]}
                   </span>
                 )}
                 {preset.featuredTags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-xs bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full"
+                    className="text-[10px] font-semibold bg-orange-50 text-orange-600 px-2 py-0.5 rounded-full"
                   >
                     {tag}
                   </span>

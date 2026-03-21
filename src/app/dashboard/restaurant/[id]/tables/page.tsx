@@ -76,36 +76,47 @@ export default function TablesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+      <div className="page-shell max-w-5xl">
+        <div className="h-8 w-44 bg-gray-200 rounded-lg animate-pulse mb-6" />
+        <div className="surface-card h-40 animate-pulse mb-6" />
+        <div className="surface-card h-40 animate-pulse" />
       </div>
     );
   }
 
   return (
-    <div className="page-shell max-w-5xl">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+    <div className="page-shell max-w-5xl animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
         <div>
-          <h1 className="page-title">Tables & WiFi</h1>
+          <h1 className="page-title flex items-center gap-2">
+            <span className="text-2xl">🪑</span> Tables & WiFi
+          </h1>
           <p className="page-subtitle mt-1">{restaurant?.name}</p>
         </div>
         <Link
           href={`/dashboard/restaurant/${id}/menu`}
-          className="text-gray-500 hover:text-gray-700 text-sm"
+          className="btn-soft !text-sm"
         >
-          Back to Menu
+          ← Back to Menu
         </Link>
       </div>
 
       {/* WiFi Configuration */}
-      <div className="surface-card p-4 sm:p-6 mb-6 sm:mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">WiFi Settings</h2>
-        <p className="text-sm text-gray-500 mb-4">
-          Customers will see a &quot;Connect to WiFi&quot; button when they scan the QR code.
-        </p>
+      <div className="surface-card p-5 sm:p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+            <span className="text-lg">📶</span>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">WiFi Settings</h2>
+            <p className="text-xs text-gray-500">
+              Customers see a &quot;Connect to WiFi&quot; button when they scan the QR code
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">WiFi Name (SSID)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">WiFi Name (SSID)</label>
             <input
               type="text"
               value={wifiSsid}
@@ -115,7 +126,7 @@ export default function TablesPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">WiFi Password</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">WiFi Password</label>
             <input
               type="text"
               value={wifiPassword}
@@ -127,15 +138,24 @@ export default function TablesPage() {
         </div>
         <button
           onClick={saveWifi}
-          className="btn-primary"
+          className={`btn-primary !text-sm ${wifiSaved ? "!bg-emerald-500" : ""}`}
         >
-          {wifiSaved ? "Saved!" : "Save WiFi Settings"}
+          {wifiSaved ? (
+            <span className="flex items-center gap-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Saved!
+            </span>
+          ) : (
+            "Save WiFi Settings"
+          )}
         </button>
       </div>
 
       {/* Add Tables */}
-      <div className="surface-card p-4 sm:p-6 mb-6 sm:mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Add Tables</h2>
+      <div className="surface-card p-5 sm:p-6 mb-6">
+        <h2 className="text-base font-bold text-gray-900 mb-4">Add Tables</h2>
         <div className="flex flex-col sm:flex-row gap-3">
           <input
             type="number"
@@ -147,7 +167,7 @@ export default function TablesPage() {
           />
           <button
             onClick={addTables}
-            className="btn-primary w-full sm:w-auto"
+            className="btn-primary w-full sm:w-auto !text-sm"
           >
             Add {tableCount} Table{parseInt(tableCount) !== 1 ? "s" : ""}
           </button>
@@ -155,29 +175,32 @@ export default function TablesPage() {
       </div>
 
       {/* Tables Grid */}
-      <div className="surface-card p-4 sm:p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-gray-900">
-            Tables ({tables.length})
+      <div className="surface-card p-5 sm:p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+            Tables
+            <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{tables.length}</span>
           </h2>
         </div>
 
         {tables.length === 0 ? (
-          <p className="text-gray-400 text-sm py-4">No tables yet. Add some above.</p>
+          <div className="text-center py-8">
+            <p className="text-gray-400 text-sm">No tables yet. Add some above.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
             {tables.map((table) => (
               <div
                 key={table.id}
-                className="relative group bg-gray-50 rounded-xl p-4 text-center border border-gray-200 hover:border-orange-300 transition"
+                className="relative group bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 text-center border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all duration-200"
               >
-                <p className="text-2xl font-bold text-gray-900">{table.number}</p>
-                <p className="text-xs text-gray-400 mt-1">{table.label}</p>
+                <p className="text-2xl font-extrabold text-gray-900">{table.number}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">{table.label || "Table"}</p>
                 <button
                   onClick={() => deleteTable(table.id)}
-                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
+                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-sm hover:bg-red-600"
                 >
-                  x
+                  ×
                 </button>
               </div>
             ))}

@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import OneSignalInit from "@/components/OneSignalInit";
+import { ToastProvider } from "@/components/Toast";
 
 export default function Providers({
   children,
@@ -12,8 +13,10 @@ export default function Providers({
 }) {
   return (
     <SessionProvider>
-      <OneSignalInit appId={oneSignalAppId} />
-      {children}
+      <ToastProvider>
+        <OneSignalInit appId={oneSignalAppId} />
+        {children}
+      </ToastProvider>
     </SessionProvider>
   );
 }

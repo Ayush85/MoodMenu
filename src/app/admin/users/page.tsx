@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/Toast";
 
 interface User {
   id: string;
@@ -13,6 +14,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -50,14 +52,14 @@ export default function AdminUsersPage() {
   async function resetPassword(userId: string) {
     const password = window.prompt("Enter new password for this user (min 6 chars):");
     if (!password) return;
-    if (password.length < 6) { alert("Password must be at least 6 characters"); return; }
+    if (password.length < 6) { toast("Password must be at least 6 characters", "error"); return; }
     const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId, password }),
     });
-    if (res.ok) alert("Password updated successfully");
-    else alert("Failed to update password");
+    if (res.ok) toast("Password updated");
+    else toast("Failed to update password", "error");
   }
 
   if (loading) {

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface MenuItem {
   id: string;
@@ -41,10 +43,14 @@ const NAV_ITEMS = [
 
 export default function MenuManagePage() {
   const params = useParams();
+  const { toast } = useToast();
   const id = params.id as string;
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const [newCategory, setNewCategory] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [savingItem, setSavingItem] = useState(false);
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [itemForm, setItemForm] = useState({
     name: "",
@@ -73,26 +79,38 @@ export default function MenuManagePage() {
 
   async function addCategory() {
     if (!newCategory.trim()) return;
+    setSavingCategory(true);
     await fetch(`/api/restaurants/${id}/categories`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newCategory }),
     });
     setNewCategory("");
+    setSavingCategory(false);
+    toast("Category added");
     fetchRestaurant();
   }
 
-  async function deleteCategory(categoryId: string) {
-    await fetch(`/api/restaurants/${id}/categories`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId }),
+  function deleteCategory(categoryId: string) {
+    setConfirmAction({
+      title: "Delete Category",
+      message: "This will delete the category and all its items. Are you sure?",
+      onConfirm: async () => {
+        await fetch(`/api/restaurants/${id}/categories`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ categoryId }),
+        });
+        setConfirmAction(null);
+        toast("Category deleted");
+        fetchRestaurant();
+      },
     });
-    fetchRestaurant();
   }
 
   async function addItem(categoryId: string) {
     if (!itemForm.name || !itemForm.price) return;
+    setSavingItem(true);
     await fetch(`/api/restaurants/${id}/items`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -107,14 +125,22 @@ export default function MenuManagePage() {
     });
     setItemForm({ name: "", description: "", price: "", tags: "", image: "" });
     setAddingItem(null);
+    setSavingItem(false);
+    toast("Item added");
     fetchRestaurant();
   }
 
-  async function deleteItem(itemId: string) {
-    await fetch(`/api/restaurants/${id}/items/${itemId}`, {
-      method: "DELETE",
+  function deleteItem(itemId: string) {
+    setConfirmAction({
+      title: "Delete Item",
+      message: "This item will be permanently removed from your menu.",
+      onConfirm: async () => {
+        await fetch(`/api/restaurants/${id}/items/${itemId}`, { method: "DELETE" });
+        setConfirmAction(null);
+        toast("Item deleted");
+        fetchRestaurant();
+      },
     });
-    fetchRestaurant();
   }
 
   async function toggleAvailability(item: MenuItem) {
@@ -162,6 +188,7 @@ export default function MenuManagePage() {
     });
     setSavingEdit(false);
     setEditingItem(null);
+    toast("Item updated");
     fetchRestaurant();
   }
 
@@ -175,7 +202,7 @@ export default function MenuManagePage() {
       const data = await res.json();
       if (data.url) setEditForm((p) => ({ ...p, image: data.url }));
     } catch {
-      alert("Image upload failed");
+      toast("Image upload failed", "error");
     }
   }
 
@@ -196,7 +223,7 @@ export default function MenuManagePage() {
         setItemForm((prev) => ({ ...prev, image: data.url }));
       }
     } catch {
-      alert("Image upload failed. Check your Cloudinary credentials.");
+      toast("Image upload failed", "error");
     }
   }
 
@@ -323,12 +350,15 @@ export default function MenuManagePage() {
         />
         <button
           onClick={addCategory}
-          className="btn-soft !font-semibold w-full sm:w-auto"
+          disabled={savingCategory}
+          className="btn-soft !font-semibold w-full sm:w-auto disabled:opacity-50"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Category
+          {savingCategory ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+          )}
+          {savingCategory ? "Adding..." : "Add Category"}
         </button>
       </div>
 
@@ -440,9 +470,10 @@ export default function MenuManagePage() {
                   <div className="flex gap-2 pt-1">
                     <button
                       onClick={() => addItem(cat.id)}
-                      className="btn-primary !text-sm"
+                      disabled={savingItem}
+                      className="btn-primary !text-sm disabled:opacity-50"
                     >
-                      Save Item
+                      {savingItem ? "Saving..." : "Save Item"}
                     </button>
                     <button
                       onClick={() => setAddingItem(null)}
@@ -636,6 +667,16 @@ export default function MenuManagePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

@@ -137,7 +137,9 @@ export default function MenuClient({
         setCallStatus("idle");
       } else {
         const data = await res.json();
-        alert(data.error || "Failed to call waiter");
+        setCallStatus("error");
+        // Show WiFi modal if blocked by IP
+        if (res.status === 403) { setShowWifiRequired(true); return; }
         setCallStatus("error");
         setTimeout(() => setCallStatus("idle"), 3000);
       }

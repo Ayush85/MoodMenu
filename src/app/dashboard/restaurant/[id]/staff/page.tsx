@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { useToast } from "@/components/Toast";
 
 interface WaiterCall {
   id: string;
@@ -64,6 +65,7 @@ interface StaffMember {
 export default function StaffPage() {
   const params = useParams();
   const { data: session } = useSession();
+  const { toast } = useToast();
   const id = params.id as string;
   const [pendingCalls, setPendingCalls] = useState<WaiterCall[]>([]);
   const [allCalls, setAllCalls] = useState<RawWaiterCall[]>([]);
@@ -343,7 +345,7 @@ export default function StaffPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || "Could not create order");
+        toast(data.error || "Could not create order", "error");
         return;
       }
 
@@ -351,7 +353,7 @@ export default function StaffPage() {
       setOrders((prev) => [createdOrder, ...prev]);
       setSelectedItems({});
       setOrderNote("");
-      alert("Order created");
+      toast("Order created");
     } finally {
       setSavingOrder(false);
     }
@@ -443,7 +445,7 @@ export default function StaffPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || "Could not add staff member");
+        toast(data.error || "Could not add staff member", "error");
         return;
       }
 
@@ -486,7 +488,7 @@ export default function StaffPage() {
     const password = window.prompt("Enter new password for this staff member");
     if (!password) return;
     if (password.length < 6) {
-      alert("Password must be at least 6 characters");
+      toast("Password must be at least 6 characters", "error");
       return;
     }
 
@@ -497,11 +499,11 @@ export default function StaffPage() {
     });
 
     if (!res.ok) {
-      alert("Could not reset password");
+      toast("Could not reset password", "error");
       return;
     }
 
-    alert("Staff password updated");
+    toast("Staff password updated");
   }
 
   const activeWaiterCount = staff.filter((s) => s.isActive && s.role === "WAITER").length;

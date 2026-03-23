@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
+import ConfirmModal from "@/components/ConfirmModal";
 
 interface Restaurant {
   id: string;
@@ -15,8 +17,10 @@ interface Restaurant {
 }
 
 export default function AdminRestaurantsPage() {
+  const { toast } = useToast();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   function fetchRestaurants() {
     fetch("/api/admin/restaurants")
@@ -31,14 +35,21 @@ export default function AdminRestaurantsPage() {
     fetchRestaurants();
   }, []);
 
-  async function deleteRestaurant(restaurantId: string, name: string) {
-    if (!confirm(`Delete "${name}"? This will remove all its menu items and mood rules.`)) return;
-    await fetch("/api/admin/restaurants", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ restaurantId }),
+  function deleteRestaurant(restaurantId: string, name: string) {
+    setConfirmAction({
+      title: "Delete Restaurant",
+      message: `Delete "${name}"? This will remove all its menu items, mood rules, and tables.`,
+      onConfirm: async () => {
+        await fetch("/api/admin/restaurants", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ restaurantId }),
+        });
+        setConfirmAction(null);
+        toast("Restaurant deleted");
+        fetchRestaurants();
+      },
     });
-    fetchRestaurants();
   }
 
   if (loading) {
@@ -109,6 +120,15 @@ export default function AdminRestaurantsPage() {
             );
           })}
         </div>
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

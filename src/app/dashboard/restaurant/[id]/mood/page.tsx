@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useToast } from "@/components/Toast";
+import ConfirmModal from "@/components/ConfirmModal";
 import { MOOD_PRESETS } from "@/types";
 
 interface MoodRule {
@@ -36,8 +38,10 @@ const WEATHER_OPTIONS = ["Clear", "Clouds", "Rain", "Drizzle", "Thunderstorm", "
 export default function MoodRulesPage() {
   const params = useParams();
   const id = params.id as string;
+  const { toast } = useToast();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"rules" | "specials">("rules");
 
@@ -81,19 +85,26 @@ export default function MoodRulesPage() {
     fetchData();
   }
 
-  async function deleteRule(ruleId: string) {
-    if (!confirm("Remove this mood rule?")) return;
-    await fetch(`/api/restaurants/${id}/mood-rules`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ruleId }),
+  function deleteRule(ruleId: string) {
+    setConfirmAction({
+      title: "Remove Mood Rule",
+      message: "This rule will be permanently removed. Are you sure?",
+      onConfirm: async () => {
+        await fetch(`/api/restaurants/${id}/mood-rules`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ruleId }),
+        });
+        setConfirmAction(null);
+        toast("Mood rule removed");
+        fetchData();
+      },
     });
-    fetchData();
   }
 
   async function addCustomRule() {
-    if (!formName.trim()) { alert("Name is required"); return; }
-    if (formWeather.length === 0 && !formTimeStart) { alert("Select at least one weather condition or time range"); return; }
+    if (!formName.trim()) { toast("Name is required", "error"); return; }
+    if (formWeather.length === 0 && !formTimeStart) { toast("Select at least one weather condition or time range", "error"); return; }
 
     const condition: { weather: string[]; timeRange?: [string, string] } = { weather: formWeather };
     if (formTimeStart && formTimeEnd) {
@@ -422,6 +433,15 @@ export default function MoodRulesPage() {
             ))}
           </div>
         </div>
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

@@ -194,7 +194,7 @@ export default function MenuClient({
               maxHeight: "85vh",
             }}
           >
-            <div className="p-5 pb-8">
+            <div className="p-5 pb-24">
               <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
 
               {/* Header */}
@@ -250,12 +250,6 @@ export default function MenuClient({
                 )}
               </div>
 
-              <div
-                role="button" tabIndex={0}
-                onClick={() => setShowWifiModal(false)}
-                className="w-full mt-4 py-2.5 rounded-xl font-semibold text-sm text-center cursor-pointer"
-                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)", touchAction: "manipulation" }}
-              >Done</div>
             </div>
           </div>
         </div>

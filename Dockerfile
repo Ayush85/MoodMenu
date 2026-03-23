@@ -38,7 +38,8 @@ COPY --from=builder /app/src/generated ./src/generated
 # Use deps stage so this layer is cached unless package-lock changes.
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy entrypoint
+# Copy seed script + entrypoint
+COPY --from=builder /app/scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh
 

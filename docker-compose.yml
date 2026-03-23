@@ -4,11 +4,9 @@ services:
     container_name: moodmenu-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-moodmenu}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moodmenu123}
-      POSTGRES_DB: ${POSTGRES_DB:-moodmenu}
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: moodmenu
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moodmenu_prod_2026}
+      POSTGRES_DB: moodmenu
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,14 +24,16 @@ services:
     ports:
       - "3030:3030"
     environment:
-      DATABASE_URL: postgresql://moodmenu:moodmenu123@db:5432/moodmenu
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-change-me-in-production}
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3030}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3030}
-      NEXT_PUBLIC_ONESIGNAL_APP_ID: ${NEXT_PUBLIC_ONESIGNAL_APP_ID:-}
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      DATABASE_URL: postgresql://moodmenu:${POSTGRES_PASSWORD:-moodmenu_prod_2026}@db:5432/moodmenu
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-j8kL2mN4pQ6rS8tU0vW2xY4zA6bC8dE0}
+      APP_BASE_URL: https://menuor.com
+      NEXTAUTH_URL: https://menuor.com
+      DO_SPACES_KEY: ${DO_SPACES_KEY:-}
+      DO_SPACES_SECRET: ${DO_SPACES_SECRET:-}
+      DO_SPACES_BUCKET: ${DO_SPACES_BUCKET:-aydexis}
+      DO_SPACES_FOLDER: ${DO_SPACES_FOLDER:-menuor}
+      DO_SPACES_ENDPOINT: ${DO_SPACES_ENDPOINT:-https://sgp1.digitaloceanspaces.com}
+      DO_SPACES_CDN: ${DO_SPACES_CDN:-https://aydexis.sgp1.digitaloceanspaces.com}
       OPENWEATHERMAP_API_KEY: ${OPENWEATHERMAP_API_KEY:-}
     depends_on:
       db:

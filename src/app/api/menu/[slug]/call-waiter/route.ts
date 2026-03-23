@@ -48,6 +48,11 @@ export async function POST(
     }
   }
 
+  // WiFi check only — don't create a call
+  if (message === "__wifi_check__") {
+    return NextResponse.json({ ok: true, verified: true });
+  }
+
   if (restaurant.tables.length === 0) {
     return NextResponse.json({ error: "Table not found" }, { status: 404 });
   }

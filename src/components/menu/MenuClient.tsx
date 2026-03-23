@@ -62,10 +62,12 @@ export default function MenuClient({
   const [callStatus, setCallStatus] = useState<"idle" | "calling" | "sent" | "error">("idle");
   const [callMessage, setCallMessage] = useState("");
   const [showCallModal, setShowCallModal] = useState(false);
+  const [showWifiRequired, setShowWifiRequired] = useState(false);
   const [showWifiModal, setShowWifiModal] = useState(false);
   const [wifiQR, setWifiQR] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItemData | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [wifiVerified, setWifiVerified] = useState(false);
 
   // Generate WiFi QR code
   useEffect(() => {
@@ -80,6 +82,38 @@ export default function MenuClient({
   const handleCategoryChange = useCallback((id: string) => {
     setActiveCategory(id);
   }, []);
+
+  // Check WiFi first, then open call modal
+  async function handleCallWaiterTap() {
+    if (!tableNumber) return;
+    if (wifiVerified) {
+      setShowCallModal(true);
+      return;
+    }
+
+    // Quick check: try a dummy call to see if IP is allowed
+    try {
+      const res = await fetch(`/api/menu/${restaurant.slug}/call-waiter`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableNumber, message: "__wifi_check__" }),
+      });
+
+      if (res.status === 403) {
+        // Not on WiFi
+        setShowWifiRequired(true);
+        return;
+      }
+
+      // IP is fine (will get 429 if recently called, or 201 if created)
+      // Delete the test call if it was created
+      setWifiVerified(true);
+      setShowCallModal(true);
+    } catch {
+      // Network error — allow anyway
+      setShowCallModal(true);
+    }
+  }
 
   async function callWaiter() {
     if (!tableNumber) return;
@@ -97,6 +131,10 @@ export default function MenuClient({
         setShowCallModal(false);
         setCallMessage("");
         setTimeout(() => setCallStatus("idle"), 10000);
+      } else if (res.status === 403) {
+        setShowCallModal(false);
+        setShowWifiRequired(true);
+        setCallStatus("idle");
       } else {
         const data = await res.json();
         alert(data.error || "Failed to call waiter");
@@ -274,7 +312,7 @@ export default function MenuClient({
         tableNumber={tableNumber}
         hasWifi={!!restaurant.wifiSsid}
         callStatus={callStatus}
-        onCallWaiter={() => setShowCallModal(true)}
+        onCallWaiter={handleCallWaiterTap}
         onToggleWifi={() => setShowWifiModal((v) => !v)}
         theme={theme}
       />
@@ -299,6 +337,83 @@ export default function MenuClient({
           onClose={() => setSelectedItem(null)}
           theme={theme}
         />
+      )}
+
+      {/* WiFi Required Modal */}
+      {showWifiRequired && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+            onClick={() => setShowWifiRequired(false)}
+          />
+          <div
+            className="relative w-full max-w-sm rounded-3xl p-6 text-center animate-fade-in"
+            style={{ backgroundColor: isDark ? "#1a1a1f" : "#ffffff", color: isDark ? "#fff" : "#000" }}
+          >
+            {/* WiFi icon */}
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: theme.primary + "15" }}
+            >
+              <svg className="w-8 h-8" fill="none" stroke={theme.primary} strokeWidth={1.8} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0" />
+              </svg>
+            </div>
+
+            <h3 className="text-lg font-bold mb-2">Connect to WiFi</h3>
+            <p className="text-sm opacity-50 mb-5 leading-relaxed">
+              Please connect to the restaurant&apos;s WiFi network to call a waiter. This ensures you&apos;re at the restaurant.
+            </p>
+
+            {/* Show WiFi details if available */}
+            {restaurant.wifiSsid && (
+              <div
+                className="rounded-xl p-3 mb-4 text-left"
+                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] uppercase tracking-wider font-semibold opacity-40">Network</span>
+                  <span className="font-mono font-bold text-sm">{restaurant.wifiSsid}</span>
+                </div>
+                {restaurant.wifiPassword && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold opacity-40">Password</span>
+                    <span className="font-mono font-bold text-sm">{restaurant.wifiPassword}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* QR code */}
+            {wifiQR && (
+              <div className="flex justify-center mb-4">
+                <div className="bg-white p-2 rounded-xl" style={{ boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>
+                  <img src={wifiQR} alt="WiFi QR" className="w-28 h-28" draggable={false} />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <div
+                role="button" tabIndex={0}
+                onClick={() => setShowWifiRequired(false)}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-center cursor-pointer"
+                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)", touchAction: "manipulation" }}
+              >
+                Close
+              </div>
+              <div
+                role="button" tabIndex={0}
+                onClick={() => { setShowWifiRequired(false); setWifiVerified(false); handleCallWaiterTap(); }}
+                className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white text-center cursor-pointer"
+                style={{ backgroundColor: theme.primary, touchAction: "manipulation" }}
+              >
+                Try Again
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

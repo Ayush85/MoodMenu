@@ -187,82 +187,76 @@ export default function MenuClient({
             onClick={() => setShowWifiModal(false)}
           />
           <div
-            className="relative w-full max-w-lg rounded-t-3xl p-6 pb-10 animate-slide-up"
-            style={{ backgroundColor: isDark ? "#1a1a1f" : "#ffffff", color: isDark ? "#fff" : "#000" }}
+            className="relative w-full max-w-lg rounded-t-3xl animate-slide-up overflow-y-auto"
+            style={{
+              backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
+              color: isDark ? "#fff" : "#000",
+              maxHeight: "85vh",
+            }}
           >
-            <div className="w-10 h-1 rounded-full mx-auto mb-5" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
+            <div className="p-5 pb-8">
+              <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
 
-            {/* Header */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: theme.primary + "15" }}>
-                <svg className="w-5 h-5" fill="none" stroke={theme.primary} strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Free WiFi</h3>
-                <p className="text-xs opacity-40">Scan QR or enter manually</p>
-              </div>
-            </div>
-
-            {/* WiFi QR Code */}
-            {wifiQR && (
-              <div className="flex justify-center mb-5">
-                <div className="bg-white p-3 rounded-2xl" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-                  <img src={wifiQR} alt="WiFi QR" className="w-40 h-40" draggable={false} />
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: theme.primary + "15" }}>
+                  <svg className="w-4.5 h-4.5" fill="none" stroke={theme.primary} strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0" />
+                  </svg>
                 </div>
-              </div>
-            )}
-            <p className="text-center text-xs opacity-40 mb-5">Scan with your camera to auto-connect</p>
-
-            {/* Credentials */}
-            <div className="space-y-2.5">
-              <div
-                className="flex items-center justify-between p-3 rounded-xl"
-                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}
-              >
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider font-semibold opacity-40">Network</p>
-                  <p className="font-mono font-bold text-sm">{restaurant.wifiSsid}</p>
+                  <h3 className="text-base font-bold">Free WiFi</h3>
+                  <p className="text-[11px] opacity-40">Scan QR or enter manually</p>
                 </div>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => { navigator.clipboard?.writeText(restaurant.wifiSsid!).then(() => alert("SSID copied")); }}
-                  onKeyDown={(e) => e.key === "Enter" && navigator.clipboard?.writeText(restaurant.wifiSsid!)}
-                  className="text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer"
-                  style={{ backgroundColor: theme.primary + "15", color: theme.primary, touchAction: "manipulation" }}
-                >Copy</div>
               </div>
-              {restaurant.wifiPassword && (
-                <div
-                  className="flex items-center justify-between p-3 rounded-xl"
-                  style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}
-                >
+
+              {/* WiFi QR Code */}
+              {wifiQR && (
+                <div className="flex justify-center mb-3">
+                  <div className="bg-white p-2 rounded-xl" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
+                    <img src={wifiQR} alt="WiFi QR" className="w-32 h-32" draggable={false} />
+                  </div>
+                </div>
+              )}
+              <p className="text-center text-[11px] opacity-35 mb-4">Scan with camera to connect</p>
+
+              {/* Credentials */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider font-semibold opacity-40">Password</p>
-                    <p className="font-mono font-bold text-sm">{restaurant.wifiPassword}</p>
+                    <p className="text-[9px] uppercase tracking-wider font-semibold opacity-40">Network</p>
+                    <p className="font-mono font-bold text-sm">{restaurant.wifiSsid}</p>
                   </div>
                   <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => { navigator.clipboard?.writeText(restaurant.wifiPassword!).then(() => alert("Password copied")); }}
-                    onKeyDown={(e) => e.key === "Enter" && navigator.clipboard?.writeText(restaurant.wifiPassword!)}
-                    className="text-xs px-3 py-1.5 rounded-lg font-semibold cursor-pointer"
+                    role="button" tabIndex={0}
+                    onClick={() => { navigator.clipboard?.writeText(restaurant.wifiSsid!).then(() => alert("Copied")); }}
+                    className="text-[11px] px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
                     style={{ backgroundColor: theme.primary + "15", color: theme.primary, touchAction: "manipulation" }}
                   >Copy</div>
                 </div>
-              )}
-            </div>
+                {restaurant.wifiPassword && (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
+                    <div>
+                      <p className="text-[9px] uppercase tracking-wider font-semibold opacity-40">Password</p>
+                      <p className="font-mono font-bold text-sm">{restaurant.wifiPassword}</p>
+                    </div>
+                    <div
+                      role="button" tabIndex={0}
+                      onClick={() => { navigator.clipboard?.writeText(restaurant.wifiPassword!).then(() => alert("Copied")); }}
+                      className="text-[11px] px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
+                      style={{ backgroundColor: theme.primary + "15", color: theme.primary, touchAction: "manipulation" }}
+                    >Copy</div>
+                  </div>
+                )}
+              </div>
 
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => setShowWifiModal(false)}
-              onKeyDown={(e) => e.key === "Enter" && setShowWifiModal(false)}
-              className="w-full mt-5 py-3 rounded-xl font-semibold text-sm text-center cursor-pointer"
-              style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)", touchAction: "manipulation" }}
-            >Done</div>
+              <div
+                role="button" tabIndex={0}
+                onClick={() => setShowWifiModal(false)}
+                className="w-full mt-4 py-2.5 rounded-xl font-semibold text-sm text-center cursor-pointer"
+                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)", touchAction: "manipulation" }}
+              >Done</div>
+            </div>
           </div>
         </div>
       )}
@@ -273,7 +267,7 @@ export default function MenuClient({
         hasWifi={!!restaurant.wifiSsid}
         callStatus={callStatus}
         onCallWaiter={() => setShowCallModal(true)}
-        onToggleWifi={() => setShowWifiModal(true)}
+        onToggleWifi={() => setShowWifiModal((v) => !v)}
         theme={theme}
       />
 

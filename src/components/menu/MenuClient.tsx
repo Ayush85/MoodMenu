@@ -79,6 +79,15 @@ export default function MenuClient({
     }
   }, [restaurant.wifiSsid, restaurant.wifiPassword]);
 
+  // Track QR scan / menu view
+  useEffect(() => {
+    fetch(`/api/menu/${restaurant.slug}/scan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tableNumber }),
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleCategoryChange = useCallback((id: string) => {
     setActiveCategory(id);
   }, []);

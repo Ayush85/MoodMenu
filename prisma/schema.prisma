@@ -55,6 +55,7 @@ model Restaurant {
   wifiSsid      String?
   wifiPassword  String?
   allowedIp     String?
+  customDomain  String?      @unique
   ownerId       String
   owner         User         @relation(fields: [ownerId], references: [id])
   categories    Category[]
@@ -63,8 +64,21 @@ model Restaurant {
   waiterCalls   WaiterCall[]
   orders        OrderTicket[]
   staffMembers  RestaurantStaff[]
+  menuScans     MenuScan[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+}
+
+model MenuScan {
+  id            String       @id @default(cuid())
+  restaurantId  String
+  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableNumber   Int?
+  userAgent     String?
+  ip            String?
+  createdAt     DateTime     @default(now())
+
+  @@index([restaurantId, createdAt])
 }
 
 model RestaurantStaff {

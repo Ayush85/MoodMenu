@@ -13,9 +13,11 @@ interface Table {
 interface Restaurant {
   id: string;
   name: string;
+  slug: string;
   wifiSsid: string | null;
   wifiPassword: string | null;
   allowedIp: string | null;
+  customDomain: string | null;
 }
 
 export default function TablesPage() {
@@ -27,6 +29,7 @@ export default function TablesPage() {
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
   const [allowedIp, setAllowedIp] = useState("");
+  const [customDomain, setCustomDomain] = useState("");
   const [detectedIp, setDetectedIp] = useState("");
   const [loading, setLoading] = useState(true);
   const [wifiSaved, setWifiSaved] = useState(false);
@@ -42,6 +45,7 @@ export default function TablesPage() {
       setWifiSsid(restData.wifiSsid || "");
       setWifiPassword(restData.wifiPassword || "");
       setAllowedIp(restData.allowedIp || "");
+      setCustomDomain(restData.customDomain || "");
       setDetectedIp(ipData.ip || "");
       setLoading(false);
     });
@@ -204,6 +208,61 @@ export default function TablesPage() {
         >
           {wifiSaved ? "Saved!" : "Save IP Setting"}
         </button>
+      </div>
+
+      {/* Custom Subdomain */}
+      <div className="surface-card p-5 sm:p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
+            <span className="text-lg">🌐</span>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Custom Subdomain</h2>
+            <p className="text-xs text-gray-500">
+              Give your restaurant its own URL: <span className="font-mono font-bold">{restaurant?.slug || "your-slug"}.menuor.com</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <input
+            type="text"
+            value={customDomain}
+            onChange={(e) => setCustomDomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+            placeholder={restaurant?.slug || "your-restaurant"}
+            className="control-input flex-1 !py-3 font-mono"
+          />
+          <span className="text-sm text-gray-400 font-mono">.menuor.com</span>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={async () => {
+              await fetch(`/api/restaurants/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ customDomain: customDomain || null }),
+              });
+              setWifiSaved(true);
+              setTimeout(() => setWifiSaved(false), 2000);
+              fetchData();
+            }}
+            className="btn-primary !text-sm"
+          >
+            Save Subdomain
+          </button>
+          {!customDomain && restaurant?.slug && (
+            <button
+              onClick={() => setCustomDomain(restaurant.slug)}
+              className="btn-soft !text-sm"
+            >
+              Use slug: {restaurant.slug}
+            </button>
+          )}
+        </div>
+        {customDomain && (
+          <p className="text-[11px] text-emerald-600 mt-2">
+            Your menu will be accessible at <span className="font-mono font-bold">{customDomain}.menuor.com</span>
+          </p>
+        )}
       </div>
 
       {/* Add Tables */}

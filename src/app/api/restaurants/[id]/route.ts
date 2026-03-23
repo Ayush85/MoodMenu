@@ -59,15 +59,17 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const updateData: Record<string, unknown> = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.city !== undefined) updateData.city = data.city;
+  if (data.logo !== undefined) updateData.logo = data.logo;
+  if (data.latitude !== undefined) updateData.latitude = data.latitude;
+  if (data.longitude !== undefined) updateData.longitude = data.longitude;
+  if (data.customDomain !== undefined) updateData.customDomain = data.customDomain || null;
+
   const updated = await prisma.restaurant.update({
     where: { id },
-    data: {
-      name: data.name,
-      city: data.city,
-      logo: data.logo,
-      latitude: data.latitude,
-      longitude: data.longitude,
-    },
+    data: updateData,
   });
 
   return NextResponse.json(updated);

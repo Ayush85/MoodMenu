@@ -93,7 +93,7 @@ export default function LandingPage() {
               </svg>
             </Link>
             <Link
-              href="/menu/demo"
+              href="/menu/ayush-test-kitchen?table=1"
               className="btn-soft !text-base !px-8 !py-4 !rounded-2xl"
             >
               <svg

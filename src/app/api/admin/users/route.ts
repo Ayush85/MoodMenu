@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import bcrypt from "bcryptjs";
 
 export async function GET() {
   const session = await auth();
@@ -30,7 +31,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { userId, role, isActive } = await req.json();
+  const { userId, role, isActive, password } = await req.json();
 
   if (!userId) {
     return NextResponse.json({ error: "userId required" }, { status: 400 });
@@ -39,6 +40,9 @@ export async function PATCH(req: NextRequest) {
   const data: Record<string, unknown> = {};
   if (role !== undefined) data.role = role;
   if (isActive !== undefined) data.isActive = isActive;
+  if (password) {
+    data.password = await bcrypt.hash(password, 12);
+  }
 
   const updated = await prisma.user.update({
     where: { id: userId },

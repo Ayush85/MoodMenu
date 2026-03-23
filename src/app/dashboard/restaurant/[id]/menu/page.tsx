@@ -27,6 +27,7 @@ interface Restaurant {
   name: string;
   city: string;
   slug: string;
+  logo: string | null;
   categories: Category[];
 }
 
@@ -52,6 +53,9 @@ export default function MenuManagePage() {
     tags: "",
     image: "",
   });
+  const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", description: "", price: "", tags: "", image: "" });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   function fetchRestaurant() {
     fetch(`/api/restaurants/${id}`)
@@ -131,6 +135,50 @@ export default function MenuManagePage() {
     fetchRestaurant();
   }
 
+  function openEdit(item: MenuItem) {
+    setEditingItem(item);
+    setEditForm({
+      name: item.name,
+      description: item.description || "",
+      price: String(item.price),
+      tags: item.tags.join(", "),
+      image: item.image || "",
+    });
+  }
+
+  async function saveEdit() {
+    if (!editingItem) return;
+    setSavingEdit(true);
+    await fetch(`/api/restaurants/${id}/items/${editingItem.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: editForm.name,
+        description: editForm.description || null,
+        price: editForm.price,
+        tags: editForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        image: editForm.image || null,
+      }),
+    });
+    setSavingEdit(false);
+    setEditingItem(null);
+    fetchRestaurant();
+  }
+
+  async function handleEditImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.url) setEditForm((p) => ({ ...p, image: data.url }));
+    } catch {
+      alert("Image upload failed");
+    }
+  }
+
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -176,16 +224,54 @@ export default function MenuManagePage() {
 
   return (
     <div className="page-shell animate-fade-in">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="page-title">{restaurant.name}</h1>
-        <p className="page-subtitle flex items-center gap-1 mt-1">
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {restaurant.city}
-        </p>
+      {/* Header with logo */}
+      <div className="flex items-center gap-4 mb-6">
+        <label className="relative group cursor-pointer shrink-0">
+          {restaurant.logo ? (
+            <img src={restaurant.logo} alt={restaurant.name} className="w-14 h-14 rounded-2xl object-cover ring-1 ring-gray-200" />
+          ) : (
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-100 to-rose-100 flex items-center justify-center">
+              <span className="text-2xl">🍽️</span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </div>
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const fd = new FormData();
+              fd.append("file", file);
+              const res = await fetch("/api/upload", { method: "POST", body: fd });
+              const data = await res.json();
+              if (data.url) {
+                await fetch(`/api/restaurants/${id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ logo: data.url }),
+                });
+                fetchRestaurant();
+              }
+            }}
+          />
+        </label>
+        <div>
+          <h1 className="page-title">{restaurant.name}</h1>
+          <p className="page-subtitle flex items-center gap-1 mt-0.5">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {restaurant.city}
+          </p>
+        </div>
       </div>
 
       {/* Tab navigation */}
@@ -447,6 +533,12 @@ export default function MenuManagePage() {
                             {item.isSpecial ? "⭐ Special" : "Set Special"}
                           </button>
                           <button
+                            onClick={() => openEdit(item)}
+                            className="text-xs px-3 py-1.5 rounded-full font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
                             onClick={() => deleteItem(item.id)}
                             className="text-sm text-red-400 hover:text-red-500 transition"
                           >
@@ -460,6 +552,89 @@ export default function MenuManagePage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Edit Item Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setEditingItem(null)} />
+          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-lg font-bold text-gray-900">Edit Item</h3>
+              <button onClick={() => setEditingItem(null)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))}
+                  className="control-input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Price (NPR)</label>
+                <input
+                  type="number"
+                  value={editForm.price}
+                  onChange={(e) => setEditForm((p) => ({ ...p, price: e.target.value }))}
+                  className="control-input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))}
+                  rows={2}
+                  className="control-input"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Tags (comma separated)</label>
+                <input
+                  value={editForm.tags}
+                  onChange={(e) => setEditForm((p) => ({ ...p, tags: e.target.value }))}
+                  className="control-input"
+                  placeholder="hot, spicy, popular"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Image</label>
+                {editForm.image && (
+                  <img src={editForm.image} alt="Preview" className="w-20 h-20 rounded-xl object-cover mb-2" />
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageUpload}
+                  className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setEditingItem(null)}
+                className="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={savingEdit}
+                className="flex-1 btn-primary !rounded-xl disabled:opacity-50"
+              >
+                {savingEdit ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

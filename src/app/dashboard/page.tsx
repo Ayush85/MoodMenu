@@ -72,6 +72,23 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* Quick stats */}
+      {restaurants.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          {[
+            { label: "Restaurants", value: restaurants.length, color: "text-orange-600", bg: "bg-orange-50" },
+            { label: "Menu Items", value: restaurants.reduce((a, r) => a + r.categories.reduce((b, c) => b + c.items.length, 0), 0), color: "text-blue-600", bg: "bg-blue-50" },
+            { label: "Categories", value: restaurants.reduce((a, r) => a + r.categories.length, 0), color: "text-violet-600", bg: "bg-violet-50" },
+            { label: "Active", value: restaurants.length, color: "text-emerald-600", bg: "bg-emerald-50" },
+          ].map((s) => (
+            <div key={s.label} className="surface-card p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{s.label}</p>
+              <p className={`text-2xl font-extrabold mt-1 ${s.color}`}>{s.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Header with action */}
       <div className="flex items-center justify-between gap-4 mb-6">
         <h2 className="text-lg font-semibold text-gray-800">Your Restaurants</h2>
@@ -89,25 +106,47 @@ export default function DashboardPage() {
       </div>
 
       {restaurants.length === 0 ? (
-        <div className="surface-card p-10 sm:p-14 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-orange-500/10 via-rose-500/10 to-violet-500/10 flex items-center justify-center mx-auto mb-5">
-            <span className="text-4xl">🍽️</span>
-          </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            No restaurants yet
-          </h2>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-            {isStaff
-              ? "No restaurant is assigned to your staff account yet."
-              : "Create your first restaurant to start building your smart menu."}
-          </p>
-          {!isStaff && (
-            <Link
-              href="/dashboard/restaurant/new"
-              className="btn-primary"
-            >
-              Create Restaurant
-            </Link>
+        <div className="surface-card p-8 sm:p-12">
+          {isStaff ? (
+            <div className="text-center">
+              <span className="text-4xl">👋</span>
+              <h2 className="text-xl font-bold text-gray-900 mt-4 mb-2">Welcome!</h2>
+              <p className="text-gray-500">No restaurant is assigned to your staff account yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">🚀</span>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-1">Let&apos;s set up your menu</h2>
+                <p className="text-gray-500 text-sm">Follow these steps to go live in minutes</p>
+              </div>
+
+              <div className="max-w-md mx-auto space-y-4">
+                {[
+                  { step: "1", icon: "🏪", title: "Create your restaurant", desc: "Add name, city, and a unique URL slug", href: "/dashboard/restaurant/new", btn: "Create Restaurant" },
+                  { step: "2", icon: "📋", title: "Add your menu", desc: "Create categories, add items with photos & prices", href: null, btn: null },
+                  { step: "3", icon: "📶", title: "Set up WiFi & tables", desc: "Configure WiFi for customers and add table numbers", href: null, btn: null },
+                  { step: "4", icon: "📱", title: "Print QR codes", desc: "Generate and print QR codes for each table", href: null, btn: null },
+                ].map((item, i) => (
+                  <div key={item.step} className={`flex gap-4 p-4 rounded-xl ${i === 0 ? "bg-orange-50 border-2 border-orange-200" : "bg-gray-50 opacity-50"}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg ${i === 0 ? "bg-orange-500 text-white font-bold" : "bg-gray-200 text-gray-500"}`}>
+                      {item.icon}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-900 text-sm">{item.title}</h3>
+                      <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                      {item.href && (
+                        <Link href={item.href} className="btn-primary !text-xs !px-4 !py-2 mt-3 inline-block">
+                          {item.btn}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       ) : (

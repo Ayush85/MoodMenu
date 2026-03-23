@@ -47,6 +47,19 @@ export default function AdminUsersPage() {
     fetchUsers();
   }
 
+  async function resetPassword(userId: string) {
+    const password = window.prompt("Enter new password for this user (min 6 chars):");
+    if (!password) return;
+    if (password.length < 6) { alert("Password must be at least 6 characters"); return; }
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, password }),
+    });
+    if (res.ok) alert("Password updated successfully");
+    else alert("Failed to update password");
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -98,6 +111,12 @@ export default function AdminUsersPage() {
                 <option value="CUSTOMER">Customer</option>
               </select>
 
+              <button
+                onClick={() => resetPassword(user.id)}
+                className="w-full text-sm font-medium px-3 py-2 rounded-lg transition text-blue-600 bg-blue-50 hover:bg-blue-100"
+              >
+                Reset Password
+              </button>
               <button
                 onClick={() => toggleActive(user.id, user.isActive)}
                 className={`w-full text-sm font-medium px-3 py-2 rounded-lg transition ${
@@ -160,16 +179,24 @@ export default function AdminUsersPage() {
                     {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button
-                      onClick={() => toggleActive(user.id, user.isActive)}
-                      className={`text-sm font-medium px-3 py-1.5 rounded-lg transition ${
-                        user.isActive
-                          ? "text-red-600 hover:bg-red-50"
-                          : "text-green-600 hover:bg-green-50"
-                      }`}
-                    >
-                      {user.isActive ? "Disable" : "Enable"}
-                    </button>
+                    <div className="flex gap-2 justify-end">
+                      <button
+                        onClick={() => resetPassword(user.id)}
+                        className="text-sm font-medium px-3 py-1.5 rounded-lg transition text-blue-600 hover:bg-blue-50"
+                      >
+                        Reset PW
+                      </button>
+                      <button
+                        onClick={() => toggleActive(user.id, user.isActive)}
+                        className={`text-sm font-medium px-3 py-1.5 rounded-lg transition ${
+                          user.isActive
+                            ? "text-red-600 hover:bg-red-50"
+                            : "text-green-600 hover:bg-green-50"
+                        }`}
+                      >
+                        {user.isActive ? "Disable" : "Enable"}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

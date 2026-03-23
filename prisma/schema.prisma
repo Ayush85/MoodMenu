@@ -143,6 +143,7 @@ model MenuItem {
   price         Float
   image         String?
   isAvailable   Boolean      @default(true)
+  isSpecial     Boolean      @default(false)
   tags          String[]
   categoryId    String
   category      Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)

@@ -41,6 +41,7 @@ export async function PATCH(
       image: data.image,
       tags: data.tags,
       isAvailable: data.isAvailable,
+      isSpecial: data.isSpecial,
     },
   });
 

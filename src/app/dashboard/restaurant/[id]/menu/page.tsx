@@ -11,6 +11,7 @@ interface MenuItem {
   price: number;
   image: string | null;
   isAvailable: boolean;
+  isSpecial: boolean;
   tags: string[];
 }
 
@@ -117,6 +118,15 @@ export default function MenuManagePage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isAvailable: !item.isAvailable }),
+    });
+    fetchRestaurant();
+  }
+
+  async function toggleSpecial(item: MenuItem) {
+    await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isSpecial: !item.isSpecial }),
     });
     fetchRestaurant();
   }
@@ -425,6 +435,16 @@ export default function MenuManagePage() {
                             }`}
                           >
                             {item.isAvailable ? "Available" : "Unavailable"}
+                          </button>
+                          <button
+                            onClick={() => toggleSpecial(item)}
+                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                              item.isSpecial
+                                ? "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            }`}
+                          >
+                            {item.isSpecial ? "⭐ Special" : "Set Special"}
                           </button>
                           <button
                             onClick={() => deleteItem(item.id)}

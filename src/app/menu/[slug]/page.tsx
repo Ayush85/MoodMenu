@@ -64,12 +64,10 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     )
     .slice(0, 6);
 
-  const specialTags = ["special", "today", "chef", "signature", "popular"];
+  // Today's Specials: only items explicitly marked by admin
   const todaysSpecials = allItems
-    .filter((item) => item.tags.some((tag) => specialTags.includes(tag.toLowerCase())))
+    .filter((item) => item.isSpecial)
     .slice(0, 6);
-
-  const resolvedTodaysSpecials = (todaysSpecials.length > 0 ? todaysSpecials : featuredItems).slice(0, 6);
 
   const theme = mood.theme || DEFAULT_THEME;
 
@@ -103,7 +101,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         image: item.image,
         tags: item.tags,
       }))}
-      todaysSpecials={resolvedTodaysSpecials.map((item) => ({
+      todaysSpecials={todaysSpecials.map((item) => ({
         id: item.id,
         name: item.name,
         description: item.description,

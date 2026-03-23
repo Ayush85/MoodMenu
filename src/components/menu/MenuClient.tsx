@@ -109,9 +109,7 @@ export default function MenuClient({
     }
   }
 
-  // Merge specials (deduplicated from featured)
-  const featuredIds = new Set(featuredItems.map((i) => i.id));
-  const uniqueSpecials = todaysSpecials.filter((i) => !featuredIds.has(i.id));
+  // Specials set by admin (no dedup needed — admin controls this directly)
 
   return (
     <div
@@ -139,6 +137,23 @@ export default function MenuClient({
           onCategoryChange={handleCategoryChange}
           theme={theme}
         />
+
+        {/* Today's Specials — only when admin has marked items */}
+        {todaysSpecials.length > 0 && (
+          <section className="mb-5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm">⭐</span>
+              <h2 className="text-sm font-extrabold" style={{ color: theme.primary }}>
+                Today&apos;s Specials
+              </h2>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {todaysSpecials.map((item) => (
+                <MenuItemCard key={item.id} item={item} theme={theme} onTap={setSelectedItem} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Menu Categories */}
         {categories.map((cat) => (

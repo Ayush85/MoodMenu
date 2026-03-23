@@ -54,6 +54,7 @@ model Restaurant {
   logo          String?
   wifiSsid      String?
   wifiPassword  String?
+  allowedIp     String?
   ownerId       String
   owner         User         @relation(fields: [ownerId], references: [id])
   categories    Category[]

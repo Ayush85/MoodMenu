@@ -15,6 +15,7 @@ interface Restaurant {
   name: string;
   wifiSsid: string | null;
   wifiPassword: string | null;
+  allowedIp: string | null;
 }
 
 export default function TablesPage() {
@@ -25,6 +26,8 @@ export default function TablesPage() {
   const [tableCount, setTableCount] = useState("5");
   const [wifiSsid, setWifiSsid] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
+  const [allowedIp, setAllowedIp] = useState("");
+  const [detectedIp, setDetectedIp] = useState("");
   const [loading, setLoading] = useState(true);
   const [wifiSaved, setWifiSaved] = useState(false);
 
@@ -32,11 +35,14 @@ export default function TablesPage() {
     Promise.all([
       fetch(`/api/restaurants/${id}/tables`).then((r) => r.json()),
       fetch(`/api/restaurants/${id}`).then((r) => r.json()),
-    ]).then(([tablesData, restData]) => {
+      fetch("/api/my-ip").then((r) => r.json()).catch(() => ({ ip: "" })),
+    ]).then(([tablesData, restData, ipData]) => {
       setTables(tablesData);
       setRestaurant(restData);
       setWifiSsid(restData.wifiSsid || "");
       setWifiPassword(restData.wifiPassword || "");
+      setAllowedIp(restData.allowedIp || "");
+      setDetectedIp(ipData.ip || "");
       setLoading(false);
     });
   }
@@ -68,7 +74,7 @@ export default function TablesPage() {
     await fetch(`/api/restaurants/${id}/wifi`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wifiSsid, wifiPassword }),
+      body: JSON.stringify({ wifiSsid, wifiPassword, allowedIp: allowedIp || null }),
     });
     setWifiSaved(true);
     setTimeout(() => setWifiSaved(false), 2000);
@@ -150,6 +156,53 @@ export default function TablesPage() {
           ) : (
             "Save WiFi Settings"
           )}
+        </button>
+      </div>
+
+      {/* WiFi IP Restriction */}
+      <div className="surface-card p-5 sm:p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+            <span className="text-lg">🔒</span>
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Waiter Call Protection</h2>
+            <p className="text-xs text-gray-500">
+              Only allow waiter calls from customers on your restaurant WiFi
+            </p>
+          </div>
+        </div>
+        <div className="mb-3">
+          <label className="block text-sm font-semibold text-gray-700 mb-1.5">Restaurant Public IP</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={allowedIp}
+              onChange={(e) => setAllowedIp(e.target.value)}
+              placeholder="e.g. 103.25.xx.xx"
+              className="control-input flex-1 !py-3"
+            />
+            {detectedIp && (
+              <button
+                type="button"
+                onClick={() => setAllowedIp(detectedIp)}
+                className="btn-soft !text-xs whitespace-nowrap"
+              >
+                Use My IP: {detectedIp}
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-1.5">
+            {allowedIp
+              ? `Only customers connecting from IP ${allowedIp} can call a waiter. Leave empty to allow from anywhere.`
+              : "No restriction set. Anyone with the menu link can call a waiter. Set the restaurant WiFi public IP to restrict."}
+          </p>
+        </div>
+        <button
+          onClick={saveWifi}
+          className={`btn-primary !text-sm ${wifiSaved ? "!bg-emerald-500" : ""}`}
+        >
+          {wifiSaved ? "Saved!" : "Save IP Setting"}
         </button>
       </div>
 

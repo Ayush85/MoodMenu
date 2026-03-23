@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+function getClientIp(req: NextRequest): string {
+  // Check forwarded headers (behind nginx/proxy)
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  const realIp = req.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  return "unknown";
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
@@ -26,6 +35,17 @@ export async function POST(
 
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
+  }
+
+  // Verify customer is on restaurant WiFi (IP check)
+  if (restaurant.allowedIp) {
+    const clientIp = getClientIp(req);
+    if (clientIp !== restaurant.allowedIp) {
+      return NextResponse.json(
+        { error: "Please connect to the restaurant WiFi to call a waiter." },
+        { status: 403 }
+      );
+    }
   }
 
   if (restaurant.tables.length === 0) {

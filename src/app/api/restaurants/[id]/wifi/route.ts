@@ -12,7 +12,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const { wifiSsid, wifiPassword } = await req.json();
+  const { wifiSsid, wifiPassword, allowedIp } = await req.json();
 
   const restaurant = await prisma.restaurant.findFirst({
     where: { id, ownerId: session.user.id },
@@ -21,10 +21,19 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const data: Record<string, unknown> = {};
+  if (wifiSsid !== undefined) data.wifiSsid = wifiSsid;
+  if (wifiPassword !== undefined) data.wifiPassword = wifiPassword;
+  if (allowedIp !== undefined) data.allowedIp = allowedIp || null;
+
   const updated = await prisma.restaurant.update({
     where: { id },
-    data: { wifiSsid, wifiPassword },
+    data,
   });
 
-  return NextResponse.json({ wifiSsid: updated.wifiSsid, wifiPassword: updated.wifiPassword });
+  return NextResponse.json({
+    wifiSsid: updated.wifiSsid,
+    wifiPassword: updated.wifiPassword,
+    allowedIp: updated.allowedIp,
+  });
 }

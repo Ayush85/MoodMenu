@@ -9,7 +9,6 @@ interface Props {
   name: string;
   city: string;
   logo: string | null;
-  greeting: string;
   totalItems: number;
   tableNumber: number | null;
   weather: WeatherData | null;
@@ -17,7 +16,7 @@ interface Props {
   theme: MoodTheme;
 }
 
-export default function MenuHero({ name, city, logo, greeting, totalItems, tableNumber, weather, ruleName, theme }: Props) {
+export default function MenuHero({ name, city, logo, totalItems, tableNumber, weather, ruleName, theme }: Props) {
   const isDark = theme.mode === "dark";
 
   return (
@@ -79,8 +78,6 @@ export default function MenuHero({ name, city, logo, greeting, totalItems, table
         </div>
 
         {/* Restaurant info */}
-        <p className="text-[11px] font-medium opacity-40">{greeting}</p>
-
         <div className="flex items-start gap-4">
           {logo && (
             <img

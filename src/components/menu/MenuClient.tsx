@@ -121,7 +121,6 @@ export default function MenuClient({
         name={restaurant.name}
         city={restaurant.city}
         logo={restaurant.logo}
-        greeting={greeting}
         totalItems={totalItems}
         tableNumber={tableNumber}
         weather={weather}

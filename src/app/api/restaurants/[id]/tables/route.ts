@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
+async function verifyAccess(restaurantId: string, userId: string, actorType?: string) {
+  if (actorType === "STAFF") {
+    const staff = await prisma.restaurantStaff.findFirst({
+      where: { id: userId, restaurantId, isActive: true },
+    });
+    return !!staff;
+  }
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { id: restaurantId, ownerId: userId },
+  });
+  return !!restaurant;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -12,6 +25,10 @@ export async function GET(
   }
 
   const { id } = await params;
+  if (!(await verifyAccess(id, session.user.id, session.user.actorType))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const tables = await prisma.restaurantTable.findMany({
     where: { restaurantId: id },
     orderBy: { number: "asc" },
@@ -27,6 +44,9 @@ export async function POST(
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const { id } = await params;
@@ -75,10 +95,19 @@ export async function DELETE(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id } = await params;
-  const { tableId } = await req.json();
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { id, ownerId: session.user.id },
+  });
+  if (!restaurant) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
+  const { tableId } = await req.json();
   await prisma.restaurantTable.delete({ where: { id: tableId, restaurantId: id } });
 
   return NextResponse.json({ success: true });

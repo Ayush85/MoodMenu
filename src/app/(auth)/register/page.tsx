@@ -53,15 +53,15 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-8">
       {/* Animated gradient background */}
       <div
-        className="absolute inset-0 animate-gradient"
+        className="absolute inset-0 animate-gradient pointer-events-none"
         style={{
           background: "linear-gradient(135deg, #0f0f14, #1a1025, #0f172a, #0f0f14)",
           backgroundSize: "400% 400%",
         }}
       />
       {/* Ambient glow */}
-      <div className="absolute top-1/3 right-1/4 w-96 h-96 rounded-full bg-rose-500/10 blur-[120px]" />
-      <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full bg-violet-500/10 blur-[120px]" />
+      <div className="absolute top-1/3 right-1/4 w-96 h-96 rounded-full bg-rose-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
 
       <div className="relative w-full max-w-md animate-fade-in-up">
         {/* Logo */}

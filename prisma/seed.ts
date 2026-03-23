@@ -82,19 +82,22 @@ async function main() {
     data: { name: "Main Course", order: 2, restaurantId: restaurant.id },
   });
 
-  // Create menu items
+  // Image CDN base
+  const img = (name: string) => `https://aydexis.sgp1.digitaloceanspaces.com/menuor/demo/${name}.jpg`;
+
+  // Create menu items with images
   await prisma.menuItem.createMany({
     data: [
-      { name: "Jhol Momo", description: "Steamed momos in spicy jhol soup", price: 200, tags: ["hot", "comfort", "spicy", "popular"], categoryId: momos.id },
-      { name: "Steam Momo", description: "Classic steamed chicken momos with achar", price: 180, tags: ["hot", "comfort"], categoryId: momos.id },
-      { name: "Fried Momo", description: "Crispy fried momos with spicy chutney", price: 220, tags: ["hot", "crispy", "snack"], categoryId: momos.id },
-      { name: "C Momo", description: "Chili momos tossed in spicy sauce", price: 250, tags: ["hot", "spicy", "popular"], categoryId: momos.id },
-      { name: "Iced Americano", description: "Cold-brewed espresso over ice", price: 180, tags: ["cold", "refreshing", "iced", "coffee"], categoryId: drinks.id },
-      { name: "Masala Chiya", description: "Traditional Nepali spiced milk tea", price: 60, tags: ["hot", "tea", "comfort", "warm"], categoryId: drinks.id },
-      { name: "Lemon Soda", description: "Fresh lemon soda — sweet or salty", price: 80, tags: ["cold", "refreshing"], categoryId: drinks.id },
-      { name: "Thukpa", description: "Tibetan noodle soup with vegetables", price: 220, tags: ["hot", "comfort", "soup", "warm"], categoryId: mains.id },
-      { name: "Chowmein", description: "Stir-fried noodles with mixed vegetables", price: 180, tags: ["hot", "popular"], categoryId: mains.id },
-      { name: "Sekuwa", description: "Grilled marinated meat skewers", price: 350, tags: ["hot", "popular", "special"], categoryId: mains.id },
+      { name: "Jhol Momo", description: "Steamed momos in spicy jhol soup — perfect for rainy days", price: 200, image: img("jhol-momo"), tags: ["hot", "comfort", "spicy", "popular"], categoryId: momos.id },
+      { name: "Steam Momo", description: "Classic steamed chicken momos with homemade achar", price: 180, image: img("steam-momo"), tags: ["hot", "comfort"], categoryId: momos.id },
+      { name: "Fried Momo", description: "Crispy golden fried momos with spicy tomato chutney", price: 220, image: img("fried-momo"), tags: ["hot", "crispy", "snack"], categoryId: momos.id },
+      { name: "C Momo", description: "Chili momos tossed in fiery Szechuan sauce", price: 250, image: img("c-momo"), tags: ["hot", "spicy", "popular"], categoryId: momos.id },
+      { name: "Iced Americano", description: "Double-shot cold-brewed espresso over ice", price: 180, image: img("iced-americano"), tags: ["cold", "refreshing", "iced", "coffee"], categoryId: drinks.id },
+      { name: "Masala Chiya", description: "Traditional Nepali spiced milk tea with cardamom & ginger", price: 60, image: img("masala-chiya"), tags: ["hot", "tea", "comfort", "warm"], categoryId: drinks.id },
+      { name: "Lemon Soda", description: "Fresh lemon soda — choose sweet or salty", price: 80, image: img("lemon-soda"), tags: ["cold", "refreshing"], categoryId: drinks.id },
+      { name: "Thukpa", description: "Hearty Tibetan noodle soup with seasonal vegetables", price: 220, image: img("thukpa"), tags: ["hot", "comfort", "soup", "warm"], categoryId: mains.id },
+      { name: "Chowmein", description: "Wok-tossed noodles with mixed vegetables & soy glaze", price: 180, image: img("chowmein"), tags: ["hot", "popular"], categoryId: mains.id },
+      { name: "Sekuwa", description: "Charcoal-grilled marinated meat skewers with chimichurri", price: 350, image: img("sekuwa"), tags: ["hot", "popular", "special"], categoryId: mains.id },
     ],
   });
 

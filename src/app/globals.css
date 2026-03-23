@@ -91,8 +91,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-a, button, input, select, textarea {
+a, button, input, select, textarea, [role="button"] {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 :focus-visible {
@@ -107,11 +108,12 @@ img, video, canvas, svg {
   height: auto;
 }
 
-input, textarea, select {
+/* ─── Input colors ─── */
+.control-input {
   color: var(--text-primary);
 }
 
-input::placeholder, textarea::placeholder {
+.control-input::placeholder {
   color: var(--text-muted);
 }
 
@@ -120,6 +122,10 @@ input::placeholder, textarea::placeholder {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(148,163,184,0.3); border-radius: 99px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(148,163,184,0.5); }
+
+/* ─── No scrollbar utility ─── */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* ─── Components Layer ─── */
 @layer components {

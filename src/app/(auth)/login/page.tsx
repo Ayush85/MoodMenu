@@ -1,130 +1,201 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
-import { getSession } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function doLogin() {
+    if (!email || !password) {
+      setError("Please enter email and password");
+      return;
+    }
+
     setLoading(true);
     setError("");
 
-    const formData = new FormData(e.currentTarget);
-    const result = await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirect: false,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    if (result?.error) {
-      setError("Invalid email or password");
-      setLoading(false);
-    } else {
-      const session = await getSession();
-      const isStaff = session?.user?.actorType === "STAFF";
-      const primaryRestaurantId = session?.user?.restaurantId || session?.user?.restaurantIds?.[0];
-      if (isStaff && primaryRestaurantId) {
-        router.push(`/dashboard/restaurant/${primaryRestaurantId}/staff`);
+      if (result?.error) {
+        setError("Invalid email or password");
+        setLoading(false);
       } else {
-        router.push("/dashboard");
+        const session = await getSession();
+        const isStaff = session?.user?.actorType === "STAFF";
+        const rid = session?.user?.restaurantId || session?.user?.restaurantIds?.[0];
+        if (isStaff && rid) {
+          router.push(`/dashboard/restaurant/${rid}/staff`);
+        } else {
+          router.push("/dashboard");
+        }
       }
+    } catch {
+      setError("Something went wrong");
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-8">
-      {/* Animated gradient background */}
-      <div
-        className="absolute inset-0 animate-gradient"
-        style={{
-          background: "linear-gradient(135deg, #0f0f14, #1a1025, #0f172a, #0f0f14)",
-          backgroundSize: "400% 400%",
-        }}
-      />
-      {/* Ambient glow */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-orange-500/10 blur-[120px]" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full bg-violet-500/10 blur-[120px]" />
-
-      <div className="relative w-full max-w-md animate-fade-in-up">
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #0f0f14, #1a1025, #0f172a)",
+        padding: "16px",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: "420px" }}>
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <span className="text-white text-lg font-black">M</span>
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <div
+              style={{
+                width: "40px",
+                height: "40px",
+                borderRadius: "12px",
+                background: "linear-gradient(135deg, #f97316, #ec4899, #8b5cf6)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <span style={{ color: "#fff", fontSize: "18px", fontWeight: 900 }}>M</span>
+            </div>
+            <span style={{ fontSize: "24px", fontWeight: 700, color: "#fff" }}>
+              Mood<span style={{ color: "#f97316" }}>Menu</span>
+            </span>
           </div>
-          <span className="text-2xl font-bold text-white">
-            Mood<span className="gradient-text">Menu</span>
-          </span>
         </div>
 
         {/* Card */}
-        <div className="glass-dark p-8 sm:p-10 !rounded-2xl">
-          <h1 className="text-2xl font-bold text-white text-center mb-1">
+        <div
+          style={{
+            background: "rgba(15, 15, 20, 0.8)",
+            backdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "20px",
+            padding: "40px 32px",
+          }}
+        >
+          <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#fff", textAlign: "center", marginBottom: "4px" }}>
             Welcome back
           </h1>
-          <p className="text-sm text-gray-400 text-center mb-8">
+          <p style={{ fontSize: "14px", color: "#9ca3af", textAlign: "center", marginBottom: "32px" }}>
             Sign in to your MoodMenu account
           </p>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-3 rounded-xl mb-5 text-sm animate-fade-in">
+            <div
+              style={{
+                background: "rgba(239,68,68,0.1)",
+                border: "1px solid rgba(239,68,68,0.2)",
+                color: "#fca5a5",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                marginBottom: "20px",
+                fontSize: "14px",
+              }}
+            >
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                required
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder:text-gray-500 text-sm outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition"
-                placeholder="you@restaurant.com"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                required
-                className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder:text-gray-500 text-sm outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full !py-3.5 !rounded-xl !text-sm"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  Signing in...
-                </span>
-              ) : (
-                "Sign In"
-              )}
-            </button>
-          </form>
+          {/* Email */}
+          <div style={{ marginBottom: "20px" }}>
+            <label style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#d1d5db", marginBottom: "6px" }}>
+              Email
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              placeholder="you@restaurant.com"
+              onKeyDown={(e) => e.key === "Enter" && doLogin()}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#ffffff",
+                fontSize: "14px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
 
-          <p className="text-center text-gray-500 text-sm mt-6">
+          {/* Password */}
+          <div style={{ marginBottom: "24px" }}>
+            <label style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#d1d5db", marginBottom: "6px" }}>
+              Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              onKeyDown={(e) => e.key === "Enter" && doLogin()}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: "12px",
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                color: "#ffffff",
+                fontSize: "14px",
+                outline: "none",
+                boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {/* Button */}
+          <button
+            type="button"
+            onClick={doLogin}
+            disabled={loading}
+            style={{
+              width: "100%",
+              padding: "14px",
+              borderRadius: "12px",
+              background: loading ? "#666" : "linear-gradient(135deg, #f97316, #ec4899)",
+              color: "#fff",
+              fontSize: "14px",
+              fontWeight: 700,
+              border: "none",
+              cursor: loading ? "not-allowed" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+
+          <p style={{ textAlign: "center", color: "#6b7280", fontSize: "14px", marginTop: "24px" }}>
             Don&apos;t have an account?{" "}
-            <Link href="/register" className="text-orange-400 hover:text-orange-300 font-medium transition">
+            <Link href="/register" style={{ color: "#f97316", fontWeight: 500, textDecoration: "none" }}>
               Sign up
             </Link>
           </p>

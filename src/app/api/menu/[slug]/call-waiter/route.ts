@@ -6,16 +6,21 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const { tableNumber, message } = await req.json();
+  const body = await req.json();
 
-  if (!tableNumber) {
-    return NextResponse.json({ error: "Table number is required" }, { status: 400 });
+  const tableNumber = parseInt(String(body.tableNumber));
+  if (!tableNumber || tableNumber < 1 || tableNumber > 9999) {
+    return NextResponse.json({ error: "Invalid table number" }, { status: 400 });
   }
+
+  const message = body.message
+    ? String(body.message).trim().slice(0, 200)
+    : null;
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
     include: {
-      tables: { where: { number: parseInt(tableNumber) } },
+      tables: { where: { number: tableNumber } },
     },
   });
 
@@ -29,12 +34,12 @@ export async function POST(
 
   const table = restaurant.tables[0];
 
-  // Check for recent pending call from this table (prevent spam)
+  // Prevent spam: max 1 pending call per table per 2 minutes
   const recentCall = await prisma.waiterCall.findFirst({
     where: {
       tableId: table.id,
       status: "PENDING",
-      createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) }, // within 2 min
+      createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
     },
   });
 
@@ -47,7 +52,7 @@ export async function POST(
 
   const call = await prisma.waiterCall.create({
     data: {
-      message: message || null,
+      message,
       tableId: table.id,
       restaurantId: restaurant.id,
     },

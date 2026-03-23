@@ -103,36 +103,44 @@ export default function StaffPage() {
     }
   }, [canUseCalls, activeTab]);
 
-  // SSE for real-time pending calls
+  // Poll for pending waiter calls every 4 seconds (works on Vercel + Docker)
   useEffect(() => {
-    if (!canUseCalls) {
-      return;
+    if (!canUseCalls) return;
+
+    let prevCount = 0;
+
+    async function pollCalls() {
+      try {
+        const res = await fetch(`/api/restaurants/${id}/waiter-calls`);
+        if (!res.ok) return;
+        const calls: RawWaiterCall[] = await res.json();
+        const active = calls
+          .filter((c) => c.status === "PENDING" || c.status === "ACKNOWLEDGED")
+          .map((c) => ({
+            id: c.id,
+            tableNumber: c.table.number,
+            tableLabel: c.table.label,
+            message: c.message,
+            status: c.status,
+            createdAt: c.createdAt,
+          }));
+
+        const pendingOnly = active.filter((c) => c.status === "PENDING");
+        if (pendingOnly.length > prevCount && prevCount >= 0) {
+          playNotificationSound();
+          if (pendingOnly[0]) showBrowserNotification(pendingOnly[0]);
+        }
+        prevCount = pendingOnly.length;
+        setPendingCalls(active);
+      } catch {
+        // Silently retry on next interval
+      }
     }
 
-    const eventSource = new EventSource(`/api/restaurants/${id}/waiter-calls/stream`);
-
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.type === "calls") {
-        const newCalls = data.calls as WaiterCall[];
-
-        if (newCalls.length > prevCallCount) {
-          playNotificationSound();
-          showBrowserNotification(newCalls[0]);
-        }
-
-        setPendingCalls(newCalls);
-        setPrevCallCount(newCalls.length);
-      }
-    };
-
-    eventSource.onerror = () => {
-      // Keep stream graceful; browser reconnect behavior handles transient drops.
-    };
-
-    return () => eventSource.close();
-  }, [id, prevCallCount, canUseCalls]);
+    pollCalls();
+    const interval = setInterval(pollCalls, 4000);
+    return () => clearInterval(interval);
+  }, [id, canUseCalls]);
 
   // Load all calls history
   useEffect(() => {
@@ -579,29 +587,48 @@ export default function StaffPage() {
               </div>
 
               {focusCall ? (
-                <div className="rounded-2xl border-2 border-red-200 bg-red-50 p-4">
+                <div className={`rounded-2xl border-2 p-4 ${
+                  focusCall.status === "ACKNOWLEDGED"
+                    ? "border-amber-200 bg-amber-50"
+                    : "border-red-200 bg-red-50"
+                }`}>
                   <div className="flex items-start gap-3">
-                    <div className="w-14 h-14 rounded-2xl bg-red-500 text-white flex items-center justify-center font-extrabold text-2xl shrink-0">
+                    <div className={`w-14 h-14 rounded-2xl text-white flex items-center justify-center font-extrabold text-2xl shrink-0 ${
+                      focusCall.status === "ACKNOWLEDGED" ? "bg-amber-500" : "bg-red-500"
+                    }`}>
                       {focusCall.tableNumber}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-lg font-bold text-red-900">{focusCall.tableLabel || `Table ${focusCall.tableNumber}`}</p>
-                      {!simpleView && focusCall.message && <p className="text-red-700 mt-1">{focusCall.message}</p>}
-                      {!simpleView && <p className="text-xs text-red-500 mt-2">Requested {timeAgo(focusCall.createdAt)}</p>}
+                      <div className="flex items-center gap-2">
+                        <p className={`text-lg font-bold ${focusCall.status === "ACKNOWLEDGED" ? "text-amber-900" : "text-red-900"}`}>
+                          {focusCall.tableLabel || `Table ${focusCall.tableNumber}`}
+                        </p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          focusCall.status === "ACKNOWLEDGED"
+                            ? "bg-amber-200 text-amber-800"
+                            : "bg-red-200 text-red-800"
+                        }`}>
+                          {focusCall.status === "ACKNOWLEDGED" ? "ON THE WAY" : "WAITING"}
+                        </span>
+                      </div>
+                      {focusCall.message && <p className={`mt-1 text-sm ${focusCall.status === "ACKNOWLEDGED" ? "text-amber-700" : "text-red-700"}`}>"{focusCall.message}"</p>}
+                      <p className={`text-xs mt-2 ${focusCall.status === "ACKNOWLEDGED" ? "text-amber-500" : "text-red-500"}`}>{timeAgo(focusCall.createdAt)}</p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    <button
-                      onClick={() => updateCallStatus(focusCall.id, "ACKNOWLEDGED")}
-                      className="rounded-xl bg-amber-500 text-white text-sm font-semibold py-2.5"
-                    >
-                      On My Way
-                    </button>
+                  <div className={`grid gap-2 mt-4 ${focusCall.status === "PENDING" ? "grid-cols-2" : "grid-cols-1"}`}>
+                    {focusCall.status === "PENDING" && (
+                      <button
+                        onClick={() => updateCallStatus(focusCall.id, "ACKNOWLEDGED")}
+                        className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold py-2.5 transition"
+                      >
+                        On My Way
+                      </button>
+                    )}
                     <button
                       onClick={() => updateCallStatus(focusCall.id, "RESOLVED")}
-                      className="rounded-xl bg-emerald-500 text-white text-sm font-semibold py-2.5"
+                      className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 transition"
                     >
-                      Resolved
+                      {focusCall.status === "ACKNOWLEDGED" ? "Mark Resolved" : "Resolve Now"}
                     </button>
                   </div>
                 </div>
@@ -621,18 +648,33 @@ export default function StaffPage() {
                 {pendingCalls.length === 0 ? (
                   <div className="px-4 sm:px-5 py-5 text-sm text-slate-400">No queue right now</div>
                 ) : (
-                  pendingCalls.slice(0, 5).map((call) => (
+                  pendingCalls.slice(0, 8).map((call) => (
                     <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-slate-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
-                        {!simpleView && <p className="text-xs text-slate-500">{timeAgo(call.createdAt)}</p>}
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${
+                          call.status === "ACKNOWLEDGED" ? "bg-amber-400" : "bg-red-400 animate-pulse"
+                        }`} />
+                        <div>
+                          <p className="font-semibold text-slate-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
+                          <p className="text-[11px] text-slate-400">{timeAgo(call.createdAt)}</p>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
-                        className="text-xs px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 bg-amber-50"
-                      >
-                        Acknowledge
-                      </button>
+                      <div className="flex gap-1.5 shrink-0">
+                        {call.status === "PENDING" && (
+                          <button
+                            onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
+                            className="text-xs px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition"
+                          >
+                            Acknowledge
+                          </button>
+                        )}
+                        <button
+                          onClick={() => updateCallStatus(call.id, "RESOLVED")}
+                          className="text-xs px-2.5 py-1 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition"
+                        >
+                          Resolve
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

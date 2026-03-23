@@ -10,14 +10,24 @@ export async function PATCH(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id, itemId } = await params;
   const restaurant = await prisma.restaurant.findFirst({
     where: { id, ownerId: session.user.id },
   });
-
   if (!restaurant) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Verify item belongs to this restaurant
+  const item = await prisma.menuItem.findFirst({
+    where: { id: itemId, category: { restaurantId: id } },
+  });
+  if (!item) {
+    return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
 
   const data = await req.json();
@@ -45,14 +55,24 @@ export async function DELETE(
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { id, itemId } = await params;
   const restaurant = await prisma.restaurant.findFirst({
     where: { id, ownerId: session.user.id },
   });
-
   if (!restaurant) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // Verify item belongs to this restaurant
+  const item = await prisma.menuItem.findFirst({
+    where: { id: itemId, category: { restaurantId: id } },
+  });
+  if (!item) {
+    return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
 
   await prisma.menuItem.delete({ where: { id: itemId } });

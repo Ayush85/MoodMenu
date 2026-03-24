@@ -43,6 +43,7 @@ interface Props {
   greeting: string;
   tableNumber: number | null;
   autoOpenWifiPrompt?: boolean;
+  previewMode?: boolean;
 }
 
 export default function MenuClient({
@@ -56,6 +57,7 @@ export default function MenuClient({
   greeting,
   tableNumber,
   autoOpenWifiPrompt = false,
+  previewMode = false,
 }: Props) {
   const isDark = theme.mode === "dark";
   const totalItems = categories.reduce((acc, c) => acc + c.items.length, 0);
@@ -156,6 +158,16 @@ export default function MenuClient({
       className="min-h-screen transition-colors duration-700"
       style={{ backgroundColor: theme.bg, color: theme.text }}
     >
+      {/* Preview Mode Banner */}
+      {previewMode && (
+        <div
+          className="sticky top-0 z-50 text-center py-1.5 text-xs font-semibold tracking-wide"
+          style={{ backgroundColor: theme.primary, color: "#fff" }}
+        >
+          Preview Mode — {ruleName}
+        </div>
+      )}
+
       {/* Hero */}
       <MenuHero
         name={restaurant.name}

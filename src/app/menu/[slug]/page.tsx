@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getWeather } from "@/lib/weather";
 import { evaluateMood } from "@/lib/mood-engine";
-import { MoodCondition, MoodTheme, DEFAULT_THEME } from "@/types";
+import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS } from "@/types";
 import MenuClient from "@/components/menu/MenuClient";
+
+export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ table?: string; wifi?: string }>;
+  searchParams: Promise<{ table?: string; wifi?: string; preview?: string }>;
 }
 
 function getTimeGreetingFromHour(hour: number): string {
@@ -19,7 +21,7 @@ function getTimeGreetingFromHour(hour: number): string {
 
 export default async function PublicMenuPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { table: tableParam, wifi: wifiParam } = await searchParams;
+  const { table: tableParam, wifi: wifiParam, preview: previewParam } = await searchParams;
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
@@ -50,7 +52,19 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     priority: r.priority,
   }));
 
-  const mood = evaluateMood(rules, weather);
+  let mood = evaluateMood(rules, weather);
+
+  // Preview mode: override theme with a named preset for demo/testing
+  const previewPreset = previewParam ? MOOD_PRESETS[previewParam] : null;
+  if (previewPreset) {
+    mood = {
+      theme: previewPreset.theme,
+      featuredTags: previewPreset.featuredTags,
+      ruleName: previewPreset.name,
+      weather: mood.weather,
+    };
+  }
+
   const greeting = getTimeGreetingFromHour(new Date().getHours());
 
   // Identify featured items
@@ -115,6 +129,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       greeting={greeting}
       tableNumber={tableParam ? parseInt(tableParam) : null}
       autoOpenWifiPrompt={wifiParam === "1"}
+      previewMode={!!previewPreset}
     />
   );
 }

@@ -1,43 +1,69 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 
-type OneSignalGlobal = {
+type OneSignalNamespace = {
   init: (options: Record<string, unknown>) => Promise<void>;
   login: (externalId: string) => Promise<void>;
   logout: () => Promise<void>;
+  Slidedown: {
+    promptPush: () => Promise<void>;
+  };
+  Notifications: {
+    permission: boolean;
+    requestPermission: () => Promise<void>;
+  };
 };
 
 type WindowWithOneSignal = Window & {
-  OneSignal?: OneSignalGlobal;
-  OneSignalDeferred?: Array<(oneSignal: OneSignalGlobal) => void | Promise<void>>;
+  OneSignalDeferred?: Array<(os: OneSignalNamespace) => void | Promise<void>>;
 };
 
 export default function OneSignalInit({ appId }: { appId?: string }) {
   const { data: session, status } = useSession();
+  const initialized = useRef(false);
 
+  // Load SDK and initialize
   useEffect(() => {
-    if (!appId) return;
+    if (!appId || initialized.current) return;
+    initialized.current = true;
 
     const win = window as WindowWithOneSignal;
     win.OneSignalDeferred = win.OneSignalDeferred || [];
 
+    // Push init config before loading the script
     win.OneSignalDeferred.push(async (OneSignal) => {
       try {
         await OneSignal.init({
           appId,
           serviceWorkerPath: "/OneSignalSDKWorker.js",
           serviceWorkerUpdaterPath: "/OneSignalSDKUpdaterWorker.js",
-          allowLocalhostAsSecureOrigin: true,
+          notifyButton: { enable: true },
+          promptOptions: {
+            slidedown: {
+              prompts: [
+                {
+                  type: "push",
+                  autoPrompt: true,
+                  text: {
+                    actionMessage: "Get notified when customers call for a waiter!",
+                    acceptButton: "Allow",
+                    cancelButton: "Later",
+                  },
+                  delay: { pageViews: 1, timeDelay: 3 },
+                },
+              ],
+            },
+          },
         });
       } catch {
         // Ignore init errors to avoid blocking app render.
       }
     });
 
-    const existingScript = document.getElementById("onesignal-sdk");
-    if (!existingScript) {
+    // Load the SDK script
+    if (!document.getElementById("onesignal-sdk")) {
       const script = document.createElement("script");
       script.id = "onesignal-sdk";
       script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
@@ -46,6 +72,7 @@ export default function OneSignalInit({ appId }: { appId?: string }) {
     }
   }, [appId]);
 
+  // Sync auth state with OneSignal
   useEffect(() => {
     if (!appId || status === "loading") return;
 
@@ -60,7 +87,7 @@ export default function OneSignalInit({ appId }: { appId?: string }) {
           await OneSignal.logout();
         }
       } catch {
-        // Ignore auth sync errors; user can still use app normally.
+        // Ignore auth sync errors
       }
     });
   }, [appId, session?.user?.id, status]);

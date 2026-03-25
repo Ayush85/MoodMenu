@@ -1,33 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-
-async function sendPushToOwner(ownerId: string, tableLabel: string, tableNumber: number, message: string | null) {
-  const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
-  if (!appId || !apiKey) return;
-
-  try {
-    await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${apiKey}`,
-      },
-      body: JSON.stringify({
-        app_id: appId,
-        include_external_user_ids: [ownerId],
-        headings: { en: `Table ${tableNumber} (${tableLabel})` },
-        contents: { en: message || "A customer is calling for a waiter!" },
-        url: "/dashboard",
-      }),
-    });
-  } catch {
-    // Push failed silently — waiter call is still saved in DB
-  }
-}
+import { sendPush } from "@/lib/push";
 
 function getClientIp(req: NextRequest): string {
-  // Check forwarded headers (behind nginx/proxy)
   const forwarded = req.headers.get("x-forwarded-for");
   if (forwarded) return forwarded.split(",")[0].trim();
   const realIp = req.headers.get("x-real-ip");
@@ -55,6 +30,10 @@ export async function POST(
     where: { slug },
     include: {
       tables: { where: { number: tableNumber } },
+      staffMembers: {
+        where: { isActive: true, role: "WAITER" },
+        select: { id: true },
+      },
     },
   });
 
@@ -109,8 +88,26 @@ export async function POST(
     include: { table: true },
   });
 
-  // Send push notification to restaurant owner/staff
-  sendPushToOwner(restaurant.ownerId, call.table.label || "Table", call.table.number, message);
+  // Send push to owner + all active waiters (non-blocking)
+  const recipientIds = [
+    restaurant.ownerId,
+    ...restaurant.staffMembers.map((s) => s.id),
+  ];
+
+  const label = call.table.label || `Table ${call.table.number}`;
+
+  sendPush({
+    title: `🔔 ${label} is calling!`,
+    body: message || "A customer needs assistance.",
+    userIds: recipientIds,
+    url: `/dashboard/restaurant/${restaurant.id}/staff`,
+    data: {
+      type: "waiter_call",
+      callId: call.id,
+      tableNumber: String(call.table.number),
+      restaurantId: restaurant.id,
+    },
+  });
 
   return NextResponse.json({
     id: call.id,

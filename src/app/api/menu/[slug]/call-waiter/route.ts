@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+async function sendPushToOwner(ownerId: string, tableLabel: string, tableNumber: number, message: string | null) {
+  const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
+  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+  if (!appId || !apiKey) return;
+
+  try {
+    await fetch("https://onesignal.com/api/v1/notifications", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${apiKey}`,
+      },
+      body: JSON.stringify({
+        app_id: appId,
+        include_external_user_ids: [ownerId],
+        headings: { en: `Table ${tableNumber} (${tableLabel})` },
+        contents: { en: message || "A customer is calling for a waiter!" },
+        url: "/dashboard",
+      }),
+    });
+  } catch {
+    // Push failed silently — waiter call is still saved in DB
+  }
+}
+
 function getClientIp(req: NextRequest): string {
   // Check forwarded headers (behind nginx/proxy)
   const forwarded = req.headers.get("x-forwarded-for");
@@ -83,6 +108,9 @@ export async function POST(
     },
     include: { table: true },
   });
+
+  // Send push notification to restaurant owner/staff
+  sendPushToOwner(restaurant.ownerId, call.table.label || "Table", call.table.number, message);
 
   return NextResponse.json({
     id: call.id,

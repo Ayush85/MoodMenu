@@ -6,12 +6,23 @@ interface Props {
   tableNumber: number | null;
   hasWifi: boolean;
   callStatus: "idle" | "calling" | "sent" | "error";
+  cartCount: number;
   onCallWaiter: () => void;
   onToggleWifi: () => void;
+  onOpenCart: () => void;
   theme: MoodTheme;
 }
 
-export default function BottomBar({ tableNumber, hasWifi, callStatus, onCallWaiter, onToggleWifi, theme }: Props) {
+export default function BottomBar({
+  tableNumber,
+  hasWifi,
+  callStatus,
+  cartCount,
+  onCallWaiter,
+  onToggleWifi,
+  onOpenCart,
+  theme,
+}: Props) {
   const isDark = theme.mode === "dark";
 
   if (!tableNumber && !hasWifi) return null;
@@ -78,23 +89,59 @@ export default function BottomBar({ tableNumber, hasWifi, callStatus, onCallWait
             </div>
           )}
 
+          {/* Cart button */}
+          {tableNumber && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={onOpenCart}
+              onKeyDown={(e) => e.key === "Enter" && onOpenCart()}
+              className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 cursor-pointer"
+              style={{
+                backgroundColor: cartCount > 0 ? theme.primary : isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke={cartCount > 0 ? "#fff" : "currentColor"}
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+                style={{ opacity: cartCount > 0 ? 1 : 0.6 }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              {cartCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center px-1"
+                >
+                  {cartCount > 99 ? "99+" : cartCount}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Scroll to top */}
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            onKeyDown={(e) => e.key === "Enter" && window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 cursor-pointer"
-            style={{
-              backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
-              touchAction: "manipulation",
-              WebkitTapHighlightColor: "transparent",
-            }}
-          >
-            <svg className="w-5 h-5" style={{ opacity: 0.5 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-          </div>
+          {!tableNumber && (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              onKeyDown={(e) => e.key === "Enter" && window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 cursor-pointer"
+              style={{
+                backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
+                touchAction: "manipulation",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              <svg className="w-5 h-5" style={{ opacity: 0.5 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+              </svg>
+            </div>
+          )}
         </div>
       </div>
     </>

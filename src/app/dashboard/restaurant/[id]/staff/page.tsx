@@ -88,7 +88,6 @@ export default function StaffPage() {
   const [newStaffPhone, setNewStaffPhone] = useState("");
   const [newStaffRole, setNewStaffRole] = useState<StaffMember["role"]>("WAITER");
   const [addingStaff, setAddingStaff] = useState(false);
-  const [prevCallCount, setPrevCallCount] = useState(0);
   const actorType = session?.user?.actorType;
   const staffRole = session?.user?.role as "WAITER" | "COOK" | "CHEF" | undefined;
   const canManageStaff = actorType === "USER";
@@ -98,6 +97,7 @@ export default function StaffPage() {
   const [visibleOrders, setVisibleOrders] = useState(6);
   const [visibleCalls, setVisibleCalls] = useState(6);
   const [simpleView, setSimpleView] = useState(true);
+  const [orderPollKey, setOrderPollKey] = useState(0);
 
   useEffect(() => {
     if (!canUseCalls && activeTab === "calls") {
@@ -176,12 +176,19 @@ export default function StaffPage() {
       });
   }, [id]);
 
+  // Poll orders every 8 seconds for real-time updates (customer + staff orders)
   useEffect(() => {
-    fetch(`/api/restaurants/${id}/orders`)
-      .then((r) => r.json())
-      .then((data) => setOrders(Array.isArray(data) ? data : []))
-      .catch(() => setOrders([]));
-  }, [id]);
+    function fetchOrders() {
+      fetch(`/api/restaurants/${id}/orders`)
+        .then((r) => r.json())
+        .then((data) => setOrders(Array.isArray(data) ? data : []))
+        .catch(() => {});
+    }
+
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 8000);
+    return () => clearInterval(interval);
+  }, [id, orderPollKey]);
 
   useEffect(() => {
     if (!canManageStaff) {
@@ -353,7 +360,10 @@ export default function StaffPage() {
       setOrders((prev) => [createdOrder, ...prev]);
       setSelectedItems({});
       setOrderNote("");
+      setShowComposer(false);
       toast("Order created");
+      // Nudge the poll so kitchen staff see it immediately
+      setOrderPollKey((k) => k + 1);
     } finally {
       setSavingOrder(false);
     }
@@ -366,7 +376,11 @@ export default function StaffPage() {
       body: JSON.stringify({ status }),
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast((data as { error?: string }).error || "Could not update order", "error");
+      return;
+    }
 
     const updated = (await res.json()) as OrderTicket;
     setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));

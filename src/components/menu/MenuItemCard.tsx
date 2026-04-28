@@ -14,9 +14,11 @@ interface Props {
   item: MenuItemData;
   theme: MoodTheme;
   onTap: (item: MenuItemData) => void;
+  cartQty?: number;
+  onQuickAdd?: (item: MenuItemData) => void;
 }
 
-export default function MenuItemCard({ item, theme, onTap }: Props) {
+export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickAdd }: Props) {
   const isDark = theme.mode === "dark";
   const initial = item.name.charAt(0).toUpperCase();
 
@@ -26,7 +28,7 @@ export default function MenuItemCard({ item, theme, onTap }: Props) {
       tabIndex={0}
       onClick={() => onTap(item)}
       onKeyDown={(e) => e.key === "Enter" && onTap(item)}
-      className="w-full text-left rounded-xl overflow-hidden cursor-pointer"
+      className="w-full text-left rounded-xl overflow-hidden cursor-pointer relative"
       style={{
         backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
         boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.05)",
@@ -56,12 +58,40 @@ export default function MenuItemCard({ item, theme, onTap }: Props) {
         </div>
       )}
 
+      {/* Cart qty badge */}
+      {cartQty > 0 && (
+        <div
+          className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-white font-extrabold text-[10px] px-1"
+          style={{ backgroundColor: theme.primary }}
+        >
+          {cartQty}
+        </div>
+      )}
+
       {/* Info */}
-      <div className="px-1.5 py-1.5">
-        <h3 className="font-bold text-[11px] leading-tight truncate">{item.name}</h3>
-        <span className="text-[11px] font-extrabold" style={{ color: theme.primary }}>
-          {formatPrice(item.price)}
-        </span>
+      <div className="px-1.5 py-1.5 flex items-end justify-between gap-1">
+        <div className="min-w-0">
+          <h3 className="font-bold text-[11px] leading-tight truncate">{item.name}</h3>
+          <span className="text-[11px] font-extrabold" style={{ color: theme.primary }}>
+            {formatPrice(item.price)}
+          </span>
+        </div>
+
+        {/* Quick-add button */}
+        {onQuickAdd && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onQuickAdd(item);
+            }}
+            onKeyDown={(e) => e.stopPropagation()}
+            className="w-5 h-5 rounded-md flex items-center justify-center text-white font-bold text-sm shrink-0 mb-0.5"
+            style={{ backgroundColor: theme.primary, touchAction: "manipulation" }}
+            aria-label={`Add ${item.name} to order`}
+          >
+            +
+          </button>
+        )}
       </div>
     </div>
   );

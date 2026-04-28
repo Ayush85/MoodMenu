@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { MoodTheme, WeatherData } from "@/types";
 import QRCode from "qrcode";
 import MenuHero from "./MenuHero";
@@ -9,6 +9,7 @@ import MenuItemCard from "./MenuItemCard";
 import BottomBar from "./BottomBar";
 import CallWaiterModal from "./CallWaiterModal";
 import ItemDetailModal from "./ItemDetailModal";
+import CartDrawer, { CartItem } from "./CartDrawer";
 
 interface MenuItemData {
   id: string;
@@ -61,15 +62,60 @@ export default function MenuClient({
 }: Props) {
   const isDark = theme.mode === "dark";
   const totalItems = categories.reduce((acc, c) => acc + c.items.length, 0);
+  const canOrder = tableNumber !== null;
+
+  // Waiter call state
   const [callStatus, setCallStatus] = useState<"idle" | "calling" | "sent" | "error">("idle");
   const [callMessage, setCallMessage] = useState("");
   const [showCallModal, setShowCallModal] = useState(false);
   const [showWifiRequired, setShowWifiRequired] = useState(false);
+  const [wifiVerified, setWifiVerified] = useState(false);
+
+  // WiFi panel
   const [showWifiModal, setShowWifiModal] = useState(false);
   const [wifiQR, setWifiQR] = useState<string | null>(null);
+
+  // Item detail + cart
   const [selectedItem, setSelectedItem] = useState<MenuItemData | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [wifiVerified, setWifiVerified] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showCart, setShowCart] = useState(false);
+
+  const cartCount = useMemo(
+    () => cartItems.reduce((sum, i) => sum + i.quantity, 0),
+    [cartItems]
+  );
+
+  function addToCart(item: MenuItemData, qty: number) {
+    setCartItems((prev) => {
+      const existing = prev.find((i) => i.id === item.id);
+      if (existing) {
+        return prev.map((i) =>
+          i.id === item.id
+            ? { ...i, quantity: Math.min(99, i.quantity + qty) }
+            : i
+        );
+      }
+      return [...prev, { id: item.id, name: item.name, price: item.price, quantity: qty, image: item.image }];
+    });
+  }
+
+  function updateCartQty(id: string, delta: number) {
+    setCartItems((prev) => {
+      const next = prev.map((i) =>
+        i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
+      ).filter((i) => i.quantity > 0);
+      return next;
+    });
+  }
+
+  function clearCart() {
+    setCartItems([]);
+  }
+
+  function getCartQty(itemId: string) {
+    return cartItems.find((i) => i.id === itemId)?.quantity ?? 0;
+  }
 
   // Generate WiFi QR code
   useEffect(() => {
@@ -93,7 +139,6 @@ export default function MenuClient({
       return;
     }
 
-    // Quick check: try a dummy call to see if IP is allowed
     try {
       const res = await fetch(`/api/menu/${restaurant.slug}/call-waiter`, {
         method: "POST",
@@ -102,17 +147,13 @@ export default function MenuClient({
       });
 
       if (res.status === 403) {
-        // Not on WiFi
         setShowWifiRequired(true);
         return;
       }
 
-      // IP is fine (will get 429 if recently called, or 201 if created)
-      // Delete the test call if it was created
       setWifiVerified(true);
       setShowCallModal(true);
     } catch {
-      // Network error — allow anyway
       setShowCallModal(true);
     }
   }
@@ -138,10 +179,6 @@ export default function MenuClient({
         setShowWifiRequired(true);
         setCallStatus("idle");
       } else {
-        const data = await res.json();
-        setCallStatus("error");
-        // Show WiFi modal if blocked by IP
-        if (res.status === 403) { setShowWifiRequired(true); return; }
         setCallStatus("error");
         setTimeout(() => setCallStatus("idle"), 3000);
       }
@@ -150,8 +187,6 @@ export default function MenuClient({
       setTimeout(() => setCallStatus("idle"), 3000);
     }
   }
-
-  // Specials set by admin (no dedup needed — admin controls this directly)
 
   return (
     <div
@@ -189,7 +224,7 @@ export default function MenuClient({
           theme={theme}
         />
 
-        {/* Today's Specials — only when admin has marked items */}
+        {/* Today's Specials */}
         {todaysSpecials.length > 0 && (
           <section className="mb-5">
             <div className="flex items-center gap-2 mb-2">
@@ -200,7 +235,14 @@ export default function MenuClient({
             </div>
             <div className="grid grid-cols-3 gap-1.5">
               {todaysSpecials.map((item) => (
-                <MenuItemCard key={item.id} item={item} theme={theme} onTap={setSelectedItem} />
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  theme={theme}
+                  onTap={setSelectedItem}
+                  cartQty={getCartQty(item.id)}
+                  onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
+                />
               ))}
             </div>
           </section>
@@ -219,7 +261,14 @@ export default function MenuClient({
 
             <div className="grid grid-cols-3 gap-1.5">
               {cat.items.map((item) => (
-                <MenuItemCard key={item.id} item={item} theme={theme} onTap={setSelectedItem} />
+                <MenuItemCard
+                  key={item.id}
+                  item={item}
+                  theme={theme}
+                  onTap={setSelectedItem}
+                  cartQty={getCartQty(item.id)}
+                  onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
+                />
               ))}
 
               {cat.items.length === 0 && (
@@ -263,7 +312,6 @@ export default function MenuClient({
             <div className="p-5 pb-24">
               <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
 
-              {/* Header */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: theme.primary + "15" }}>
                   <svg className="w-4.5 h-4.5" fill="none" stroke={theme.primary} strokeWidth={2} viewBox="0 0 24 24">
@@ -276,7 +324,6 @@ export default function MenuClient({
                 </div>
               </div>
 
-              {/* WiFi QR Code */}
               {wifiQR && (
                 <div className="flex justify-center mb-3">
                   <div className="bg-white p-2 rounded-xl" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.06)" }}>
@@ -286,7 +333,6 @@ export default function MenuClient({
               )}
               <p className="text-center text-[11px] opacity-35 mb-4">Scan with camera to connect</p>
 
-              {/* Credentials */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
                   <div>
@@ -315,7 +361,6 @@ export default function MenuClient({
                   </div>
                 )}
               </div>
-
             </div>
           </div>
         </div>
@@ -326,10 +371,25 @@ export default function MenuClient({
         tableNumber={tableNumber}
         hasWifi={!!restaurant.wifiSsid}
         callStatus={callStatus}
+        cartCount={cartCount}
         onCallWaiter={handleCallWaiterTap}
         onToggleWifi={() => setShowWifiModal((v) => !v)}
+        onOpenCart={() => setShowCart(true)}
         theme={theme}
       />
+
+      {/* Cart Drawer */}
+      {showCart && tableNumber && (
+        <CartDrawer
+          items={cartItems}
+          slug={restaurant.slug}
+          tableNumber={tableNumber}
+          theme={theme}
+          onClose={() => setShowCart(false)}
+          onUpdateQty={updateCartQty}
+          onClear={clearCart}
+        />
+      )}
 
       {/* Call Waiter Modal */}
       {showCallModal && tableNumber && (
@@ -350,6 +410,11 @@ export default function MenuClient({
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           theme={theme}
+          canOrder={canOrder}
+          cartQty={getCartQty(selectedItem.id)}
+          onAddToCart={(item, qty) => {
+            addToCart(item, qty);
+          }}
         />
       )}
 
@@ -365,7 +430,6 @@ export default function MenuClient({
             className="relative w-full max-w-sm rounded-3xl p-6 text-center animate-fade-in"
             style={{ backgroundColor: isDark ? "#1a1a1f" : "#ffffff", color: isDark ? "#fff" : "#000" }}
           >
-            {/* WiFi icon */}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
               style={{ backgroundColor: theme.primary + "15" }}
@@ -380,7 +444,6 @@ export default function MenuClient({
               Please connect to the restaurant&apos;s WiFi network to call a waiter. This ensures you&apos;re at the restaurant.
             </p>
 
-            {/* Show WiFi details if available */}
             {restaurant.wifiSsid && (
               <div
                 className="rounded-xl p-3 mb-4 text-left"
@@ -399,7 +462,6 @@ export default function MenuClient({
               </div>
             )}
 
-            {/* QR code */}
             {wifiQR && (
               <div className="flex justify-center mb-4">
                 <div className="bg-white p-2 rounded-xl" style={{ boxShadow: "0 1px 6px rgba(0,0,0,0.06)" }}>

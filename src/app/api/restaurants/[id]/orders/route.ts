@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { sendPush } from "@/lib/push";
 
 interface CreateOrderItem {
   itemName: string;
@@ -141,6 +142,41 @@ export async function POST(
       items: true,
     },
   });
+
+  // Notify kitchen staff (non-blocking)
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { id },
+    select: {
+      ownerId: true,
+      staffMembers: {
+        where: { isActive: true, role: { in: ["COOK", "CHEF"] } },
+        select: { id: true },
+      },
+    },
+  });
+
+  if (restaurant) {
+    const recipientIds = [
+      restaurant.ownerId,
+      ...restaurant.staffMembers.map((s) => s.id),
+    ].filter((rid) => rid !== session.user!.id);
+
+    if (recipientIds.length > 0) {
+      const tableLabel = order.table.label || `Table ${order.table.number}`;
+      sendPush({
+        title: `🍽️ New Order — ${tableLabel}`,
+        body: `${lineItems.length} item(s) · Rs. ${total.toLocaleString("en-IN")}`,
+        userIds: recipientIds,
+        url: `/dashboard/restaurant/${id}/staff`,
+        data: {
+          type: "new_order",
+          orderId: order.id,
+          tableNumber: String(order.table.number),
+          restaurantId: id,
+        },
+      });
+    }
+  }
 
   return NextResponse.json(order, { status: 201 });
 }

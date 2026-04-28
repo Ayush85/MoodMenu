@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find d:/development/MoodMenu -type f \\\\\\(-name *.ts -o -name *.tsx -o -name *.js -o -name *.json \\\\\\))",
+      "Bash(grep -r \"notification\\\\|notify\\\\|OneSignal\\\\|onesignal\\\\|push.*notification\\\\|serviceWorker\\\\|service-worker\" d:/development/MoodMenu/src d:/development/MoodMenu/public d:/development/MoodMenu/.env* --include=*.ts --include=*.tsx --include=*.js --include=*.json)",
+      "Bash(wc -l /d/development/MoodMenu/src/app/dashboard/restaurant/[id]/staff/page.tsx)",
+      "Bash(head -300 /d/development/MoodMenu/src/app/dashboard/restaurant/[id]/staff/page.tsx)",
+      "Bash(head -600 /d/development/MoodMenu/src/app/dashboard/restaurant/[id]/staff/page.tsx)",
+      "Bash(tail -425 /d/development/MoodMenu/src/app/dashboard/restaurant/[id]/staff/page.tsx)",
+      "Bash(npx tsc *)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Read(//mnt/d/development/MoodMenu/node_modules/**)"
+    ]
+  }
+}

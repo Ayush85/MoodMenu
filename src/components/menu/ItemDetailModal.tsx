@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
 
@@ -23,11 +24,22 @@ interface Props {
   item: MenuItemData;
   onClose: () => void;
   theme: MoodTheme;
+  canOrder: boolean;
+  cartQty: number;
+  onAddToCart: (item: MenuItemData, qty: number) => void;
 }
 
-export default function ItemDetailModal({ item, onClose, theme }: Props) {
+export default function ItemDetailModal({ item, onClose, theme, canOrder, cartQty, onAddToCart }: Props) {
   const isDark = theme.mode === "dark";
   const initial = item.name.charAt(0).toUpperCase();
+  const [qty, setQty] = useState(1);
+  const [added, setAdded] = useState(false);
+
+  function handleAdd() {
+    onAddToCart(item, qty);
+    setAdded(true);
+    setTimeout(() => setAdded(false), 1500);
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -55,7 +67,6 @@ export default function ItemDetailModal({ item, onClose, theme }: Props) {
               className="absolute inset-0"
               style={{ background: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)" }}
             />
-            {/* Close button */}
             <button
               onClick={onClose}
               className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-white"
@@ -113,23 +124,62 @@ export default function ItemDetailModal({ item, onClose, theme }: Props) {
 
           {/* Tags */}
           {item.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 mb-5">
               {item.tags.map((tag) => {
                 const color = TAG_COLORS[tag.toLowerCase()] || theme.primary;
                 return (
                   <span
                     key={tag}
                     className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full"
-                    style={{
-                      backgroundColor: color + "15",
-                      color: color,
-                    }}
+                    style={{ backgroundColor: color + "15", color }}
                   >
                     <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                     {tag}
                   </span>
                 );
               })}
+            </div>
+          )}
+
+          {/* Add to Cart */}
+          {canOrder && (
+            <div className="flex items-center gap-3">
+              {/* Qty selector */}
+              <div
+                className="flex items-center gap-3 px-3 py-2 rounded-2xl"
+                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.04)" }}
+              >
+                <button
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base"
+                  style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.07)" }}
+                >
+                  −
+                </button>
+                <span className="w-5 text-center font-extrabold">{qty}</span>
+                <button
+                  onClick={() => setQty((q) => Math.min(99, q + 1))}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base text-white"
+                  style={{ backgroundColor: theme.primary }}
+                >
+                  +
+                </button>
+              </div>
+
+              <button
+                onClick={handleAdd}
+                className="flex-1 py-3 rounded-2xl font-extrabold text-sm text-white transition"
+                style={{
+                  backgroundColor: added ? "#22c55e" : theme.primary,
+                  boxShadow: `0 4px 16px ${added ? "#22c55e" : theme.primary}40`,
+                }}
+              >
+                {added
+                  ? "✓ Added!"
+                  : cartQty > 0
+                  ? `Add ${qty} more · ${formatPrice(item.price * qty)}`
+                  : `Add to Order · ${formatPrice(item.price * qty)}`}
+              </button>
             </div>
           )}
         </div>

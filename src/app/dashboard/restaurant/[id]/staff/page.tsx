@@ -333,7 +333,8 @@ export default function StaffPage() {
   }, [allCalls]);
 
   async function submitOrder() {
-    if (!selectedTableId || orderDraft.length === 0) return;
+    if (!selectedTableId) { toast("Please select a table", "error"); return; }
+    if (orderDraft.length === 0) { toast("Add at least one item", "error"); return; }
     setSavingOrder(true);
     try {
       const res = await fetch(`/api/restaurants/${id}/orders`, {
@@ -397,20 +398,19 @@ export default function StaffPage() {
     return false;
   }
 
-  function getOrderActionStatuses(order: OrderTicket): OrderTicket["status"][] {
+  function getOrderActionStatuses(currentStatus: OrderTicket["status"]): OrderTicket["status"][] {
+    let allowed: OrderTicket["status"][];
     if (actorType === "USER") {
-      return ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"];
+      allowed = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"];
+    } else if (staffRole === "WAITER") {
+      allowed = ["SERVED", "PAID", "CANCELED"];
+    } else if (staffRole === "COOK" || staffRole === "CHEF") {
+      allowed = ["PREPARING", "SERVED", "CANCELED"];
+    } else {
+      allowed = [];
     }
-
-    if (staffRole === "WAITER") {
-      return ["SERVED", "PAID", "CANCELED"];
-    }
-
-    if (staffRole === "COOK" || staffRole === "CHEF") {
-      return ["PREPARING", "SERVED", "CANCELED"];
-    }
-
-    return [];
+    // Never include the status the order is already in
+    return allowed.filter((s) => s !== currentStatus);
   }
 
   function getNextSuggestedStatus(order: OrderTicket): OrderTicket["status"] | null {
@@ -533,6 +533,18 @@ export default function StaffPage() {
 
   const focusCall = pendingCalls[0] || null;
 
+  const STATUS_META: Record<OrderTicket["status"], { badge: string; label: string }> = {
+    NEW:       { badge: "bg-blue-100 text-blue-700",    label: "New" },
+    PREPARING: { badge: "bg-amber-100 text-amber-700",  label: "Preparing" },
+    SERVED:    { badge: "bg-emerald-100 text-emerald-700", label: "Served" },
+    PAID:      { badge: "bg-violet-100 text-violet-700", label: "Paid" },
+    CANCELED:  { badge: "bg-red-100 text-red-500",      label: "Canceled" },
+  };
+
+  function fmt(n: number) {
+    return Math.round(n).toLocaleString("en-IN");
+  }
+
   return (
     <div className="page-shell space-y-4 sm:space-y-5">
       <header className="surface-card p-4 sm:p-5">
@@ -569,7 +581,7 @@ export default function StaffPage() {
           </div>
           <div className="rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-600">Paid Revenue</p>
-            <p className="text-2xl font-extrabold text-violet-900 leading-none mt-1">Rs. {paidRevenue}</p>
+            <p className="text-2xl font-extrabold text-violet-900 leading-none mt-1">Rs. {fmt(paidRevenue)}</p>
           </div>
         </div>
       </header>
@@ -742,15 +754,23 @@ export default function StaffPage() {
           <div className="xl:col-span-8 space-y-4 order-2 xl:order-1">
             <div className="surface-card p-4 sm:p-5 space-y-3">
               <div className="flex flex-wrap gap-2">
-                {(["ALL", "NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setOrderStatusFilter(status)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition ${orderStatusFilter === status ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"}`}
-                  >
-                    {status}
-                  </button>
-                ))}
+                {(["ALL", "NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const).map((status) => {
+                  const count = status === "ALL" ? orders.length : orderCounts[status];
+                  return (
+                    <button
+                      key={status}
+                      onClick={() => setOrderStatusFilter(status)}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition flex items-center gap-1.5 ${orderStatusFilter === status ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"}`}
+                    >
+                      {status}
+                      {count > 0 && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${orderStatusFilter === status ? "bg-white/20" : "bg-slate-100"}`}>
+                          {count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               <input
                 value={orderTableFilter}
@@ -770,65 +790,82 @@ export default function StaffPage() {
                   <div className="px-4 sm:px-5 py-8 text-center text-sm text-slate-400">No orders found</div>
                 ) : (
                   visibleFilteredOrders.map((order) => {
-                    const actionStatuses = getOrderActionStatuses(order);
+                    const actionStatuses = getOrderActionStatuses(order.status);
                     const suggestedStatus = getNextSuggestedStatus(order);
+                    const meta = STATUS_META[order.status];
 
                     return (
-                      <div key={order.id} className="px-4 sm:px-5 py-4 space-y-2.5">
+                      <div key={order.id} className="px-4 sm:px-5 py-4 space-y-3">
+                        {/* Card header */}
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-bold text-slate-900">{order.table.label || `Table ${order.table.number}`}</p>
-                            {!simpleView && <p className="text-xs text-slate-500">Created {timeAgo(order.createdAt)}</p>}
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-base leading-tight">
+                              {order.table.label || `Table ${order.table.number}`}
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">{timeAgo(order.createdAt)}</p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {!actionStatuses.includes(order.status) && (
-                              <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-300">
-                                {order.status}
-                              </span>
-                            )}
-                            {suggestedStatus && canUpdateStatus(suggestedStatus) && (
-                              <button
-                                onClick={() => updateOrderStatus(order.id, suggestedStatus)}
-                                className="text-xs px-2.5 py-1 rounded-full bg-orange-500 text-white border border-orange-500"
-                              >
-                                Next: {suggestedStatus}
-                              </button>
-                            )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.badge}`}>
+                              {meta.label}
+                            </span>
+                            <span className="text-sm font-extrabold text-slate-900">
+                              Rs. {fmt(order.total)}
+                            </span>
                           </div>
                         </div>
 
-                        {!simpleView ? (
-                          <>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-slate-700">
-                              {order.items.map((line) => (
-                                <div key={line.id} className="flex items-center justify-between">
-                                  <span>{line.quantity} x {line.itemName}</span>
-                                  <span>Rs. {line.lineTotal}</span>
-                                </div>
-                              ))}
-                            </div>
-
-                            {order.note && <p className="text-xs text-slate-500">Note: {order.note}</p>}
-                          </>
-                        ) : (
-                          <p className="text-xs text-slate-500">{order.items.length} item(s)</p>
+                        {/* Items */}
+                        {!simpleView && (
+                          <div className="bg-slate-50 rounded-xl px-3 py-2.5 space-y-1.5">
+                            {order.items.map((line) => (
+                              <div key={line.id} className="flex items-center justify-between text-sm text-slate-700">
+                                <span className="font-medium">{line.quantity} × {line.itemName}</span>
+                                <span className="text-slate-500 font-medium">Rs. {fmt(line.lineTotal)}</span>
+                              </div>
+                            ))}
+                            {order.note && (
+                              <p className="text-xs text-slate-500 italic pt-1 border-t border-slate-200 mt-1">
+                                "{order.note}"
+                              </p>
+                            )}
+                          </div>
                         )}
 
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                          <div className="flex flex-wrap gap-2">
-                            {actionStatuses.map((status) => (
+                        {simpleView && (
+                          <p className="text-xs text-slate-500">
+                            {order.items.length} item{order.items.length !== 1 ? "s" : ""}
+                            {order.note && <span className="italic ml-1">· Note attached</span>}
+                          </p>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex flex-wrap gap-2">
+                          {suggestedStatus && canUpdateStatus(suggestedStatus) && (
+                            <button
+                              onClick={() => updateOrderStatus(order.id, suggestedStatus)}
+                              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold transition"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                              </svg>
+                              {suggestedStatus}
+                            </button>
+                          )}
+                          {actionStatuses
+                            .filter((s) => s !== suggestedStatus)
+                            .map((status) => (
                               <button
                                 key={status}
                                 onClick={() => updateOrderStatus(order.id, status)}
-                                disabled={!canUpdateStatus(status)}
-                                title={!canUpdateStatus(status) ? "Not allowed for your role" : ""}
-                                className={`text-xs px-2.5 py-1 rounded-full border disabled:opacity-40 ${order.status === status ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300"}`}
+                                className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
+                                  status === "CANCELED"
+                                    ? "border-red-200 text-red-500 bg-red-50 hover:bg-red-100"
+                                    : "border-slate-300 text-slate-600 bg-white hover:bg-slate-50"
+                                }`}
                               >
                                 {status}
                               </button>
                             ))}
-                          </div>
-                          <p className="font-bold text-slate-900">Total Rs. {order.total}</p>
                         </div>
                       </div>
                     );
@@ -902,7 +939,7 @@ export default function StaffPage() {
                         <div key={item.id} className="rounded-lg border border-slate-200 px-2.5 py-2 flex items-center justify-between gap-2">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-900 truncate">{item.name}</p>
-                            <p className="text-[11px] text-slate-500">Rs. {item.price}</p>
+                            <p className="text-[11px] text-slate-500">Rs. {fmt(item.price)}</p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <button onClick={() => decrementItem(item.id)} className="w-6 h-6 rounded-md border border-slate-300 text-slate-700">-</button>
@@ -924,8 +961,8 @@ export default function StaffPage() {
                         ) : (
                           orderDraft.map((row) => (
                             <div key={row.itemId} className="flex items-center justify-between text-sm">
-                              <span>{row.quantity} x {row.itemName}</span>
-                              <span className="font-semibold">Rs. {row.lineTotal}</span>
+                              <span>{row.quantity} × {row.itemName}</span>
+                              <span className="font-semibold">Rs. {fmt(row.lineTotal)}</span>
                             </div>
                           ))
                         )}
@@ -939,7 +976,7 @@ export default function StaffPage() {
                       />
                       <div className="flex items-center justify-between mt-3">
                         <span className="text-sm text-slate-600">Total</span>
-                        <span className="text-lg font-extrabold text-slate-900">Rs. {orderTotal}</span>
+                        <span className="text-lg font-extrabold text-slate-900">Rs. {fmt(orderTotal)}</span>
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button onClick={clearDraft} className="btn-soft flex-1">Clear</button>

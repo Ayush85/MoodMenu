@@ -42,7 +42,11 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   if (!restaurant) notFound();
 
   // Fetch weather & evaluate mood
-  const weather = await getWeather(restaurant.city);
+  const weather = await getWeather({
+    city: restaurant.city,
+    latitude: restaurant.latitude,
+    longitude: restaurant.longitude,
+  });
 
   const rules = restaurant.moodRules.map((r) => ({
     name: r.name,

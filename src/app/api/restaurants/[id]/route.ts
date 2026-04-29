@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { geocodeLocation } from "@/lib/weather";
 
 export async function GET(
   _req: NextRequest,
@@ -69,6 +70,20 @@ export async function PATCH(
       longitude: data.longitude,
     },
   });
+
+  if ((data.latitude === undefined || data.longitude === undefined) && data.city) {
+    const coordinates = await geocodeLocation(data.city);
+    if (coordinates) {
+      const withCoordinates = await prisma.restaurant.update({
+        where: { id },
+        data: {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        },
+      });
+      return NextResponse.json(withCoordinates);
+    }
+  }
 
   return NextResponse.json(updated);
 }

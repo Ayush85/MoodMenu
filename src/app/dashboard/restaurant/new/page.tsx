@@ -100,7 +100,7 @@ export default function NewRestaurantPage() {
             placeholder="Kathmandu"
           />
           <p className="text-xs text-gray-400 mt-1.5">
-            Used for weather-based menu adaptation
+            Used to automatically resolve the restaurant location for weather-based menu adaptation
           </p>
         </div>
         <div>

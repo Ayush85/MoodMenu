@@ -3,12 +3,24 @@ import { getWeather } from "@/lib/weather";
 
 export async function GET(req: NextRequest) {
   const city = req.nextUrl.searchParams.get("city");
+  const latitude = req.nextUrl.searchParams.get("lat");
+  const longitude = req.nextUrl.searchParams.get("lon");
 
-  if (!city) {
-    return NextResponse.json({ error: "City is required" }, { status: 400 });
+  const parsedLatitude = latitude !== null ? Number(latitude) : null;
+  const parsedLongitude = longitude !== null ? Number(longitude) : null;
+
+  if (!city && (parsedLatitude === null || parsedLongitude === null)) {
+    return NextResponse.json(
+      { error: "City or latitude/longitude is required" },
+      { status: 400 }
+    );
   }
 
-  const weather = await getWeather(city);
+  const weather = await getWeather({
+    city,
+    latitude: parsedLatitude,
+    longitude: parsedLongitude,
+  });
 
   if (!weather) {
     return NextResponse.json(

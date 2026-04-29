@@ -1,12 +1,32 @@
 import { WeatherData } from "@/types";
 
-export async function getWeather(city: string): Promise<WeatherData | null> {
+interface WeatherLocation {
+  city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export async function getWeather(location: WeatherLocation): Promise<WeatherData | null> {
   const apiKey = process.env.OPENWEATHERMAP_API_KEY;
   if (!apiKey) return null;
 
+  const hasCoordinates =
+    typeof location.latitude === "number" &&
+    Number.isFinite(location.latitude) &&
+    typeof location.longitude === "number" &&
+    Number.isFinite(location.longitude);
+
+  const query = hasCoordinates
+    ? `lat=${location.latitude}&lon=${location.longitude}`
+    : location.city
+      ? `q=${encodeURIComponent(location.city)}`
+      : null;
+
+  if (!query) return null;
+
   try {
     const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric`,
+      `https://api.openweathermap.org/data/2.5/weather?${query}&appid=${apiKey}&units=metric`,
       { next: { revalidate: 1800 } } // Cache for 30 minutes (works on Vercel + self-hosted)
     );
 
@@ -22,6 +42,30 @@ export async function getWeather(city: string): Promise<WeatherData | null> {
     };
 
     return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function geocodeLocation(city: string): Promise<{ latitude: number; longitude: number } | null> {
+  const apiKey = process.env.OPENWEATHERMAP_API_KEY;
+  if (!apiKey || !city.trim()) return null;
+
+  try {
+    const res = await fetch(
+      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${apiKey}`,
+      { next: { revalidate: 86400 } }
+    );
+
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    if (!Array.isArray(json) || json.length === 0) return null;
+
+    const match = json[0];
+    if (typeof match?.lat !== "number" || typeof match?.lon !== "number") return null;
+
+    return { latitude: match.lat, longitude: match.lon };
   } catch {
     return null;
   }

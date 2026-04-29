@@ -63,6 +63,16 @@ export default function MenuManagePage() {
   const [editForm, setEditForm] = useState({ name: "", description: "", price: "", tags: "", image: "" });
   const [savingEdit, setSavingEdit] = useState(false);
 
+  // Photo import state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<string | null>(null);
+  const [importParsed, setImportParsed] = useState<{ categories: { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] }[] } | null>(null);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSaving, setImportSaving] = useState(false);
+  const [selectedImportItems, setSelectedImportItems] = useState<Set<string>>(new Set());
+
   function fetchRestaurant() {
     fetch(`/api/restaurants/${id}`)
       .then((res) => res.json())
@@ -227,6 +237,80 @@ export default function MenuManagePage() {
     }
   }
 
+  function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFile(file);
+    setImportParsed(null);
+    setImportError(null);
+    setSelectedImportItems(new Set());
+    const url = URL.createObjectURL(file);
+    setImportPreview(url);
+  }
+
+  async function runImport() {
+    if (!importFile) return;
+    setImportLoading(true);
+    setImportError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", importFile);
+      const res = await fetch(`/api/restaurants/${id}/import-from-photo`, { method: "POST", body: fd });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to parse menu");
+      }
+      const data = await res.json();
+      setImportParsed(data);
+      const allKeys = new Set<string>();
+      data.categories.forEach((cat: { name: string; items: { name: string }[] }, ci: number) => {
+        cat.items.forEach((_: unknown, ii: number) => allKeys.add(`${ci}-${ii}`));
+      });
+      setSelectedImportItems(allKeys);
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
+  async function saveImportedItems() {
+    if (!importParsed) return;
+    setImportSaving(true);
+    for (const [ci, cat] of importParsed.categories.entries()) {
+      const catRes = await fetch(`/api/restaurants/${id}/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: cat.name }),
+      });
+      const catData = await catRes.json();
+      const categoryId = catData.id;
+      for (const [ii, item] of cat.items.entries()) {
+        if (!selectedImportItems.has(`${ci}-${ii}`)) continue;
+        await fetch(`/api/restaurants/${id}/items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...item, categoryId }),
+        });
+      }
+    }
+    setImportSaving(false);
+    setShowImportModal(false);
+    setImportFile(null);
+    setImportPreview(null);
+    setImportParsed(null);
+    toast("Menu imported successfully");
+    fetchRestaurant();
+  }
+
+  function toggleImportItem(key: string) {
+    setSelectedImportItems((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }
+
   if (loading) {
     return (
       <div className="page-shell">
@@ -338,7 +422,7 @@ export default function MenuManagePage() {
         </Link>
       </div>
 
-      {/* Add Category */}
+      {/* Add Category + Import from Photo */}
       <div className="flex flex-col sm:flex-row gap-3 mb-8">
         <input
           type="text"
@@ -359,6 +443,16 @@ export default function MenuManagePage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
           )}
           {savingCategory ? "Adding..." : "Add Category"}
+        </button>
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-violet-50 text-violet-700 hover:bg-violet-100 border border-violet-200 transition w-full sm:w-auto justify-center"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Import from Photo
         </button>
       </div>
 
@@ -677,6 +771,163 @@ export default function MenuManagePage() {
           onConfirm={confirmAction.onConfirm}
           onCancel={() => setConfirmAction(null)}
         />
+      )}
+
+      {/* Import from Photo Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => { if (!importLoading && !importSaving) setShowImportModal(false); }} />
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Import Menu from Photo</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Take or upload a photo of your physical menu — AI will extract all items automatically</p>
+              </div>
+              <button onClick={() => setShowImportModal(false)} className="text-gray-400 hover:text-gray-600 ml-4 shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Upload area */}
+              {!importParsed && (
+                <div>
+                  <label className="block w-full cursor-pointer">
+                    <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition ${importFile ? "border-violet-300 bg-violet-50" : "border-gray-200 hover:border-violet-300 hover:bg-violet-50/50"}`}>
+                      {importPreview ? (
+                        <img src={importPreview} alt="Menu preview" className="max-h-48 mx-auto rounded-xl object-contain mb-3" />
+                      ) : (
+                        <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-7 h-7 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                      )}
+                      <p className="text-sm font-medium text-gray-700">{importFile ? importFile.name : "Click to select or take a photo"}</p>
+                      <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP up to 10MB · Use camera to scan physical menu</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleImportFileChange}
+                    />
+                  </label>
+
+                  {importError && (
+                    <div className="mt-3 flex items-center gap-2 text-red-600 text-sm bg-red-50 rounded-xl px-4 py-3">
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      {importError}
+                    </div>
+                  )}
+
+                  <button
+                    onClick={runImport}
+                    disabled={!importFile || importLoading}
+                    className="mt-4 w-full py-3 rounded-xl font-semibold text-sm bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+                  >
+                    {importLoading ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                        Scanning menu with AI...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                        </svg>
+                        Scan & Extract Menu Items
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {/* Parsed results */}
+              {importParsed && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-gray-700">
+                      Found {importParsed.categories.reduce((s, c) => s + c.items.length, 0)} items in {importParsed.categories.length} categories
+                    </p>
+                    <button onClick={() => { setImportParsed(null); setImportFile(null); setImportPreview(null); }} className="text-xs text-violet-600 hover:text-violet-700 font-medium">
+                      Try another photo
+                    </button>
+                  </div>
+
+                  <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                    {importParsed.categories.map((cat, ci) => (
+                      <div key={ci} className="border border-gray-100 rounded-xl overflow-hidden">
+                        <div className="px-4 py-2.5 bg-gray-50 flex items-center gap-2">
+                          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-violet-500 to-purple-600" />
+                          <span className="text-sm font-bold text-gray-800">{cat.name}</span>
+                          <span className="text-xs text-gray-400 ml-auto">{cat.items.length} items</span>
+                        </div>
+                        <div className="divide-y divide-gray-50">
+                          {cat.items.map((item, ii) => {
+                            const key = `${ci}-${ii}`;
+                            const selected = selectedImportItems.has(key);
+                            return (
+                              <label key={ii} className={`flex items-start gap-3 px-4 py-3 cursor-pointer transition ${selected ? "bg-violet-50/50" : "hover:bg-gray-50"}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={() => toggleImportItem(key)}
+                                  className="mt-0.5 accent-violet-600"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-medium text-gray-900">{item.name}</span>
+                                    <span className="text-sm font-bold text-gray-700 shrink-0">Rs. {item.price}</span>
+                                  </div>
+                                  {item.description && (
+                                    <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</p>
+                                  )}
+                                  {item.tags.length > 0 && (
+                                    <div className="flex gap-1 mt-1 flex-wrap">
+                                      {item.tags.map((tag) => (
+                                        <span key={tag} className="text-[10px] bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded-full">{tag}</span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-3 pt-1">
+                    <button onClick={() => setShowImportModal(false)} className="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveImportedItems}
+                      disabled={importSaving || selectedImportItems.size === 0}
+                      className="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 transition flex items-center justify-center gap-2"
+                    >
+                      {importSaving ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                          Saving...
+                        </>
+                      ) : `Add ${selectedImportItems.size} Item${selectedImportItems.size !== 1 ? "s" : ""}`}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

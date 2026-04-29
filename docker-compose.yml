@@ -40,6 +40,7 @@ services:
       NEXT_PUBLIC_ONESIGNAL_APP_ID: ${NEXT_PUBLIC_ONESIGNAL_APP_ID:-}
       ONESIGNAL_REST_API_KEY: ${ONESIGNAL_REST_API_KEY:-}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moodmenu_prod_2026}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

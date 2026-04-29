@@ -91,9 +91,11 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="mb-8">
         <Link href="/dashboard" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center transition-all group-hover:shadow-lg group-hover:shadow-orange-500/20 group-hover:scale-105">
-            <span className="text-white text-sm font-black">M</span>
-          </div>
+          <img
+            src="/logo.png"
+            alt="MoodMenu"
+            className="w-9 h-9 rounded-xl object-cover transition-all group-hover:shadow-lg group-hover:shadow-orange-500/20 group-hover:scale-105"
+          />
           <div>
             <span className="text-lg font-bold text-white block leading-tight">
               MoodMenu
@@ -212,9 +214,7 @@ export default function Sidebar() {
         style={{ background: "rgba(15, 15, 20, 0.95)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
       >
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center">
-            <span className="text-white text-xs font-black">M</span>
-          </div>
+          <img src="/logo.png" alt="MoodMenu" className="w-8 h-8 rounded-lg object-cover" />
           <span className="text-base font-bold text-white">MoodMenu</span>
         </Link>
         <div className="flex items-center gap-2">

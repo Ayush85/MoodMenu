@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     "smart menu",
     "Nepal restaurant",
   ],
+  icons: {
+    icon: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({

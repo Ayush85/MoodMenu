@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: moodmenu
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./scripts/pg-start.sh:/pg-start.sh
+    entrypoint: ["/bin/sh", "/pg-start.sh"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U moodmenu"]
       interval: 5s

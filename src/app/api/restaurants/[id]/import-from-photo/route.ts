@@ -26,6 +26,61 @@ Rules:
 - Group items by their menu section
 - If no sections visible, use a single category called "Menu Items"`;
 
+function normalizeParsedMenu(raw: unknown) {
+  if (!raw || typeof raw !== "object") return null;
+
+  const categories = Array.isArray((raw as { categories?: unknown }).categories)
+    ? (raw as { categories: unknown[] }).categories
+        .map((category) => {
+          if (!category || typeof category !== "object") return null;
+
+          const name = typeof (category as { name?: unknown }).name === "string"
+            ? (category as { name: string }).name.trim()
+            : "Menu Items";
+
+          const items = Array.isArray((category as { items?: unknown }).items)
+            ? (category as { items: unknown[] }).items
+                .map((item) => {
+                  if (!item || typeof item !== "object") return null;
+
+                  const name = typeof (item as { name?: unknown }).name === "string"
+                    ? (item as { name: string }).name.trim()
+                    : "Unnamed Item";
+
+                  const description = typeof (item as { description?: unknown }).description === "string"
+                    ? (item as { description: string }).description.trim() || null
+                    : null;
+
+                  const priceValue = (item as { price?: unknown }).price;
+                  const price = typeof priceValue === "number"
+                    ? priceValue
+                    : typeof priceValue === "string"
+                      ? Number.parseFloat(priceValue.replace(/[^0-9.]/g, ""))
+                      : Number.NaN;
+
+                  const tags = Array.isArray((item as { tags?: unknown }).tags)
+                    ? (item as { tags: unknown[] }).tags.filter((tag) => typeof tag === "string").map((tag) => tag.trim()).filter(Boolean)
+                    : [];
+
+                  if (!name || Number.isNaN(price)) return null;
+
+                  return { name, description, price, tags };
+                })
+                .filter(Boolean)
+            : [];
+
+          if (!name) return null;
+
+          return { name, items };
+        })
+        .filter((category): category is { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] } => Boolean(category) && category.items.length > 0)
+    : [];
+
+  if (categories.length === 0) return null;
+
+  return { categories };
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -66,11 +121,14 @@ export async function POST(
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: { responseMimeType: "application/json" },
+    });
 
     const result = await model.generateContent([
-      { inlineData: { data: base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" } },
       PROMPT,
+      { inlineData: { data: base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" } },
     ]);
 
     const text = result.response.text();
@@ -79,7 +137,11 @@ export async function POST(
       return NextResponse.json({ error: "Could not parse menu from image" }, { status: 422 });
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = normalizeParsedMenu(JSON.parse(jsonMatch[0]));
+    if (!parsed) {
+      return NextResponse.json({ error: "No menu items found in the image" }, { status: 422 });
+    }
+
     return NextResponse.json(parsed);
   } catch (err) {
     console.error("Menu import error:", err);

@@ -277,30 +277,44 @@ export default function MenuManagePage() {
   async function saveImportedItems() {
     if (!importParsed) return;
     setImportSaving(true);
-    for (const [ci, cat] of importParsed.categories.entries()) {
-      const catRes = await fetch(`/api/restaurants/${id}/categories`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: cat.name }),
-      });
-      const catData = await catRes.json();
-      const categoryId = catData.id;
-      for (const [ii, item] of cat.items.entries()) {
-        if (!selectedImportItems.has(`${ci}-${ii}`)) continue;
-        await fetch(`/api/restaurants/${id}/items`, {
+    try {
+      for (const [ci, cat] of importParsed.categories.entries()) {
+        const catRes = await fetch(`/api/restaurants/${id}/categories`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...item, categoryId }),
+          body: JSON.stringify({ name: cat.name }),
         });
+        if (!catRes.ok) {
+          const err = await catRes.json().catch(() => ({}));
+          throw new Error(err.error || `Failed to create category: ${cat.name}`);
+        }
+
+        const catData = await catRes.json();
+        const categoryId = catData.id;
+        for (const [ii, item] of cat.items.entries()) {
+          if (!selectedImportItems.has(`${ci}-${ii}`)) continue;
+          const itemRes = await fetch(`/api/restaurants/${id}/items`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ...item, categoryId }),
+          });
+          if (!itemRes.ok) {
+            const err = await itemRes.json().catch(() => ({}));
+            throw new Error(err.error || `Failed to create item: ${item.name}`);
+          }
+        }
       }
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportPreview(null);
+      setImportParsed(null);
+      toast("Menu imported successfully");
+      fetchRestaurant();
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : "Failed to import menu");
+    } finally {
+      setImportSaving(false);
     }
-    setImportSaving(false);
-    setShowImportModal(false);
-    setImportFile(null);
-    setImportPreview(null);
-    setImportParsed(null);
-    toast("Menu imported successfully");
-    fetchRestaurant();
   }
 
   function toggleImportItem(key: string) {

@@ -590,14 +590,14 @@ export default function StaffPage() {
         {canUseCalls && (
           <button
             onClick={() => setActiveTab("calls")}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "calls" ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "calls" ? "btn-primary !py-2 !rounded-xl" : "text-slate-700 hover:bg-slate-100"}`}
           >
             Calls Desk
           </button>
         )}
         <button
           onClick={() => setActiveTab("orders")}
-          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "orders" ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"}`}
+          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "orders" ? "btn-primary !py-2 !rounded-xl" : "text-slate-700 hover:bg-slate-100"}`}
         >
           Orders Desk
         </button>

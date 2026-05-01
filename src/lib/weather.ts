@@ -16,13 +16,13 @@ export async function getWeather(location: WeatherLocation): Promise<WeatherData
     typeof location.longitude === "number" &&
     Number.isFinite(location.longitude);
 
+  const DEFAULT_CITY = "Kathmandu";
+
   const query = hasCoordinates
     ? `lat=${location.latitude}&lon=${location.longitude}`
     : location.city
       ? `q=${encodeURIComponent(location.city)}`
-      : null;
-
-  if (!query) return null;
+      : `q=${encodeURIComponent(DEFAULT_CITY)}`;
 
   try {
     const res = await fetch(

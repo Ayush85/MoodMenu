@@ -27,8 +27,8 @@ export const metadata: Metadata = {
     "Nepal restaurant",
   ],
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    icon: "/logo-kathmandu.svg",
+    apple: "/logo-kathmandu.svg",
   },
 };
 

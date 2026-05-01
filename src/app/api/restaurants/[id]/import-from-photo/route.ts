@@ -73,7 +73,7 @@ function normalizeParsedMenu(raw: unknown) {
 
           return { name, items };
         })
-        .filter((category): category is { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] } => Boolean(category) && category.items.length > 0)
+        .filter((category): category is { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] } => category !== null && category.items.length > 0)
     : [];
 
   if (categories.length === 0) return null;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 
 const PROMPT = `You are a menu parser. Extract all menu items from this menu image.
 Return ONLY valid JSON with this exact structure, no markdown, no explanation:
@@ -59,7 +60,7 @@ function normalizeParsedMenu(raw: unknown) {
                       : Number.NaN;
 
                   const tags = Array.isArray((item as { tags?: unknown }).tags)
-                    ? (item as { tags: unknown[] }).tags.filter((tag) => typeof tag === "string").map((tag) => tag.trim()).filter(Boolean)
+                    ? (item as { tags: unknown[] }).tags.filter((tag) => typeof tag === "string").map((tag) => (tag as string).trim()).filter(Boolean)
                     : [];
 
                   if (!name || Number.isNaN(price)) return null;
@@ -81,6 +82,46 @@ function normalizeParsedMenu(raw: unknown) {
   return { categories };
 }
 
+async function parseWithGemini(base64: string, mimeType: string): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash-lite",
+    generationConfig: { responseMimeType: "application/json" },
+  });
+
+  const result = await model.generateContent([
+    PROMPT,
+    { inlineData: { data: base64, mimeType: mimeType as "image/jpeg" | "image/png" | "image/webp" } },
+  ]);
+
+  return result.response.text();
+}
+
+async function parseWithOpenAI(base64: string, mimeType: string): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
+
+  const client = new OpenAI({ apiKey });
+  const response = await client.chat.completions.create({
+    model: "gpt-4o-mini",
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: PROMPT },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } },
+        ],
+      },
+    ],
+  });
+
+  return response.choices[0]?.message?.content ?? "";
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -95,9 +136,12 @@ export async function POST(
     return NextResponse.json({ error: "Restaurant ID required" }, { status: 400 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "Gemini API key not configured" }, { status: 503 });
+  const provider = process.env.AI_PROVIDER?.toLowerCase();
+  if (!provider || (provider !== "gemini" && provider !== "openai")) {
+    return NextResponse.json(
+      { error: "AI_PROVIDER must be set to 'gemini' or 'openai' in your environment" },
+      { status: 503 }
+    );
   }
 
   const formData = await req.formData();
@@ -109,7 +153,7 @@ export async function POST(
 
   const allowed = ["image/jpeg", "image/png", "image/webp"];
   if (!allowed.includes(file.type)) {
-    return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid file type. Use JPG, PNG, or WebP." }, { status: 400 });
   }
 
   if (file.size > 10 * 1024 * 1024) {
@@ -120,18 +164,10 @@ export async function POST(
   const base64 = Buffer.from(bytes).toString("base64");
 
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
-    });
+    const text = provider === "openai"
+      ? await parseWithOpenAI(base64, file.type)
+      : await parseWithGemini(base64, file.type);
 
-    const result = await model.generateContent([
-      PROMPT,
-      { inlineData: { data: base64, mimeType: file.type as "image/jpeg" | "image/png" | "image/webp" } },
-    ]);
-
-    const text = result.response.text();
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return NextResponse.json({ error: "Could not parse menu from image" }, { status: 422 });
@@ -144,7 +180,8 @@ export async function POST(
 
     return NextResponse.json(parsed);
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to process image";
     console.error("Menu import error:", err);
-    return NextResponse.json({ error: "Failed to process image" }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

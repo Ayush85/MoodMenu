@@ -139,16 +139,9 @@ export default function QRCodePage() {
   // ========== NORMAL VIEW ==========
   return (
     <div className="page-shell animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-8">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <span className="text-2xl">📱</span> QR Codes
-          </h1>
-          <p className="page-subtitle mt-1">Print table tent cards for your restaurant</p>
-        </div>
-        <Link href={`/dashboard/restaurant/${id}/menu`} className="btn-soft !text-sm">
-          ← Back to Menu
-        </Link>
+      <div className="mb-8">
+        <h1 className="page-title">QR Codes</h1>
+        <p className="page-subtitle mt-1">Print table tent cards for your restaurant</p>
       </div>
 
       {/* Customer Flow Explainer */}

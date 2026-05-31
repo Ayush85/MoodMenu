@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import * as XLSX from "xlsx";
 
 interface MenuItem {
   id: string;
@@ -43,13 +43,6 @@ interface CsvRow {
   _key: string; // row index as string
 }
 
-const NAV_ITEMS = [
-  { key: "menu",   label: "Menu",        icon: "M4 6h16M4 12h16M4 18h7" },
-  { key: "tables", label: "Tables & WiFi", icon: "M3 10h18M3 14h18M3 6h18M3 18h18" },
-  { key: "staff",  label: "Staff",       icon: "M17 20h5V4H2v16h5m10 0v-8a2 2 0 00-2-2H9a2 2 0 00-2 2v8m10 0H7" },
-  { key: "mood",   label: "Mood Rules",  icon: "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" },
-  { key: "qr",     label: "QR Codes",   icon: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" },
-];
 
 const CSV_TEMPLATE_HEADER = "Category,Name,Description,Price,Tags";
 const CSV_TEMPLATE_ROWS = [
@@ -388,29 +381,45 @@ export default function MenuManagePage() {
   }
 
   async function savePhotoImportedItems() {
-    if (!importParsed) return;
+    if (!importParsed || !restaurant) return;
     setImportSaving(true);
+    setImportError(null);
     try {
+      // Build map of existing categories to avoid duplicates
+      const catMap: Record<string, string> = {};
+      for (const cat of restaurant.categories) {
+        catMap[cat.name.toLowerCase()] = cat.id;
+      }
+
+      let totalAdded = 0;
       for (const [ci, cat] of importParsed.categories.entries()) {
-        const catRes = await fetch(`/api/restaurants/${id}/categories`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: cat.name }),
-        });
-        if (!catRes.ok) throw new Error(`Failed to create category: ${cat.name}`);
-        const catData = await catRes.json();
-        const categoryId = catData.id;
-        for (const [ii, item] of cat.items.entries()) {
-          if (!selectedImportItems.has(`${ci}-${ii}`)) continue;
+        const selectedItems = cat.items.filter((_, ii) => selectedImportItems.has(`${ci}-${ii}`));
+        if (selectedItems.length === 0) continue;
+
+        let categoryId = catMap[cat.name.toLowerCase()];
+        if (!categoryId) {
+          const catRes = await fetch(`/api/restaurants/${id}/categories`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: cat.name }),
+          });
+          if (!catRes.ok) throw new Error(`Failed to create category: ${cat.name}`);
+          const catData = await catRes.json();
+          categoryId = catData.id;
+          catMap[cat.name.toLowerCase()] = categoryId;
+        }
+
+        for (const item of selectedItems) {
           await fetch(`/api/restaurants/${id}/items`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...item, categoryId }),
           });
+          totalAdded++;
         }
       }
       resetImportModal();
-      toast("Menu imported successfully");
+      toast(`Imported ${totalAdded} item${totalAdded !== 1 ? "s" : ""} successfully`);
       fetchRestaurant();
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Failed to import menu");
@@ -435,15 +444,32 @@ export default function MenuManagePage() {
     setCsvRows([]);
     setCsvErrors([]);
     setCsvSelected(new Set());
+
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      const text = ev.target?.result as string;
-      const { rows, errors } = parseCsv(text);
-      setCsvRows(rows);
-      setCsvErrors(errors);
-      setCsvSelected(new Set(rows.map((r) => r._key)));
-    };
-    reader.readAsText(file);
+
+    if (isExcel) {
+      reader.onload = (ev) => {
+        const data = ev.target?.result;
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const csvText = XLSX.utils.sheet_to_csv(ws);
+        const { rows, errors } = parseCsv(csvText);
+        setCsvRows(rows);
+        setCsvErrors(errors);
+        setCsvSelected(new Set(rows.map((r) => r._key)));
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const { rows, errors } = parseCsv(text);
+        setCsvRows(rows);
+        setCsvErrors(errors);
+        setCsvSelected(new Set(rows.map((r) => r._key)));
+      };
+      reader.readAsText(file);
+    }
   }
 
   function handleCsvPaste(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -607,36 +633,6 @@ export default function MenuManagePage() {
             {restaurant.city}
           </p>
         </div>
-      </div>
-
-      {/* ── Tab navigation ── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1 mb-6 -mx-1 px-1">
-        {NAV_ITEMS.map((item) => {
-          const href = item.key === "menu"
-            ? `/dashboard/restaurant/${id}/menu`
-            : `/dashboard/restaurant/${id}/${item.key}`;
-          const isActive = item.key === "menu";
-          return (
-            <Link key={item.key} href={href}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${
-                isActive ? "btn-primary !py-2 !px-4" : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={item.icon} />
-              </svg>
-              {item.label}
-            </Link>
-          );
-        })}
-        <Link href={`/menu/${restaurant.slug}`} target="_blank"
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium whitespace-nowrap btn-primary !py-2 !px-4"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-          </svg>
-          View Menu
-        </Link>
       </div>
 
       {/* ── Toolbar: add category + search + import ── */}
@@ -1055,6 +1051,7 @@ export default function MenuManagePage() {
                         <p className="text-xs text-violet-600 mt-0.5">
                           Columns: <span className="font-mono">Category, Name, Description, Price, Tags</span>
                         </p>
+                        <p className="text-xs text-violet-500 mt-0.5">Also accepts Excel (.xlsx / .xls)</p>
                       </div>
                       <button onClick={downloadTemplate}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition shrink-0"
@@ -1085,9 +1082,9 @@ export default function MenuManagePage() {
                             </svg>
                           </div>
                           <p className="text-sm font-medium text-gray-700">{csvFileName || "Click to upload CSV file"}</p>
-                          <p className="text-xs text-gray-400 mt-1">Supports .csv, .txt files</p>
+                          <p className="text-xs text-gray-400 mt-1">Supports .csv, .xlsx, .xls, .txt files</p>
                         </div>
-                        <input type="file" accept=".csv,.txt" className="hidden" onChange={handleCsvFile} />
+                        <input type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={handleCsvFile} />
                       </label>
 
                       <div className="relative">
@@ -1229,7 +1226,7 @@ export default function MenuManagePage() {
                           <p className="text-sm font-medium text-gray-700">{importFile ? importFile.name : "Click to select or take a photo"}</p>
                           <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP up to 10MB</p>
                         </div>
-                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImportFileChange} />
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImportFileChange} />
                       </label>
 
                       {importError && (

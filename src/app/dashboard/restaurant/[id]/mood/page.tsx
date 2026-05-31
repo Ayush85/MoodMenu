@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { MOOD_PRESETS } from "@/types";
@@ -167,18 +166,9 @@ export default function MoodRulesPage() {
 
   return (
     <div className="page-shell max-w-5xl animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <div>
-          <h1 className="page-title flex items-center gap-2">
-            <span className="text-2xl">🎨</span> Mood & Specials
-          </h1>
-          <p className="page-subtitle mt-1">
-            Configure menu adaptation and today&apos;s specials
-          </p>
-        </div>
-        <Link href={`/dashboard/restaurant/${id}/menu`} className="btn-soft !text-sm">
-          ← Back to Menu
-        </Link>
+      <div className="mb-6">
+        <h1 className="page-title">Mood & Specials</h1>
+        <p className="page-subtitle mt-1">Configure menu adaptation and today&apos;s specials</p>
       </div>
 
       {/* Tabs */}
@@ -206,7 +196,7 @@ export default function MoodRulesPage() {
               <h2 className="text-base font-bold text-gray-900">Active Rules</h2>
               <button
                 onClick={() => setShowCustomForm(!showCustomForm)}
-                className="btn-primary !text-xs !px-3 !py-1.5"
+                className="btn-primary text-xs! px-3! py-1.5!"
               >
                 {showCustomForm ? "Cancel" : "+ Custom Rule"}
               </button>
@@ -357,7 +347,7 @@ export default function MoodRulesPage() {
                 <button
                   key={key}
                   onClick={() => addPreset(key)}
-                  className="surface-card p-4 text-left hover:!shadow-lg hover:-translate-y-0.5 transition-all group"
+                  className="surface-card p-4 text-left hover:shadow-lg! hover:-translate-y-0.5 transition-all group"
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <div className="w-8 h-8 rounded-lg group-hover:scale-110 transition-transform" style={{ background: `linear-gradient(135deg, ${preset.theme.primary}, ${preset.theme.accent})` }} />

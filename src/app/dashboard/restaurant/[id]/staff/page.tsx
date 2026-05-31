@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/Toast";
 
@@ -557,12 +558,33 @@ export default function StaffPage() {
             <span className="text-xs px-2.5 py-1 rounded-full bg-slate-900 text-white font-semibold">
               {actorType === "USER" ? "Admin" : (staffRole || "Staff")}
             </span>
-            <button
-              onClick={() => setSimpleView((v) => !v)}
-              className="text-xs px-2.5 py-1 rounded-lg border border-slate-300 bg-white text-slate-700"
-            >
-              {simpleView ? "Detailed View" : "Simple View"}
-            </button>
+            <div className="flex items-center gap-2">
+              {canUseCalls && (
+                <Link
+                  href={`/dashboard/restaurant/${id}/live`}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition relative overflow-hidden"
+                >
+                  {pendingCalls.length > 0 && (
+                    <span className="absolute inset-0 bg-red-400 animate-ping opacity-30 rounded-xl" />
+                  )}
+                  <svg className="w-3.5 h-3.5 relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  <span className="relative">Live Board</span>
+                  {pendingCalls.length > 0 && (
+                    <span className="relative bg-white text-red-600 text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center leading-none">
+                      {pendingCalls.length}
+                    </span>
+                  )}
+                </Link>
+              )}
+              <button
+                onClick={() => setSimpleView((v) => !v)}
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition"
+              >
+                {simpleView ? "Detailed" : "Simple"}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -592,15 +614,24 @@ export default function StaffPage() {
             onClick={() => setActiveTab("calls")}
             className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "calls" ? "btn-primary !py-2 !rounded-xl" : "text-slate-700 hover:bg-slate-100"}`}
           >
-            Calls Desk
+            🔔 Calls Desk
           </button>
         )}
         <button
           onClick={() => setActiveTab("orders")}
           className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "orders" ? "btn-primary !py-2 !rounded-xl" : "text-slate-700 hover:bg-slate-100"}`}
         >
-          Orders Desk
+          📋 Orders Desk
         </button>
+        {canUseCalls && (
+          <Link
+            href={`/dashboard/restaurant/${id}/live`}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-gray-950 text-white hover:bg-gray-800 transition whitespace-nowrap"
+          >
+            <span className={`w-2 h-2 rounded-full ${pendingCalls.length > 0 ? "bg-red-400 animate-pulse" : "bg-emerald-400"}`} />
+            Full Screen
+          </Link>
+        )}
       </div>
 
       {activeTab === "calls" && canUseCalls && (

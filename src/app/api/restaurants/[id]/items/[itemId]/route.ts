@@ -32,6 +32,16 @@ export async function PATCH(
 
   const data = await req.json();
 
+  // If moving to another category, validate the target belongs to this restaurant
+  if (data.categoryId) {
+    const targetCat = await prisma.category.findFirst({
+      where: { id: data.categoryId, restaurantId: id },
+    });
+    if (!targetCat) {
+      return NextResponse.json({ error: "Target category not found" }, { status: 404 });
+    }
+  }
+
   const updated = await prisma.menuItem.update({
     where: { id: itemId },
     data: {
@@ -42,6 +52,7 @@ export async function PATCH(
       tags: data.tags,
       isAvailable: data.isAvailable,
       isSpecial: data.isSpecial,
+      categoryId: data.categoryId,
     },
   });
 

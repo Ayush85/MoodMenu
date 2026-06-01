@@ -29,6 +29,8 @@ export default function TablesPage() {
   const [detectedIp, setDetectedIp] = useState("");
   const [loading, setLoading] = useState(true);
   const [wifiSaved, setWifiSaved] = useState(false);
+  const [resettingTable, setResettingTable] = useState<string | null>(null);
+  const [activeSessions, setActiveSessions] = useState<Record<string, boolean>>({});
 
   function fetchData() {
     Promise.all([
@@ -48,6 +50,7 @@ export default function TablesPage() {
 
   useEffect(() => {
     fetchData();
+    fetchSessions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -67,6 +70,39 @@ export default function TablesPage() {
       body: JSON.stringify({ tableId }),
     });
     fetchData();
+  }
+
+  async function fetchSessions() {
+    try {
+      const res = await fetch(`/api/restaurants/${id}/sessions?status=ACTIVE`);
+      if (!res.ok) return;
+      const sessions: { tableId: string }[] = await res.json();
+      const map: Record<string, boolean> = {};
+      sessions.forEach((s) => { map[s.tableId] = true; });
+      setActiveSessions(map);
+    } catch { /* silent */ }
+  }
+
+  async function resetSession(tableId: string) {
+    setResettingTable(tableId);
+    try {
+      // Find and close the active session for this table via the sessions API
+      const res = await fetch(`/api/restaurants/${id}/sessions?status=ACTIVE`);
+      if (res.ok) {
+        const sessions: { id: string; tableId: string }[] = await res.json();
+        const session = sessions.find((s) => s.tableId === tableId);
+        if (session) {
+          await fetch(`/api/restaurants/${id}/sessions/${session.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "close" }),
+          });
+        }
+      }
+      await fetchSessions();
+    } finally {
+      setResettingTable(null);
+    }
   }
 
   async function saveWifi() {
@@ -231,21 +267,47 @@ export default function TablesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
-            {tables.map((table) => (
-              <div
-                key={table.id}
-                className="relative group bg-gradient-to-br from-gray-50 to-white rounded-xl p-4 text-center border border-gray-200 hover:border-orange-300 hover:shadow-md transition-all duration-200"
-              >
-                <p className="text-2xl font-extrabold text-gray-900">{table.number}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{table.label || "Table"}</p>
-                <button
-                  onClick={() => deleteTable(table.id)}
-                  className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-sm hover:bg-red-600"
+            {tables.map((table) => {
+              const hasSession = !!activeSessions[table.id];
+              return (
+                <div
+                  key={table.id}
+                  className={`relative group rounded-xl p-3 text-center border transition-all duration-200 ${
+                    hasSession
+                      ? "bg-orange-50 border-orange-300 shadow-sm"
+                      : "bg-gray-50 border-gray-200 hover:border-orange-300 hover:shadow-md"
+                  }`}
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  {/* Active session dot */}
+                  {hasSession && (
+                    <div className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                  )}
+
+                  <p className="text-xl font-extrabold text-gray-900">{table.number}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5 truncate">{table.label || "Table"}</p>
+
+                  {/* Reset session button — only shown when session is active */}
+                  {hasSession && (
+                    <button
+                      onClick={() => resetSession(table.id)}
+                      disabled={resettingTable === table.id}
+                      title="Reset session (mark bill paid)"
+                      className="mt-1.5 w-full text-[9px] font-bold text-orange-600 bg-orange-100 hover:bg-orange-200 rounded-lg py-0.5 transition disabled:opacity-50"
+                    >
+                      {resettingTable === table.id ? "…" : "Reset"}
+                    </button>
+                  )}
+
+                  {/* Delete button */}
+                  <button
+                    onClick={() => deleteTable(table.id)}
+                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-[10px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-sm hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

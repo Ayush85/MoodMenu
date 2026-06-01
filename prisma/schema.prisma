@@ -27,6 +27,11 @@ enum OrderStatus {
   CANCELED
 }
 
+enum SessionStatus {
+  ACTIVE
+  CLOSED
+}
+
 enum StaffRole {
   WAITER
   COOK
@@ -63,6 +68,8 @@ model Restaurant {
   waiterCalls   WaiterCall[]
   orders        OrderTicket[]
   staffMembers  RestaurantStaff[]
+  sessions      TableSession[]
+  expenses      Expense[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 }
@@ -81,15 +88,29 @@ model RestaurantStaff {
 }
 
 model RestaurantTable {
-  id            String       @id @default(cuid())
+  id            String         @id @default(cuid())
   number        Int
   label         String?
   restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   waiterCalls   WaiterCall[]
   orders        OrderTicket[]
+  sessions      TableSession[]
 
   @@unique([restaurantId, number])
+}
+
+model TableSession {
+  id            String         @id @default(cuid())
+  restaurantId  String
+  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId       String
+  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  status        SessionStatus  @default(ACTIVE)
+  totalAmount   Float          @default(0)
+  startedAt     DateTime       @default(now())
+  endedAt       DateTime?
+  orders        OrderTicket[]
 }
 
 model WaiterCall {
@@ -110,6 +131,8 @@ model OrderTicket {
   restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   tableId       String
   table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  sessionId     String?
+  session       TableSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   status        OrderStatus    @default(NEW)
   note          String?
   total         Float          @default(0)
@@ -150,6 +173,29 @@ model MenuItem {
   category      Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
+}
+
+enum ExpenseCategory {
+  INGREDIENTS
+  UTILITIES
+  STAFF
+  RENT
+  MAINTENANCE
+  MARKETING
+  EQUIPMENT
+  OTHER
+}
+
+model Expense {
+  id            String          @id @default(cuid())
+  restaurantId  String
+  restaurant    Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  title         String
+  amount        Float
+  category      ExpenseCategory @default(OTHER)
+  note          String?
+  date          DateTime        @default(now())
+  createdAt     DateTime        @default(now())
 }
 
 model MoodRule {

@@ -79,12 +79,12 @@ export default function QRCodePage() {
     return (
       <div>
         <div className="print:hidden flex items-center justify-between mb-6 px-4 pt-4">
-          <button onClick={() => setPrintMode(false)} className="btn-soft !text-sm">
+          <button onClick={() => setPrintMode(false)} className="btn-soft text-sm!">
             ← Back
           </button>
           <button
             onClick={() => window.print()}
-            className="btn-primary !text-sm"
+            className="btn-primary text-sm!"
           >
             Print All Cards
           </button>
@@ -145,9 +145,9 @@ export default function QRCodePage() {
       </div>
 
       {/* Customer Flow Explainer */}
-      <div className="surface-card p-5 sm:p-6 mb-6 border-l-4 border-blue-400">
+      <div className="surface-card p-5 sm:p-6 mb-6 bg-orange-50 border border-orange-100">
         <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           How it works for customers
@@ -155,7 +155,7 @@ export default function QRCodePage() {
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-8">
           {restaurant?.wifiSsid && (
             <div className="flex items-start gap-3">
-              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
+              <span className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center shrink-0">1</span>
               <div>
                 <p className="font-semibold text-gray-800 text-sm">Scan WiFi QR</p>
                 <p className="text-xs text-gray-500">Auto-connects to {restaurant.wifiSsid}</p>
@@ -163,7 +163,7 @@ export default function QRCodePage() {
             </div>
           )}
           <div className="flex items-start gap-3">
-            <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+            <span className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
               {restaurant?.wifiSsid ? "2" : "1"}
             </span>
             <div>
@@ -172,7 +172,7 @@ export default function QRCodePage() {
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+            <span className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-rose-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
               {restaurant?.wifiSsid ? "3" : "2"}
             </span>
             <div>
@@ -190,9 +190,7 @@ export default function QRCodePage() {
             <img src={wifiQR} alt="WiFi QR" className="w-28 h-28" />
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
-              📶 WiFi QR Code
-            </h3>
+            <h3 className="font-bold text-gray-900 text-lg">WiFi QR Code</h3>
             <p className="text-sm text-gray-500 mt-1">Customers scan this to auto-connect to your WiFi</p>
             <div className="mt-3 space-y-1">
               <p className="text-sm"><span className="text-gray-400">SSID:</span> <span className="font-mono font-bold text-gray-700">{restaurant?.wifiSsid}</span></p>
@@ -203,7 +201,7 @@ export default function QRCodePage() {
       )}
 
       {!restaurant?.wifiSsid && (
-        <div className="surface-card p-5 mb-6 border-l-4 border-amber-400">
+        <div className="surface-card p-5 mb-6 bg-amber-50 border border-amber-200">
           <p className="text-gray-800 font-semibold mb-1">WiFi not configured</p>
           <p className="text-sm text-gray-500">
             Set up WiFi in{" "}
@@ -237,7 +235,7 @@ export default function QRCodePage() {
             </h2>
             <button
               onClick={() => setPrintMode(true)}
-              className="btn-primary !text-sm w-full sm:w-auto"
+              className="btn-primary text-sm! w-full sm:w-auto"
             >
               Print All Table Cards
             </button>
@@ -279,7 +277,7 @@ export default function QRCodePage() {
           <p className="text-gray-500 text-sm mb-4">Add tables to generate per-table QR cards.</p>
           <Link
             href={`/dashboard/restaurant/${id}/tables`}
-            className="btn-primary !text-sm"
+            className="btn-primary text-sm!"
           >
             Add Tables
           </Link>

@@ -78,11 +78,26 @@ export async function PATCH(
   const updated = await prisma.orderTicket.update({
     where: { id: orderId },
     data: { status: status as OrderStatus },
-    include: {
-      table: true,
-      items: true,
-    },
+    include: { table: true, items: true },
   });
+
+  // Auto-close the session when all its orders are terminal (PAID or CANCELED)
+  if ((status === "PAID" || status === "CANCELED") && updated.sessionId) {
+    const sibling = await prisma.orderTicket.findFirst({
+      where: {
+        sessionId: updated.sessionId,
+        status: { notIn: ["PAID", "CANCELED"] },
+      },
+      select: { id: true },
+    });
+
+    if (!sibling) {
+      await prisma.tableSession.update({
+        where: { id: updated.sessionId },
+        data: { status: "CLOSED", endedAt: new Date() },
+      });
+    }
+  }
 
   return NextResponse.json(updated);
 }

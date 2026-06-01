@@ -236,6 +236,42 @@ img, video, canvas, svg {
     border-color: rgba(0,0,0,0.12);
   }
 
+  /* Danger button — for destructive actions */
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-red-500;
+    transition: all 0.2s ease;
+  }
+  .btn-danger:hover { @apply bg-red-600; transform: translateY(-1px); }
+  .btn-danger:active { transform: translateY(0); }
+  .btn-danger:disabled { @apply opacity-50 cursor-not-allowed; transform: none; }
+
+  /* Tab switcher — consistent across pages */
+  .tab-bar {
+    @apply rounded-2xl p-1.5 flex gap-1.5;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+  }
+  .tab-btn {
+    @apply flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition;
+    color: var(--text-secondary);
+  }
+  .tab-btn:hover { @apply bg-gray-100; }
+  .tab-btn-active {
+    @apply bg-orange-500 text-white shadow-sm;
+  }
+
+  /* Stat card — consistent KPI block */
+  .stat-card {
+    @apply rounded-2xl p-4 sm:p-5 flex items-center gap-3;
+    background: var(--surface);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+  }
+  .stat-card-icon {
+    @apply w-9 h-9 rounded-xl flex items-center justify-center shrink-0;
+  }
+
   /* Gradient text */
   .gradient-text {
     background: var(--brand-gradient);

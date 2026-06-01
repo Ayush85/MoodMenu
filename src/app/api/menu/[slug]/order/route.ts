@@ -114,15 +114,33 @@ export async function POST(
 
   const total = resolvedItems.reduce((sum, line) => sum + line.lineTotal, 0);
 
+  // Find or create active session for this table
+  let session = await prisma.tableSession.findFirst({
+    where: { restaurantId: restaurant.id, tableId: table.id, status: "ACTIVE" },
+  });
+
+  if (!session) {
+    session = await prisma.tableSession.create({
+      data: { restaurantId: restaurant.id, tableId: table.id, totalAmount: 0 },
+    });
+  }
+
   const order = await prisma.orderTicket.create({
     data: {
       restaurantId: restaurant.id,
       tableId: table.id,
+      sessionId: session.id,
       note,
       total,
       items: { create: resolvedItems },
     },
     include: { table: true, items: true },
+  });
+
+  // Update session total
+  await prisma.tableSession.update({
+    where: { id: session.id },
+    data: { totalAmount: { increment: total } },
   });
 
   // Push notification to owner + active waiters (non-blocking)
@@ -149,6 +167,7 @@ export async function POST(
     {
       id: order.id,
       status: order.status,
+      sessionId: session.id,
       tableNumber: order.table.number,
       tableLabel: order.table.label,
       total,

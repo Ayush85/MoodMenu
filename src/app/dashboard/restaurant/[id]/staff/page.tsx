@@ -100,6 +100,39 @@ export default function StaffPage() {
   const [simpleView, setSimpleView] = useState(true);
   const [orderPollKey, setOrderPollKey] = useState(0);
 
+  // Sessions
+  interface TableSessionData {
+    id: string;
+    status: string;
+    totalAmount: number;
+    startedAt: string;
+    table: { number: number; label: string | null };
+    orders: { id: string; status: string; total: number; items: { itemName: string; quantity: number }[] }[];
+  }
+  const [activeSessions, setActiveSessions] = useState<TableSessionData[]>([]);
+  const [closingSession, setClosingSession] = useState<string | null>(null);
+
+  async function fetchSessions() {
+    try {
+      const res = await fetch(`/api/restaurants/${id}/sessions?status=ACTIVE`);
+      if (res.ok) setActiveSessions(await res.json());
+    } catch { /* silent */ }
+  }
+
+  async function closeSession(sessionId: string) {
+    setClosingSession(sessionId);
+    try {
+      await fetch(`/api/restaurants/${id}/sessions/${sessionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "close" }),
+      });
+      await fetchSessions();
+    } finally {
+      setClosingSession(null);
+    }
+  }
+
   useEffect(() => {
     if (!canUseCalls && activeTab === "calls") {
       setActiveTab("orders");
@@ -177,7 +210,7 @@ export default function StaffPage() {
       });
   }, [id]);
 
-  // Poll orders every 8 seconds for real-time updates (customer + staff orders)
+  // Poll orders + sessions every 8 seconds
   useEffect(() => {
     function fetchOrders() {
       fetch(`/api/restaurants/${id}/orders`)
@@ -186,8 +219,9 @@ export default function StaffPage() {
         .catch(() => {});
     }
 
+    fetchSessions();
     fetchOrders();
-    const interval = setInterval(fetchOrders, 8000);
+    const interval = setInterval(() => { fetchOrders(); fetchSessions(); }, 8000);
     return () => clearInterval(interval);
   }, [id, orderPollKey]);
 
@@ -551,11 +585,11 @@ export default function StaffPage() {
       <header className="surface-card p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="page-title !text-2xl sm:!text-3xl">Staff Panel</h1>
+            <h1 className="page-title">Staff Panel</h1>
             <p className="page-subtitle mt-1">Action-first view for calls and orders</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <span className="text-xs px-2.5 py-1 rounded-full bg-slate-900 text-white font-semibold">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-gray-900 text-white font-semibold">
               {actorType === "USER" ? "Admin" : (staffRole || "Staff")}
             </span>
             <div className="flex items-center gap-2">
@@ -580,7 +614,7 @@ export default function StaffPage() {
               )}
               <button
                 onClick={() => setSimpleView((v) => !v)}
-                className="text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition"
+                className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
               >
                 {simpleView ? "Detailed" : "Simple"}
               </button>
@@ -588,7 +622,7 @@ export default function StaffPage() {
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2.5">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-red-600">Pending Calls</p>
             <p className="text-2xl font-extrabold text-red-900 leading-none mt-1">{pendingCalls.length}</p>
@@ -608,28 +642,47 @@ export default function StaffPage() {
         </div>
       </header>
 
-      <div className="surface-card p-2 flex gap-2">
+      <div className="surface-card p-1.5 flex gap-1.5">
         {canUseCalls && (
           <button
             onClick={() => setActiveTab("calls")}
-            className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "calls" ? "btn-primary !py-2 !rounded-xl" : "text-slate-700 hover:bg-slate-100"}`}
+            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+              activeTab === "calls"
+                ? "bg-orange-500 text-white shadow-sm"
+                : "text-gray-600 hover:bg-gray-100"
+            }`}
           >
-            🔔 Calls Desk
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            Calls
+            {pendingCalls.length > 0 && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === "calls" ? "bg-white/25 text-white" : "bg-red-100 text-red-600"}`}>
+                {pendingCalls.length}
+              </span>
+            )}
           </button>
         )}
         <button
           onClick={() => setActiveTab("orders")}
-          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "orders" ? "btn-primary !py-2 !rounded-xl" : "text-slate-700 hover:bg-slate-100"}`}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+            activeTab === "orders"
+              ? "bg-orange-500 text-white shadow-sm"
+              : "text-gray-600 hover:bg-gray-100"
+          }`}
         >
-          📋 Orders Desk
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          Orders
         </button>
         {canUseCalls && (
           <Link
             href={`/dashboard/restaurant/${id}/live`}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold bg-gray-950 text-white hover:bg-gray-800 transition whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition whitespace-nowrap"
           >
             <span className={`w-2 h-2 rounded-full ${pendingCalls.length > 0 ? "bg-red-400 animate-pulse" : "bg-emerald-400"}`} />
-            Full Screen
+            Live
           </Link>
         )}
       </div>
@@ -639,7 +692,7 @@ export default function StaffPage() {
           <div className="lg:col-span-7 space-y-4">
             <div className="surface-card p-4 sm:p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold text-slate-900">Priority Call</h2>
+                <h2 className="text-lg font-bold text-gray-900">Priority Call</h2>
                 <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-semibold">
                   {pendingCalls.length} waiting
                 </span>
@@ -700,12 +753,12 @@ export default function StaffPage() {
             </div>
 
             <div className="surface-card overflow-hidden">
-              <div className="px-4 sm:px-5 py-3 border-b border-slate-100">
-                <h3 className="text-sm font-bold text-slate-900">Call Queue</h3>
+              <div className="px-4 sm:px-5 py-3 border-b border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900">Call Queue</h3>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-gray-100">
                 {pendingCalls.length === 0 ? (
-                  <div className="px-4 sm:px-5 py-5 text-sm text-slate-400">No queue right now</div>
+                  <div className="px-4 sm:px-5 py-5 text-sm text-gray-400">No queue right now</div>
                 ) : (
                   pendingCalls.slice(0, 8).map((call) => (
                     <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
@@ -714,8 +767,8 @@ export default function StaffPage() {
                           call.status === "ACKNOWLEDGED" ? "bg-amber-400" : "bg-red-400 animate-pulse"
                         }`} />
                         <div>
-                          <p className="font-semibold text-slate-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
-                          <p className="text-[11px] text-slate-400">{timeAgo(call.createdAt)}</p>
+                          <p className="font-semibold text-gray-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
+                          <p className="text-[11px] text-gray-400">{timeAgo(call.createdAt)}</p>
                         </div>
                       </div>
                       <div className="flex gap-1.5 shrink-0">
@@ -742,19 +795,19 @@ export default function StaffPage() {
           </div>
 
           <div className="lg:col-span-5 surface-card overflow-hidden">
-            <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900">Recent Call History</h3>
-              {!simpleView && <span className="text-xs text-slate-400">{allCalls.length} total</span>}
+            <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-gray-900">Recent Call History</h3>
+              {!simpleView && <span className="text-xs text-gray-400">{allCalls.length} total</span>}
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-gray-100">
               {allCalls.length === 0 ? (
-                <div className="px-4 sm:px-5 py-8 text-center text-sm text-slate-400">No waiter calls yet</div>
+                <div className="px-4 sm:px-5 py-8 text-center text-sm text-gray-400">No waiter calls yet</div>
               ) : (
                 visibleAllCalls.map((call) => (
                   <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate">{call.table?.label || `Table ${call.table?.number}`}</p>
-                      {!simpleView && call.message && <p className="text-xs text-slate-500 truncate">{call.message}</p>}
+                      <p className="text-sm font-semibold text-gray-900 truncate">{call.table?.label || `Table ${call.table?.number}`}</p>
+                      {!simpleView && call.message && <p className="text-xs text-gray-500 truncate">{call.message}</p>}
                     </div>
                     <div className="text-right">
                       <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
@@ -763,13 +816,13 @@ export default function StaffPage() {
                       }`}>
                         {call.status}
                       </span>
-                      {!simpleView && <p className="text-[11px] text-slate-400 mt-1">{timeAgo(call.createdAt)}</p>}
+                      {!simpleView && <p className="text-[11px] text-gray-400 mt-1">{timeAgo(call.createdAt)}</p>}
                     </div>
                   </div>
                 ))
               )}
               {allCalls.length > visibleCalls && (
-                <div className="p-3 border-t border-slate-100">
+                <div className="p-3 border-t border-gray-100">
                   <button onClick={() => setVisibleCalls((v) => v + 6)} className="btn-soft w-full">
                     Show More Calls
                   </button>
@@ -791,11 +844,11 @@ export default function StaffPage() {
                     <button
                       key={status}
                       onClick={() => setOrderStatusFilter(status)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition flex items-center gap-1.5 ${orderStatusFilter === status ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-300 hover:bg-slate-50"}`}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition flex items-center gap-1.5 ${orderStatusFilter === status ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
                     >
                       {status}
                       {count > 0 && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${orderStatusFilter === status ? "bg-white/20" : "bg-slate-100"}`}>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${orderStatusFilter === status ? "bg-white/25" : "bg-gray-100"}`}>
                           {count}
                         </span>
                       )}
@@ -812,13 +865,13 @@ export default function StaffPage() {
             </div>
 
             <div className="surface-card overflow-hidden">
-              <div className="px-4 sm:px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="text-base font-bold text-slate-900">Active Order Board</h2>
-                <span className="text-xs text-slate-500">{filteredOrders.length} results</span>
+              <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-base font-bold text-gray-900">Active Order Board</h2>
+                <span className="text-xs text-gray-500">{filteredOrders.length} results</span>
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-gray-100">
                 {filteredOrders.length === 0 ? (
-                  <div className="px-4 sm:px-5 py-8 text-center text-sm text-slate-400">No orders found</div>
+                  <div className="px-4 sm:px-5 py-8 text-center text-sm text-gray-400">No orders found</div>
                 ) : (
                   visibleFilteredOrders.map((order) => {
                     const actionStatuses = getOrderActionStatuses(order.status);
@@ -830,16 +883,16 @@ export default function StaffPage() {
                         {/* Card header */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="font-bold text-slate-900 text-base leading-tight">
+                            <p className="font-bold text-gray-900 text-base leading-tight">
                               {order.table.label || `Table ${order.table.number}`}
                             </p>
-                            <p className="text-[11px] text-slate-400 mt-0.5">{timeAgo(order.createdAt)}</p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(order.createdAt)}</p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.badge}`}>
                               {meta.label}
                             </span>
-                            <span className="text-sm font-extrabold text-slate-900">
+                            <span className="text-sm font-extrabold text-gray-900">
                               Rs. {fmt(order.total)}
                             </span>
                           </div>
@@ -847,15 +900,15 @@ export default function StaffPage() {
 
                         {/* Items */}
                         {!simpleView && (
-                          <div className="bg-slate-50 rounded-xl px-3 py-2.5 space-y-1.5">
+                          <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
                             {order.items.map((line) => (
-                              <div key={line.id} className="flex items-center justify-between text-sm text-slate-700">
+                              <div key={line.id} className="flex items-center justify-between text-sm text-gray-700">
                                 <span className="font-medium">{line.quantity} × {line.itemName}</span>
-                                <span className="text-slate-500 font-medium">Rs. {fmt(line.lineTotal)}</span>
+                                <span className="text-gray-500 font-medium">Rs. {fmt(line.lineTotal)}</span>
                               </div>
                             ))}
                             {order.note && (
-                              <p className="text-xs text-slate-500 italic pt-1 border-t border-slate-200 mt-1">
+                              <p className="text-xs text-gray-500 italic pt-1 border-t border-gray-200 mt-1">
                                 "{order.note}"
                               </p>
                             )}
@@ -863,7 +916,7 @@ export default function StaffPage() {
                         )}
 
                         {simpleView && (
-                          <p className="text-xs text-slate-500">
+                          <p className="text-xs text-gray-500">
                             {order.items.length} item{order.items.length !== 1 ? "s" : ""}
                             {order.note && <span className="italic ml-1">· Note attached</span>}
                           </p>
@@ -891,7 +944,7 @@ export default function StaffPage() {
                                 className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
                                   status === "CANCELED"
                                     ? "border-red-200 text-red-500 bg-red-50 hover:bg-red-100"
-                                    : "border-slate-300 text-slate-600 bg-white hover:bg-slate-50"
+                                    : "border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
                                 }`}
                               >
                                 {status}
@@ -904,7 +957,7 @@ export default function StaffPage() {
                 )}
 
                 {filteredOrders.length > visibleOrders && (
-                  <div className="p-3 border-t border-slate-100">
+                  <div className="p-3 border-t border-gray-100">
                     <button onClick={() => setVisibleOrders((v) => v + 6)} className="btn-soft w-full">
                       Show More Orders
                     </button>
@@ -917,9 +970,9 @@ export default function StaffPage() {
           <aside className="xl:col-span-4 order-1 xl:order-2 space-y-3">
             <div className="surface-card p-3 sm:p-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-2">
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
-                  <p className="text-[11px] font-semibold text-slate-500">NEW</p>
-                  <p className="text-lg font-extrabold text-slate-900">{orderCounts.NEW}</p>
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center">
+                  <p className="text-[11px] font-semibold text-gray-500">NEW</p>
+                  <p className="text-lg font-extrabold text-gray-900">{orderCounts.NEW}</p>
                 </div>
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
                   <p className="text-[11px] font-semibold text-amber-600">PREP</p>
@@ -946,8 +999,8 @@ export default function StaffPage() {
 
                 <div className={`${showComposer ? "block" : "hidden"} xl:block surface-card p-4`}> 
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <h3 className="text-base font-bold text-slate-900">New Order</h3>
-                    <button onClick={() => setShowComposer(false)} className="btn-soft !px-2.5 !py-1 !text-xs xl:hidden">Hide</button>
+                    <h3 className="text-base font-bold text-gray-900">New Order</h3>
+                    <button onClick={() => setShowComposer(false)} className="btn-soft px-2.5! py-1! text-xs! xl:hidden">Hide</button>
                   </div>
 
                   <div className="space-y-3">
@@ -965,30 +1018,30 @@ export default function StaffPage() {
                       className="control-input"
                     />
 
-                    <div className="max-h-52 overflow-y-auto border border-slate-200 rounded-xl p-2 space-y-2">
+                    <div className="max-h-52 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-2">
                       {filteredMenuItems.map((item) => (
-                        <div key={item.id} className="rounded-lg border border-slate-200 px-2.5 py-2 flex items-center justify-between gap-2">
+                        <div key={item.id} className="rounded-lg border border-gray-200 px-2.5 py-2 flex items-center justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-slate-900 truncate">{item.name}</p>
-                            <p className="text-[11px] text-slate-500">Rs. {fmt(item.price)}</p>
+                            <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                            <p className="text-[11px] text-gray-500">Rs. {fmt(item.price)}</p>
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
-                            <button onClick={() => decrementItem(item.id)} className="w-6 h-6 rounded-md border border-slate-300 text-slate-700">-</button>
+                            <button onClick={() => decrementItem(item.id)} className="w-6 h-6 rounded-md border border-gray-300 text-gray-700">-</button>
                             <span className="w-5 text-center text-sm font-semibold">{selectedItems[item.id] || 0}</span>
-                            <button onClick={() => incrementItem(item.id)} className="w-6 h-6 rounded-md bg-slate-900 text-white">+</button>
+                            <button onClick={() => incrementItem(item.id)} className="w-6 h-6 rounded-md bg-gray-900 text-white">+</button>
                           </div>
                         </div>
                       ))}
                       {filteredMenuItems.length === 0 && (
-                        <p className="text-xs text-slate-400 text-center py-3">No matching items</p>
+                        <p className="text-xs text-gray-400 text-center py-3">No matching items</p>
                       )}
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <p className="text-xs font-semibold text-slate-600">Draft for {selectedTable ? (selectedTable.label || `Table ${selectedTable.number}`) : "No table"}</p>
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+                      <p className="text-xs font-semibold text-gray-600">Draft for {selectedTable ? (selectedTable.label || `Table ${selectedTable.number}`) : "No table"}</p>
                       <div className="max-h-28 overflow-y-auto mt-2 space-y-1.5">
                         {orderDraft.length === 0 ? (
-                          <p className="text-xs text-slate-400">No items selected</p>
+                          <p className="text-xs text-gray-400">No items selected</p>
                         ) : (
                           orderDraft.map((row) => (
                             <div key={row.itemId} className="flex items-center justify-between text-sm">
@@ -1002,12 +1055,12 @@ export default function StaffPage() {
                         value={orderNote}
                         onChange={(e) => setOrderNote(e.target.value)}
                         rows={2}
-                        className="control-input !px-3 !py-2 text-sm mt-3"
+                        className="control-input px-3! py-2! text-sm mt-3"
                         placeholder="Special note"
                       />
                       <div className="flex items-center justify-between mt-3">
-                        <span className="text-sm text-slate-600">Total</span>
-                        <span className="text-lg font-extrabold text-slate-900">Rs. {fmt(orderTotal)}</span>
+                        <span className="text-sm text-gray-600">Total</span>
+                        <span className="text-lg font-extrabold text-gray-900">Rs. {fmt(orderTotal)}</span>
                       </div>
                       <div className="flex gap-2 mt-3">
                         <button onClick={clearDraft} className="btn-soft flex-1">Clear</button>
@@ -1028,11 +1081,11 @@ export default function StaffPage() {
         <section className="surface-card p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base font-bold text-slate-900">Team Management</h2>
+              <h2 className="text-base font-bold text-gray-900">Team Management</h2>
               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">Waiters {activeWaiterCount}</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">Kitchen {activeKitchenCount}</span>
             </div>
-            <button onClick={() => setShowStaffSection((v) => !v)} className="btn-soft !px-3 !py-1.5 !text-xs">
+            <button onClick={() => setShowStaffSection((v) => !v)} className="btn-soft px-3! py-1.5! text-xs!">
               {showStaffSection ? "Collapse" : "Expand"}
             </button>
           </div>
@@ -1060,22 +1113,22 @@ export default function StaffPage() {
 
               <div className="space-y-2">
                 {staff.length === 0 ? (
-                  <p className="text-sm text-slate-400">No staff members added yet.</p>
+                  <p className="text-sm text-gray-400">No staff members added yet.</p>
                 ) : (
                   staff.map((member) => (
-                    <div key={member.id} className="border border-slate-200 rounded-xl px-3 py-3 flex flex-col gap-2.5">
+                    <div key={member.id} className="border border-gray-200 rounded-xl px-3 py-3 flex flex-col gap-2.5">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="font-semibold text-slate-900">{member.name}</p>
-                          <p className="text-xs text-slate-500">{member.phone || "No phone"}</p>
+                          <p className="font-semibold text-gray-900">{member.name}</p>
+                          <p className="text-xs text-gray-500">{member.phone || "No phone"}</p>
                         </div>
-                        <span className="text-xs text-slate-500 font-mono break-all">{member.email}</span>
+                        <span className="text-xs text-gray-500 font-mono break-all">{member.email}</span>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
                         <select
                           value={member.role}
                           onChange={(e) => updateStaffMember(member.id, { role: e.target.value as StaffMember["role"] })}
-                          className="text-sm border border-slate-300 rounded-lg px-2 py-1 bg-white"
+                          className="text-sm border border-gray-300 rounded-lg px-2 py-1 bg-white"
                         >
                           <option value="WAITER">Waiter</option>
                           <option value="COOK">Cook</option>
@@ -1083,7 +1136,7 @@ export default function StaffPage() {
                         </select>
                         <button
                           onClick={() => updateStaffMember(member.id, { isActive: !member.isActive })}
-                          className={`text-xs px-3 py-1 rounded-full ${member.isActive ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}`}
+                          className={`text-xs px-3 py-1 rounded-full ${member.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}
                         >
                           {member.isActive ? "Active" : "Inactive"}
                         </button>

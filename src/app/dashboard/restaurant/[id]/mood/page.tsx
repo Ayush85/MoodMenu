@@ -175,13 +175,13 @@ export default function MoodRulesPage() {
       <div className="surface-card p-1.5 flex gap-1.5 mb-6">
         <button
           onClick={() => setActiveTab("rules")}
-          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "rules" ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "rules" ? "bg-orange-500 text-white" : "text-gray-600 hover:bg-gray-100"}`}
         >
-          🎨 Mood Rules ({restaurant.moodRules.length})
+          Mood Rules ({restaurant.moodRules.length})
         </button>
         <button
           onClick={() => setActiveTab("specials")}
-          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "specials" ? "bg-amber-500 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+          className={`flex-1 px-3 py-2 rounded-xl text-sm font-semibold transition ${activeTab === "specials" ? "bg-orange-500 text-white" : "text-gray-600 hover:bg-gray-100"}`}
         >
           ⭐ Today&apos;s Specials ({specials.length})
         </button>

@@ -81,6 +81,60 @@ export default function MenuClient({
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [showCart, setShowCart] = useState(false);
 
+  // Item search
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+
+  // Session
+  interface SessionOrder {
+    id: string;
+    status: string;
+    total: number;
+    createdAt: string;
+    items: { itemName: string; quantity: number; unitPrice: number }[];
+  }
+  interface ActiveSession {
+    id: string;
+    totalAmount: number;
+    startedAt: string;
+    orders: SessionOrder[];
+  }
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  const [showSessionHistory, setShowSessionHistory] = useState(false);
+
+  async function refreshSession() {
+    if (!tableNumber) return;
+    try {
+      const res = await fetch(`/api/menu/${restaurant.slug}/session?table=${tableNumber}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActiveSession(data.session || null);
+      }
+    } catch { /* silent */ }
+  }
+
+  useEffect(() => {
+    refreshSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableNumber]);
+
+  // Filtered items for search
+  const allMenuItems = useMemo(
+    () => categories.flatMap((cat) => cat.items.map((item) => ({ ...item, categoryName: cat.name }))),
+    [categories]
+  );
+
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    return allMenuItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        item.description?.toLowerCase().includes(q) ||
+        item.tags.some((t) => t.toLowerCase().includes(q))
+    );
+  }, [searchQuery, allMenuItems]);
+
   const cartCount = useMemo(
     () => cartItems.reduce((sum, i) => sum + i.quantity, 0),
     [cartItems]
@@ -216,7 +270,117 @@ export default function MenuClient({
       />
 
       <div className="max-w-lg mx-auto px-4">
-        {/* Category Navigation */}
+
+        {/* ── Active Session Banner ── */}
+        {activeSession && tableNumber && (
+          <div
+            className="mb-4 rounded-2xl p-3.5 flex items-center justify-between gap-3"
+            style={{ backgroundColor: theme.primary + "15", border: `1px solid ${theme.primary}30` }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ backgroundColor: theme.primary + "25" }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke={theme.primary} strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold" style={{ color: theme.primary }}>
+                  Table {tableNumber} · Active Session
+                </p>
+                <p className="text-[11px] opacity-60" style={{ color: theme.text }}>
+                  {activeSession.orders.length} order{activeSession.orders.length !== 1 ? "s" : ""} · Rs. {activeSession.totalAmount.toLocaleString("en-IN")} total
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowSessionHistory(true)}
+              className="text-[11px] font-bold px-3 py-1.5 rounded-xl shrink-0"
+              style={{ backgroundColor: theme.primary, color: "#fff" }}
+            >
+              View
+            </button>
+          </div>
+        )}
+
+        {/* ── Item Search Bar ── */}
+        <div className="mb-4 relative">
+          {showSearch ? (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" fill="none" stroke={theme.text} strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search menu items..."
+                  autoFocus
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
+                  style={{
+                    backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
+                    color: theme.text,
+                    border: `1.5px solid ${theme.primary}40`,
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => { setShowSearch(false); setSearchQuery(""); }}
+                className="px-3 py-2.5 rounded-xl text-xs font-semibold shrink-0"
+                style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)", color: theme.text }}
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowSearch(true)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-left"
+              style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", color: theme.text }}
+            >
+              <svg className="w-4 h-4 opacity-40 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="opacity-40">Search {totalItems} items…</span>
+            </button>
+          )}
+        </div>
+
+        {/* ── Search Results ── */}
+        {showSearch && searchQuery && (
+          <div className="mb-4">
+            {searchResults.length === 0 ? (
+              <div className="text-center py-8 opacity-40">
+                <p className="text-sm">No items found for &ldquo;{searchQuery}&rdquo;</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-[11px] font-semibold opacity-40 mb-2 uppercase tracking-wider">
+                  {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
+                </p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {searchResults.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      item={item}
+                      theme={theme}
+                      onTap={setSelectedItem}
+                      cartQty={getCartQty(item.id)}
+                      onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Category Navigation + content — hidden while searching */}
+        {!(showSearch && searchQuery) && (
+          <>
         <CategoryNav
           categories={categories}
           activeCategory={activeCategory}
@@ -291,7 +455,81 @@ export default function MenuClient({
           <div className="w-8 h-0.5 mx-auto mb-4 rounded-full" style={{ backgroundColor: theme.primary + "30" }} />
           <p className="text-xs">Powered by <span className="font-semibold">MoodMenu</span></p>
         </footer>
+          </>
+        )}
       </div>
+
+      {/* Session History Modal */}
+      {showSessionHistory && activeSession && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div
+            className="absolute inset-0"
+            style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
+            onClick={() => setShowSessionHistory(false)}
+          />
+          <div
+            className="relative w-full max-w-lg rounded-t-3xl animate-slide-up overflow-hidden"
+            style={{ backgroundColor: isDark ? "#1a1a1f" : "#ffffff", color: theme.text, maxHeight: "85vh" }}
+          >
+            <div className="p-5 overflow-y-auto" style={{ maxHeight: "85vh" }}>
+              <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
+
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold">Your Session</h3>
+                  <p className="text-[11px] opacity-40">Table {tableNumber} · {activeSession.orders.length} order{activeSession.orders.length !== 1 ? "s" : ""}</p>
+                </div>
+                <div
+                  className="text-sm font-extrabold px-3 py-1.5 rounded-xl"
+                  style={{ backgroundColor: theme.primary + "15", color: theme.primary }}
+                >
+                  Rs. {activeSession.totalAmount.toLocaleString("en-IN")}
+                </div>
+              </div>
+
+              <div className="space-y-3 pb-6">
+                {activeSession.orders.map((order, i) => (
+                  <div
+                    key={order.id}
+                    className="rounded-2xl p-3.5"
+                    style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold opacity-60">Order #{i + 1}</span>
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
+                        style={{
+                          backgroundColor:
+                            order.status === "PAID" ? "#10b981" + "20" :
+                            order.status === "SERVED" ? "#8b5cf6" + "20" :
+                            order.status === "PREPARING" ? "#f59e0b" + "20" : theme.primary + "20",
+                          color:
+                            order.status === "PAID" ? "#10b981" :
+                            order.status === "SERVED" ? "#8b5cf6" :
+                            order.status === "PREPARING" ? "#f59e0b" : theme.primary,
+                        }}
+                      >
+                        {order.status}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {order.items.map((line, j) => (
+                        <div key={j} className="flex items-center justify-between text-xs">
+                          <span className="opacity-70">{line.quantity}× {line.itemName}</span>
+                          <span className="font-semibold opacity-80">Rs. {(line.quantity * line.unitPrice).toLocaleString("en-IN")}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 pt-2 flex justify-end" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}` }}>
+                      <span className="text-xs font-bold" style={{ color: theme.primary }}>Rs. {order.total.toLocaleString("en-IN")}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* WiFi Modal */}
       {showWifiModal && restaurant.wifiSsid && (
@@ -385,7 +623,7 @@ export default function MenuClient({
           slug={restaurant.slug}
           tableNumber={tableNumber}
           theme={theme}
-          onClose={() => setShowCart(false)}
+          onClose={() => { setShowCart(false); refreshSession(); }}
           onUpdateQty={updateCartQty}
           onClear={clearCart}
         />

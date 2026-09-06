@@ -8,7 +8,7 @@ cloudinary.config({
 
 export async function uploadImage(
   fileBuffer: Buffer,
-  folder: string = "moodmenu"
+  folder: string = "menuor",
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     cloudinary.uploader
@@ -26,7 +26,7 @@ export async function uploadImage(
           } else {
             resolve(result.secure_url);
           }
-        }
+        },
       )
       .end(fileBuffer);
   });

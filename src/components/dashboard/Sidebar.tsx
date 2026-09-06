@@ -134,11 +134,11 @@ export default function Sidebar() {
         <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={close}>
           <img
             src="/logo.png"
-            alt="MoodMenu"
+            alt="Menuor"
             className="w-8 h-8 rounded-xl object-cover transition-all group-hover:scale-105"
           />
           <div>
-            <span className="text-[15px] font-bold text-gray-900 block leading-none">MoodMenu</span>
+            <span className="text-[15px] font-bold text-gray-900 block leading-none">Menuor</span>
             <span className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5 block">
               {isStaff ? "Staff Portal" : "Dashboard"}
             </span>
@@ -192,11 +192,10 @@ export default function Sidebar() {
                     key={item.key}
                     href={href}
                     onClick={close}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group text-sm ${
-                      active
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group text-sm ${active
                         ? "bg-orange-50 text-orange-700 font-semibold"
                         : "text-gray-500 hover:text-gray-800 hover:bg-gray-50 font-medium"
-                    }`}
+                      }`}
                   >
                     {active && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b from-orange-500 to-rose-500" />
@@ -220,11 +219,11 @@ export default function Sidebar() {
                     onClick={close}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-50 font-medium group"
                   >
-                <span className="text-gray-400 group-hover:text-gray-500">
-                  <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </span>
+                    <span className="text-gray-400 group-hover:text-gray-500">
+                      <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </span>
                     View Live Menu
                   </a>
                 ) : null;
@@ -236,11 +235,10 @@ export default function Sidebar() {
               <Link
                 href="/dashboard"
                 onClick={close}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${
-                  pathname === "/dashboard"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname === "/dashboard"
                     ? "bg-orange-50 text-orange-700"
                     : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -257,9 +255,8 @@ export default function Sidebar() {
             <Link
               href={`/dashboard/restaurant/${currentRestaurantId}/staff`}
               onClick={close}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${
-                pathname.includes("/staff") ? "bg-orange-50 text-orange-700" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-              }`}
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname.includes("/staff") ? "bg-orange-50 text-orange-700" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                }`}
             >
               <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -276,11 +273,10 @@ export default function Sidebar() {
             <Link
               href="/dashboard"
               onClick={close}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${
-                pathname === "/dashboard"
+              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname === "/dashboard"
                   ? "bg-orange-50 text-orange-700"
                   : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-              }`}
+                }`}
             >
               {pathname === "/dashboard" && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b from-orange-500 to-rose-500" />
@@ -297,11 +293,10 @@ export default function Sidebar() {
               <Link
                 href="/dashboard/restaurant/new"
                 onClick={close}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${
-                  pathname === "/dashboard/restaurant/new"
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname === "/dashboard/restaurant/new"
                     ? "bg-orange-50 text-orange-700"
                     : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                }`}
+                  }`}
               >
                 {pathname === "/dashboard/restaurant/new" && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b from-orange-500 to-rose-500" />
@@ -365,8 +360,8 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden sticky top-0 z-40 px-4 h-14 flex items-center justify-between bg-white border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <img src="/logo.png" alt="MoodMenu" className="w-7 h-7 rounded-lg object-cover" />
-          <span className="text-sm font-bold text-gray-900">MoodMenu</span>
+          <img src="/logo.png" alt="Menuor" className="w-7 h-7 rounded-lg object-cover" />
+          <span className="text-sm font-bold text-gray-900">Menuor</span>
         </Link>
         <div className="flex items-center gap-1">
           {isSuperAdmin && (

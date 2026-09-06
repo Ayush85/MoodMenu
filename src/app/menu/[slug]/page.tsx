@@ -12,6 +12,39 @@ interface Props {
   searchParams: Promise<{ table?: string; wifi?: string; preview?: string }>;
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const restaurant = await prisma.restaurant.findUnique({
+    where: { slug },
+    select: { name: true, city: true, logo: true },
+  });
+
+  if (!restaurant) {
+    return { title: "Menu Not Found", robots: { index: false } };
+  }
+
+  const title = `${restaurant.name} Menu`;
+  const description = `Browse the full menu at ${restaurant.name} in ${restaurant.city}. Order food and call your waiter directly from your phone.`;
+
+  return {
+    title,
+    description,
+    robots: { index: true, follow: true },
+    openGraph: {
+      type: "website",
+      title,
+      description,
+      ...(restaurant.logo ? { images: [{ url: restaurant.logo, alt: restaurant.name }] } : {}),
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      ...(restaurant.logo ? { images: [restaurant.logo] } : {}),
+    },
+  };
+}
+
 function getTimeGreetingFromHour(hour: number): string {
   if (hour < 12) return "Good Morning";
   if (hour < 17) return "Good Afternoon";
@@ -88,9 +121,62 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     .slice(0, 6);
 
   const theme = mood.theme || DEFAULT_THEME;
+  const baseUrl = process.env.APP_BASE_URL || "https://menuor.com";
+
+  const menuItems = restaurant.categories.flatMap((cat) =>
+    cat.items.map((item) => ({
+      "@type": "MenuItem",
+      name: item.name,
+      description: item.description ?? undefined,
+      offers: {
+        "@type": "Offer",
+        price: item.price.toFixed(2),
+        priceCurrency: "NPR",
+        availability: "https://schema.org/InStock",
+      },
+    }))
+  );
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    name: restaurant.name,
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: restaurant.city,
+      addressCountry: "NP",
+    },
+    ...(restaurant.logo ? { image: restaurant.logo } : {}),
+    url: `${baseUrl}/menu/${restaurant.slug}`,
+    servesCuisine: "Various",
+    hasMenu: {
+      "@type": "Menu",
+      hasMenuSection: restaurant.categories.map((cat) => ({
+        "@type": "MenuSection",
+        name: cat.name,
+        hasMenuItem: cat.items.map((item) => ({
+          "@type": "MenuItem",
+          name: item.name,
+          description: item.description ?? undefined,
+          offers: {
+            "@type": "Offer",
+            price: item.price.toFixed(2),
+            priceCurrency: "NPR",
+            availability: "https://schema.org/InStock",
+          },
+        })),
+      })),
+    },
+    ...(menuItems.length > 0 ? { menu: menuItems } : {}),
+  };
 
   return (
-    <MenuClient
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <MenuClient
       restaurant={{
         name: restaurant.name,
         city: restaurant.city,
@@ -135,5 +221,6 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       autoOpenWifiPrompt={wifiParam === "1"}
       previewMode={!!previewPreset}
     />
+    </>
   );
 }

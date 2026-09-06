@@ -4,7 +4,7 @@ ALTER TABLE "RestaurantStaff" ADD COLUMN "password" TEXT;
 
 -- Backfill unique placeholder emails for existing rows if any
 UPDATE "RestaurantStaff"
-SET "email" = CONCAT('staff-', "id", '@local.moodmenu')
+SET "email" = CONCAT('staff-', "id", '@local.menuor')
 WHERE "email" IS NULL;
 
 -- Enforce required email and uniqueness

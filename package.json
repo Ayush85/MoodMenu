@@ -1,5 +1,5 @@
 {
-  "name": "moodmenu",
+  "name": "menuor",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -14,7 +14,8 @@
     "docker:down": "docker compose down"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1014.0",
+    "@anthropic-ai/sdk": "^0.124.0",
+    "@google/genai": "^2.21.0",
     "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-pg": "^7.5.0",
@@ -33,7 +34,8 @@
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

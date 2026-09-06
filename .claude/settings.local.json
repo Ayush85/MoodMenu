@@ -2,11 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(find d:developmentMoodMenusrccomponentsmenu -type f -name *.tsx -o -name *.ts)",
-      "Bash(cmd /c \"dir /b d:\\\\development\\\\MoodMenu\\\\node_modules\")",
-      "Bash(cmd /c \"dir /b \"\"d:\\\\development\\\\MoodMenu\\\\node_modules\"\" 2>&1\")",
-      "Bash(cmd /c \"dir \"\"d:\\\\development\\\\MoodMenu\\\\node_modules\"\" 2>&1\")",
-      "Bash(cmd /c \"cd /d d:\\\\development\\\\MoodMenu && dir node_modules 2>&1\")",
-      "Bash(cmd /c \"dir d:\\\\development\\\\MoodMenu\\\\*.d.ts 2>&1\")"
+      "Bash(cmd /c \"dir /b d:\\\\development\\\\Menuor\\\\node_modules\")",
+      "Bash(cmd /c \"dir /b \"\"d:\\\\development\\\\Menuor\\\\node_modules\"\" 2>&1\")",
+      "Bash(cmd /c \"dir \"\"d:\\\\development\\\\Menuor\\\\node_modules\"\" 2>&1\")",
+      "Bash(cmd /c \"cd /d d:\\\\development\\\\Menuor && dir node_modules 2>&1\")",
+      "Bash(cmd /c \"dir d:\\\\development\\\\Menuor\\\\*.d.ts 2>&1\")"
     ]
   }
 }

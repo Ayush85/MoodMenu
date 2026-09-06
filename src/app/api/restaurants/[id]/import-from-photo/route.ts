@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
 
 const PROMPT = `You are a menu parser. Extract all menu items from this menu image.
 Return ONLY valid JSON with this exact structure, no markdown, no explanation:
@@ -26,6 +29,22 @@ Rules:
 - description is null if not visible
 - Group items by their menu section
 - If no sections visible, use a single category called "Menu Items"`;
+
+const MenuSchema = z.object({
+  categories: z.array(
+    z.object({
+      name: z.string(),
+      items: z.array(
+        z.object({
+          name: z.string(),
+          description: z.string().nullable(),
+          price: z.number(),
+          tags: z.array(z.string()),
+        })
+      ),
+    })
+  ),
+});
 
 function normalizeParsedMenu(raw: unknown) {
   if (!raw || typeof raw !== "object") return null;
@@ -122,6 +141,42 @@ async function parseWithOpenAI(base64: string, mimeType: string): Promise<string
   return response.choices[0]?.message?.content ?? "";
 }
 
+async function parseWithClaude(base64: string, mimeType: string): Promise<string> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set");
+
+  const client = new Anthropic({ apiKey });
+  const response = await client.messages.parse({
+    model: "claude-opus-5",
+    max_tokens: 8192,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mimeType as "image/jpeg" | "image/png" | "image/webp",
+              data: base64,
+            },
+          },
+          { type: "text", text: PROMPT },
+        ],
+      },
+    ],
+    output_config: {
+      format: zodOutputFormat(MenuSchema),
+    },
+  });
+
+  if (response.stop_reason === "refusal") {
+    throw new Error("Claude declined to process this image");
+  }
+
+  return JSON.stringify(response.parsed_output ?? {});
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -137,9 +192,9 @@ export async function POST(
   }
 
   const provider = process.env.AI_PROVIDER?.toLowerCase();
-  if (!provider || (provider !== "gemini" && provider !== "openai")) {
+  if (!provider || (provider !== "gemini" && provider !== "openai" && provider !== "claude")) {
     return NextResponse.json(
-      { error: "AI_PROVIDER must be set to 'gemini' or 'openai' in your environment" },
+      { error: "AI_PROVIDER must be set to 'gemini', 'openai', or 'claude' in your environment" },
       { status: 503 }
     );
   }
@@ -166,7 +221,9 @@ export async function POST(
   try {
     const text = provider === "openai"
       ? await parseWithOpenAI(base64, file.type)
-      : await parseWithGemini(base64, file.type);
+      : provider === "claude"
+        ? await parseWithClaude(base64, file.type)
+        : await parseWithGemini(base64, file.type);
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

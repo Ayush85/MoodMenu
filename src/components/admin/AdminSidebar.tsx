@@ -32,7 +32,7 @@ export default function AdminSidebar() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center transition-all group-hover:shadow-lg group-hover:shadow-red-500/20 group-hover:scale-105">
               <span className="text-white text-sm font-black">M</span>
             </div>
-            <span className="text-lg font-bold text-white">MoodMenu</span>
+            <span className="text-lg font-bold text-white">Menuor</span>
           </Link>
           <span className="text-[10px] font-semibold uppercase tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md inline-block">
             Super Admin
@@ -47,11 +47,10 @@ export default function AdminSidebar() {
             <Link
               key={link.href}
               href={link.href}
-              className={`relative shrink-0 flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap ${
-                active
+              className={`relative shrink-0 flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all whitespace-nowrap ${active
                   ? "bg-white/[0.08] text-white"
                   : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-              }`}
+                }`}
             >
               {active && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-gradient-to-b from-red-500 to-rose-500 hidden md:block" />

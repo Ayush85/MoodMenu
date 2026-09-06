@@ -48,6 +48,8 @@ prisma/dev.db-journal
 
 # docker
 pgdata/
+storage/
+volumes/
 
 # IDE
 .vscode/

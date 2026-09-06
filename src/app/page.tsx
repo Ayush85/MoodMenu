@@ -301,7 +301,7 @@ export default function LandingPage() {
               <span className="text-white text-[10px] font-black">M</span>
             </div>
             <span className="text-sm font-semibold text-gray-700">
-              MoodMenu
+              Menuor
             </span>
           </div>
           <p className="text-sm text-gray-400">

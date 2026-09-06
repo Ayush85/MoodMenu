@@ -1,8 +1,9 @@
-# MoodMenu — Professional UI/UX Redesign
+# Menuor — Professional UI/UX Redesign
 
-Transform MoodMenu from a basic MVP into a premium, modern SaaS product with polished UI/UX across all pages.
+Transform Menuor from a basic MVP into a premium, modern SaaS product with polished UI/UX across all pages.
 
 ## Current Issues
+
 - Generic orange/gray color scheme with no depth or personality
 - Flat, basic card designs with minimal visual hierarchy
 - No animations or micro-interactions
@@ -12,6 +13,7 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 - Inconsistent spacing and component patterns across pages
 
 ## Design Direction
+
 - **Dark-mode first** dashboard with glassmorphism accents
 - **Vibrant gradient palette**: amber-orange → rose-pink → violet
 - **Inter font** from Google Fonts for clean modern typography
@@ -25,13 +27,15 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Design System & Foundation
 
-#### [MODIFY] [globals.css](file:///d:/development/MoodMenu/src/app/globals.css)
+#### [MODIFY] [globals.css](file:///d:/development/Menuor/src/app/globals.css)
+
 - New CSS custom properties: curated dark/light palette, gradient tokens
 - Keyframe animations: `fadeInUp`, `slideIn`, `float`, `shimmer`, `gradient-shift`
 - Refined component classes: `.surface-card` with glassmorphism, `.btn-primary` with gradient + glow, `.control-input` with modern focus states
 - New utility classes: `.glass`, `.gradient-text`, `.animate-float`
 
-#### [MODIFY] [layout.tsx](file:///d:/development/MoodMenu/src/app/layout.tsx)
+#### [MODIFY] [layout.tsx](file:///d:/development/Menuor/src/app/layout.tsx)
+
 - Swap Geist for Inter + Outfit fonts
 - Updated metadata with richer descriptions
 
@@ -39,7 +43,8 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Landing Page
 
-#### [MODIFY] [page.tsx](file:///d:/development/MoodMenu/src/app/page.tsx)
+#### [MODIFY] [page.tsx](file:///d:/development/Menuor/src/app/page.tsx)
+
 - **Nav**: Glassmorphic sticky navbar with backdrop blur and brand gradient logo
 - **Hero**: Animated gradient background with floating particles, bold typography with gradient text, animated CTA buttons with glow effects
 - **Features**: Glassmorphic cards with icon backgrounds, hover lift + shimmer animations
@@ -52,14 +57,16 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Auth Pages
 
-#### [MODIFY] [login/page.tsx](file:///d:/development/MoodMenu/src/app/(auth)/login/page.tsx)
+#### [MODIFY] [login/page.tsx](<file:///d:/development/Menuor/src/app/(auth)/login/page.tsx>)
+
 - Dark gradient background with animated mesh
 - Centered glassmorphic card with branded header
 - Modern input styling with floating labels effect
 - Animated submit button with loading spinner
 - Smooth error message with slide-in animation
 
-#### [MODIFY] [register/page.tsx](file:///d:/development/MoodMenu/src/app/(auth)/register/page.tsx)
+#### [MODIFY] [register/page.tsx](<file:///d:/development/Menuor/src/app/(auth)/register/page.tsx>)
+
 - Matching dark gradient background
 - Step-indicator feel with progress dots
 - Same modern input and button styling
@@ -69,14 +76,16 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Dashboard Shell
 
-#### [MODIFY] [Sidebar.tsx](file:///d:/development/MoodMenu/src/components/dashboard/Sidebar.tsx)
+#### [MODIFY] [Sidebar.tsx](file:///d:/development/Menuor/src/components/dashboard/Sidebar.tsx)
+
 - Dark glassmorphic sidebar with subtle gradient border
 - Animated logo with hover glow
 - Smooth icon transitions and active-state indicators (left bar accent)
 - User avatar section at bottom with name + role
 - Animated mobile drawer with backdrop blur
 
-#### [MODIFY] [dashboard/layout.tsx](file:///d:/development/MoodMenu/src/app/dashboard/layout.tsx)
+#### [MODIFY] [dashboard/layout.tsx](file:///d:/development/Menuor/src/app/dashboard/layout.tsx)
+
 - Subtle dark gradient background instead of flat gray
 - Improved main content area with proper max-width
 
@@ -84,41 +93,48 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Dashboard Pages
 
-#### [MODIFY] [dashboard/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/page.tsx)
+#### [MODIFY] [dashboard/page.tsx](file:///d:/development/Menuor/src/app/dashboard/page.tsx)
+
 - Welcome banner with user name and time-based greeting
 - Restaurant cards with image placeholder, gradient accent, hover lift and scale
 - Empty state with illustrated icon + animated CTA
 - Loading skeleton animation instead of spinner
 
-#### [MODIFY] [restaurant/new/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/restaurant/new/page.tsx)
+#### [MODIFY] [restaurant/new/page.tsx](file:///d:/development/Menuor/src/app/dashboard/restaurant/new/page.tsx)
+
 - Glassmorphic form card
 - Step-by-step feel with section headers
 - Animated slug preview
 - Modern button with gradient
 
-#### [MODIFY] [restaurant/[id]/menu/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/restaurant/%5Bid%5D/menu/page.tsx)
+#### [MODIFY] [restaurant/[id]/menu/page.tsx](file:///d:/development/Menuor/src/app/dashboard/restaurant/%5Bid%5D/menu/page.tsx)
+
 - Tab navigation bar replacing scattered buttons (Menu, Tables, Staff, Mood, QR, View)
 - Category cards with gradient headers
 - Menu item cards with image thumbnails, availability toggle switch
 - Animated add-item form with slide-down reveal
 - Better visual hierarchy with badges for tags
 
-#### [MODIFY] [restaurant/[id]/mood/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/restaurant/%5Bid%5D/mood/page.tsx)
+#### [MODIFY] [restaurant/[id]/mood/page.tsx](file:///d:/development/Menuor/src/app/dashboard/restaurant/%5Bid%5D/mood/page.tsx)
+
 - Mood rule cards with theme color preview swatch
 - Preset cards with hover animation and theme preview
 - Better badge styling with glass effect
 
-#### [MODIFY] [restaurant/[id]/qr/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/restaurant/%5Bid%5D/qr/page.tsx)
+#### [MODIFY] [restaurant/[id]/qr/page.tsx](file:///d:/development/Menuor/src/app/dashboard/restaurant/%5Bid%5D/qr/page.tsx)
+
 - Refined QR display cards with dark background
 - Better print layout
 - Polished customer flow explainer
 
-#### [MODIFY] [restaurant/[id]/tables/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/restaurant/%5Bid%5D/tables/page.tsx)
+#### [MODIFY] [restaurant/[id]/tables/page.tsx](file:///d:/development/Menuor/src/app/dashboard/restaurant/%5Bid%5D/tables/page.tsx)
+
 - Visual table grid with number indicators and hover effects
 - WiFi config section with modern card design
 - Better delete confirmation UX
 
-#### [MODIFY] [restaurant/[id]/staff/page.tsx](file:///d:/development/MoodMenu/src/app/dashboard/restaurant/%5Bid%5D/staff/page.tsx)
+#### [MODIFY] [restaurant/[id]/staff/page.tsx](file:///d:/development/Menuor/src/app/dashboard/restaurant/%5Bid%5D/staff/page.tsx)
+
 - Stat cards with gradient accents
 - Call queue with pulse animation for urgent items
 - Order board with kanban-style status columns visual
@@ -128,7 +144,8 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Public-Facing Menu
 
-#### [MODIFY] [MenuClient.tsx](file:///d:/development/MoodMenu/src/components/menu/MenuClient.tsx)
+#### [MODIFY] [MenuClient.tsx](file:///d:/development/Menuor/src/components/menu/MenuClient.tsx)
+
 - Improved card layouts with smoother borders and shadows
 - Better image handling with rounded corners and aspect ratios
 - Refined category navigation with scroll-snap and active indicator
@@ -140,11 +157,13 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 
 ### Admin Pages
 
-#### [MODIFY] [AdminSidebar.tsx](file:///d:/development/MoodMenu/src/components/admin/AdminSidebar.tsx)
+#### [MODIFY] [AdminSidebar.tsx](file:///d:/development/Menuor/src/components/admin/AdminSidebar.tsx)
+
 - Match new dashboard sidebar design language
 - Red accent for admin branding
 
-#### [MODIFY] [admin/layout.tsx](file:///d:/development/MoodMenu/src/app/admin/layout.tsx)
+#### [MODIFY] [admin/layout.tsx](file:///d:/development/Menuor/src/app/admin/layout.tsx)
+
 - Matching dark gradient background
 
 ---
@@ -152,12 +171,15 @@ Transform MoodMenu from a basic MVP into a premium, modern SaaS product with pol
 ## Verification Plan
 
 ### Build Verification
+
 ```bash
-cd d:\development\MoodMenu && npm run build
+cd d:\development\Menuor && npm run build
 ```
+
 This must complete without TypeScript or build errors.
 
 ### Browser Testing
+
 1. **Landing page**: Open `http://localhost:3000` and verify:
    - Animated gradient hero renders
    - Feature cards have glassmorphism and hover effects
@@ -176,6 +198,7 @@ This must complete without TypeScript or build errors.
    - Navigation between pages works smoothly
 
 ### Manual Verification (User)
+
 - Deploy locally with `npm run dev` and visually check each page
 - Verify mobile responsiveness by resizing browser
 - Check dark/light mode consistency on public menu

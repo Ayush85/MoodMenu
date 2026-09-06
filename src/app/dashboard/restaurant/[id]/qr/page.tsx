@@ -128,7 +128,7 @@ export default function QRCodePage() {
                 </div>
               </div>
 
-              <p className="text-[8px] text-gray-300 mt-4">Powered by MoodMenu</p>
+              <p className="text-[8px] text-gray-300 mt-4">Powered by Menuor</p>
             </div>
           ))}
         </div>

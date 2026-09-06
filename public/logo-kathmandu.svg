@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="MoodMenu Kathmandu logo">
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Menuor Kathmandu logo">
   <defs>
     <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
       <stop offset="0%" stop-color="#06b6d4"/>
@@ -10,5 +10,5 @@
     <path d="M16 160 L64 72 L96 120 L128 56 L176 160 Z" fill="url(#g)" stroke="#0f172a" stroke-width="4" stroke-linejoin="round"/>
     <circle cx="200" cy="40" r="12" fill="#F97316" />
   </g>
-  <text x="50%" y="92%" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="20" fill="#0f172a">MoodMenu</text>
+  <text x="50%" y="92%" text-anchor="middle" font-family="Segoe UI, Inter, sans-serif" font-size="20" fill="#0f172a">Menuor</text>
 </svg>

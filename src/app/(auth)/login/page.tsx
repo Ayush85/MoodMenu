@@ -101,7 +101,7 @@ export default function LoginPage() {
             Welcome back
           </h1>
           <p style={{ fontSize: "14px", color: "#9ca3af", textAlign: "center", marginBottom: "32px" }}>
-            Sign in to your MoodMenu account
+            Sign in to your Menuor account
           </p>
 
           {error && (

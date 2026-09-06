@@ -177,7 +177,7 @@ export default function MenuClient({
       const wifiString = `WIFI:T:WPA;S:${restaurant.wifiSsid};P:${restaurant.wifiPassword || ""};;`;
       QRCode.toDataURL(wifiString, { width: 200, margin: 1, color: { dark: "#000000", light: "#ffffff" } })
         .then(setWifiQR)
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [restaurant.wifiSsid, restaurant.wifiPassword]);
 
@@ -381,80 +381,80 @@ export default function MenuClient({
         {/* Category Navigation + content — hidden while searching */}
         {!(showSearch && searchQuery) && (
           <>
-        <CategoryNav
-          categories={categories}
-          activeCategory={activeCategory}
-          onCategoryChange={handleCategoryChange}
-          theme={theme}
-        />
+            <CategoryNav
+              categories={categories}
+              activeCategory={activeCategory}
+              onCategoryChange={handleCategoryChange}
+              theme={theme}
+            />
 
-        {/* Today's Specials */}
-        {todaysSpecials.length > 0 && (
-          <section className="mb-5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-sm">⭐</span>
-              <h2 className="text-sm font-extrabold" style={{ color: theme.primary }}>
-                Today&apos;s Specials
-              </h2>
-            </div>
-            <div className="grid grid-cols-3 gap-1.5">
-              {todaysSpecials.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  theme={theme}
-                  onTap={setSelectedItem}
-                  cartQty={getCartQty(item.id)}
-                  onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Menu Categories */}
-        {categories.map((cat) => (
-          <section key={cat.id} id={`cat-${cat.id}`} className="mb-4 scroll-mt-14">
-            <div className="flex items-center gap-3 mb-2">
-              <h2 className="text-sm font-extrabold">{cat.name}</h2>
-              <div className="flex-1 h-px" style={{
-                background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-              }} />
-              <span className="text-xs font-medium opacity-30">{cat.items.length}</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-1.5">
-              {cat.items.map((item) => (
-                <MenuItemCard
-                  key={item.id}
-                  item={item}
-                  theme={theme}
-                  onTap={setSelectedItem}
-                  cartQty={getCartQty(item.id)}
-                  onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
-                />
-              ))}
-
-              {cat.items.length === 0 && (
-                <div
-                  className="flex flex-col items-center py-10 rounded-2xl opacity-30"
-                  style={{ backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}
-                >
-                  <svg className="w-8 h-8 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  <p className="text-sm">No items yet</p>
+            {/* Today's Specials */}
+            {todaysSpecials.length > 0 && (
+              <section className="mb-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm">⭐</span>
+                  <h2 className="text-sm font-extrabold" style={{ color: theme.primary }}>
+                    Today&apos;s Specials
+                  </h2>
                 </div>
-              )}
-            </div>
-          </section>
-        ))}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {todaysSpecials.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      item={item}
+                      theme={theme}
+                      onTap={setSelectedItem}
+                      cartQty={getCartQty(item.id)}
+                      onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
-        {/* Footer */}
-        <footer className="text-center py-10 opacity-20">
-          <div className="w-8 h-0.5 mx-auto mb-4 rounded-full" style={{ backgroundColor: theme.primary + "30" }} />
-          <p className="text-xs">Powered by <span className="font-semibold">MoodMenu</span></p>
-        </footer>
+            {/* Menu Categories */}
+            {categories.map((cat) => (
+              <section key={cat.id} id={`cat-${cat.id}`} className="mb-4 scroll-mt-14">
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="text-sm font-extrabold">{cat.name}</h2>
+                  <div className="flex-1 h-px" style={{
+                    background: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
+                  }} />
+                  <span className="text-xs font-medium opacity-30">{cat.items.length}</span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-1.5">
+                  {cat.items.map((item) => (
+                    <MenuItemCard
+                      key={item.id}
+                      item={item}
+                      theme={theme}
+                      onTap={setSelectedItem}
+                      cartQty={getCartQty(item.id)}
+                      onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
+                    />
+                  ))}
+
+                  {cat.items.length === 0 && (
+                    <div
+                      className="flex flex-col items-center py-10 rounded-2xl opacity-30"
+                      style={{ backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" }}
+                    >
+                      <svg className="w-8 h-8 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      <p className="text-sm">No items yet</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            ))}
+
+            {/* Footer */}
+            <footer className="text-center py-10 opacity-20">
+              <div className="w-8 h-0.5 mx-auto mb-4 rounded-full" style={{ backgroundColor: theme.primary + "30" }} />
+              <p className="text-xs">Powered by <span className="font-semibold">Menuor</span></p>
+            </footer>
           </>
         )}
       </div>
@@ -501,12 +501,12 @@ export default function MenuClient({
                         style={{
                           backgroundColor:
                             order.status === "PAID" ? "#10b981" + "20" :
-                            order.status === "SERVED" ? "#8b5cf6" + "20" :
-                            order.status === "PREPARING" ? "#f59e0b" + "20" : theme.primary + "20",
+                              order.status === "SERVED" ? "#8b5cf6" + "20" :
+                                order.status === "PREPARING" ? "#f59e0b" + "20" : theme.primary + "20",
                           color:
                             order.status === "PAID" ? "#10b981" :
-                            order.status === "SERVED" ? "#8b5cf6" :
-                            order.status === "PREPARING" ? "#f59e0b" : theme.primary,
+                              order.status === "SERVED" ? "#8b5cf6" :
+                                order.status === "PREPARING" ? "#f59e0b" : theme.primary,
                         }}
                       >
                         {order.status}

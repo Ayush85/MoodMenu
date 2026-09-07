@@ -101,28 +101,37 @@ model RestaurantTable {
 }
 
 model TableSession {
-  id            String         @id @default(cuid())
-  restaurantId  String
-  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  tableId       String
-  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  status        SessionStatus  @default(ACTIVE)
-  totalAmount   Float          @default(0)
-  startedAt     DateTime       @default(now())
-  endedAt       DateTime?
-  orders        OrderTicket[]
+  id             String         @id @default(cuid())
+  restaurantId   String
+  restaurant     Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId        String
+  table          RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  status         SessionStatus  @default(ACTIVE)
+  totalAmount    Float          @default(0)
+  startedAt      DateTime       @default(now())
+  lastActivityAt DateTime       @default(now())
+  endedAt        DateTime?
+  orders         OrderTicket[]
+
+  @@index([tableId, status])
+  @@index([restaurantId, status])
 }
 
 model WaiterCall {
-  id            String       @id @default(cuid())
-  status        CallStatus   @default(PENDING)
-  message       String?
-  tableId       String
-  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
-  resolvedAt    DateTime?
+  id             String       @id @default(cuid())
+  status         CallStatus   @default(PENDING)
+  message        String?
+  tableId        String
+  table          RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  restaurantId   String
+  restaurant     Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  acknowledgedAt DateTime?
+  resolvedAt     DateTime?
+  handledBy      String?
+
+  @@index([restaurantId, status])
+  @@index([tableId, status, createdAt])
 }
 
 model OrderTicket {
@@ -139,6 +148,10 @@ model OrderTicket {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   items         OrderLine[]
+
+  @@index([tableId, createdAt])
+  @@index([sessionId, status])
+  @@index([restaurantId, status])
 }
 
 model OrderLine {

@@ -41,7 +41,17 @@
       "Bash(grep -n \"href=\\\\`/dashboard/restaurant\" /home/ayush/Developments/MoodMenu/src/app/dashboard/page.tsx)",
       "Bash(./node_modules/.bin/eslint \"src/app/dashboard/restaurant/[id]/menu/page.tsx\")",
       "Bash(node verify.mjs)",
-      "Bash(tee /tmp/tsc_out.txt)"
+      "Bash(tee /tmp/tsc_out.txt)",
+      "Bash(xargs -I{} echo {})",
+      "Bash(docker port *)",
+      "Bash(rm -f /home/ayush/Developments/MoodMenu/src/app/api/restaurants/\\\\[id\\\\]/waiter-calls/stream/route.ts)",
+      "Bash(rmdir /home/ayush/Developments/MoodMenu/src/app/api/restaurants/\\\\[id\\\\]/waiter-calls/stream)",
+      "Bash(curl -s -X POST http://localhost:3030/api/menu/thaxaina/call-waiter -H 'Content-Type: application/json' -d '{\"tableNumber\": 1, \"message\": \"test call for verification\"}' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(node test_waiter_call.mjs)",
+      "Bash(curl -s -X POST http://localhost:3030/api/menu/thaxaina/order -H 'Content-Type: application/json' -d '{\"tableNumber\": 1, \"items\": [{\"itemId\": \"cmqzb2w6l000301rwpbbpc575\", \"quantity\": 2}]}' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(curl -s \"http://localhost:3030/api/menu/thaxaina/session?table=1\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s -X POST http://localhost:3030/api/menu/thaxaina/order -H 'Content-Type: application/json' -d '{\"tableNumber\": 1, \"items\": [{\"itemId\": \"cmqzb2w6l000301rwpbbpc575\", \"quantity\": 1}]}' -w '\\\\nHTTP %{http_code}\\\\n')",
+      "Bash(curl -s -o /dev/null -w \"final app health: %{http_code}\\\\n\" http://localhost:3030 --max-time 10)"
     ],
     "additionalDirectories": [
       "/home/ayush/Developments/MoodMenu/src/app/uploads"

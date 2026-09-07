@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPush } from "@/lib/push";
+import { isSessionStale } from "@/lib/session";
 
 interface OrderItemInput {
   itemId: string;
@@ -68,10 +69,30 @@ export async function POST(
 
   const table = restaurant.tables[0];
 
-  // Rate limit: max 3 orders per table per 30 minutes
+  // Find or create active session for this table — resolved before the rate
+  // limit so throttling is scoped to the current dine-in visit, not raw table history
+  let session = await prisma.tableSession.findFirst({
+    where: { restaurantId: restaurant.id, tableId: table.id, status: "ACTIVE" },
+  });
+
+  if (session && isSessionStale(session)) {
+    await prisma.tableSession.update({
+      where: { id: session.id },
+      data: { status: "CLOSED", endedAt: new Date() },
+    });
+    session = null;
+  }
+
+  if (!session) {
+    session = await prisma.tableSession.create({
+      data: { restaurantId: restaurant.id, tableId: table.id, totalAmount: 0 },
+    });
+  }
+
+  // Rate limit: max 3 orders per session per 30 minutes
   const recentOrderCount = await prisma.orderTicket.count({
     where: {
-      tableId: table.id,
+      sessionId: session.id,
       createdAt: { gte: new Date(Date.now() - 30 * 60 * 1000) },
     },
   });
@@ -114,33 +135,25 @@ export async function POST(
 
   const total = resolvedItems.reduce((sum, line) => sum + line.lineTotal, 0);
 
-  // Find or create active session for this table
-  let session = await prisma.tableSession.findFirst({
-    where: { restaurantId: restaurant.id, tableId: table.id, status: "ACTIVE" },
-  });
-
-  if (!session) {
-    session = await prisma.tableSession.create({
-      data: { restaurantId: restaurant.id, tableId: table.id, totalAmount: 0 },
+  const order = await prisma.$transaction(async (tx) => {
+    const created = await tx.orderTicket.create({
+      data: {
+        restaurantId: restaurant.id,
+        tableId: table.id,
+        sessionId: session.id,
+        note,
+        total,
+        items: { create: resolvedItems },
+      },
+      include: { table: true, items: true },
     });
-  }
 
-  const order = await prisma.orderTicket.create({
-    data: {
-      restaurantId: restaurant.id,
-      tableId: table.id,
-      sessionId: session.id,
-      note,
-      total,
-      items: { create: resolvedItems },
-    },
-    include: { table: true, items: true },
-  });
+    await tx.tableSession.update({
+      where: { id: session.id },
+      data: { totalAmount: { increment: total }, lastActivityAt: new Date() },
+    });
 
-  // Update session total
-  await prisma.tableSession.update({
-    where: { id: session.id },
-    data: { totalAmount: { increment: total } },
+    return created;
   });
 
   // Push notification to owner + active waiters (non-blocking)

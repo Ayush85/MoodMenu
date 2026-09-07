@@ -100,7 +100,7 @@ export async function POST(
     title: `🔔 ${label} is calling!`,
     body: message || "A customer needs assistance.",
     userIds: recipientIds,
-    url: `/dashboard/restaurant/${restaurant.id}/staff`,
+    url: `/dashboard/restaurant/${restaurant.id}/live`,
     data: {
       type: "waiter_call",
       callId: call.id,

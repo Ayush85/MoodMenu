@@ -84,7 +84,7 @@ export default function LiveWaiterPage() {
 
   const actorType = session?.user?.actorType;
   const staffRole = session?.user?.role;
-  const canAccess = !session || actorType === "USER" || staffRole === "WAITER";
+  const canAccess = sessionStatus === "authenticated" && (actorType === "USER" || staffRole === "WAITER");
 
   useEffect(() => {
     if (sessionStatus === "unauthenticated") router.replace("/login");
@@ -174,6 +174,14 @@ export default function LiveWaiterPage() {
   const resolvedCount = history.filter((c) => c.status === "RESOLVED").length;
   const focusCall = calls[0] || null;
   const queue = calls.slice(1);
+
+  if (sessionStatus === "loading") {
+    return (
+      <div className="fixed inset-0 z-50 bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!canAccess) {
     return (

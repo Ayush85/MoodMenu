@@ -27,7 +27,8 @@
       "Bash(curl -s -o /dev/null -w \"apple-icon: %{http_code}\\\\n\" http://localhost:3030/apple-icon --max-time 10)",
       "Bash(curl -s http://localhost:3030 --max-time 10)",
       "Bash(curl -s -o /dev/null -w \"app health: %{http_code}\\\\n\" http://localhost:3030 --max-time 10)",
-      "Bash(curl -s -o /tmp/menu_test.html -w \"menu page: %{http_code}\\\\n\" \"http://localhost:3030/menu/thaxaina?table=5\" --max-time 15)"
+      "Bash(curl -s -o /tmp/menu_test.html -w \"menu page: %{http_code}\\\\n\" \"http://localhost:3030/menu/thaxaina?table=5\" --max-time 15)",
+      "Bash(curl -s -o /tmp/landing_test.html -w \"landing page: %{http_code}\\\\n\" http://localhost:3030 --max-time 15)"
     ],
     "additionalDirectories": [
       "/home/ayush/Developments/MoodMenu/src/app/uploads"

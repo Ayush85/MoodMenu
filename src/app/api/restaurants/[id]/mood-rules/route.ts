@@ -22,6 +22,15 @@ export async function POST(
 
   const { name, condition, theme, featuredTags, priority } = await req.json();
 
+  if (typeof name === "string" && name.trim()) {
+    const existing = await prisma.moodRule.findFirst({
+      where: { restaurantId: id, name: { equals: name.trim(), mode: "insensitive" } },
+    });
+    if (existing) {
+      return NextResponse.json({ error: `A mood rule named "${name}" already exists` }, { status: 409 });
+    }
+  }
+
   const rule = await prisma.moodRule.create({
     data: {
       name,

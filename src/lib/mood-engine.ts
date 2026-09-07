@@ -8,9 +8,27 @@ interface MoodRuleInput {
   priority: number;
 }
 
+// Restaurants are Nepal-based, but the server process may run in a different
+// timezone (e.g. UTC in production) — always evaluate time rules in Nepal
+// local time, not the server's local time, or "morning" rules can fire in
+// the middle of the afternoon.
+const RESTAURANT_TIMEZONE = "Asia/Kathmandu";
+
+function getCurrentMinutesInRestaurantTimezone(): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: RESTAURANT_TIMEZONE,
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
+  return hour * 60 + minute;
+}
+
 function isTimeInRange(timeRange: [string, string]): boolean {
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = getCurrentMinutesInRestaurantTimezone();
 
   const [startH, startM] = timeRange[0].split(":").map(Number);
   const [endH, endM] = timeRange[1].split(":").map(Number);

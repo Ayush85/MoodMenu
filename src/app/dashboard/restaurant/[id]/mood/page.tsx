@@ -72,7 +72,7 @@ export default function MoodRulesPage() {
 
   async function addPreset(key: string) {
     const preset = MOOD_PRESETS[key];
-    await fetch(`/api/restaurants/${id}/mood-rules`, {
+    const res = await fetch(`/api/restaurants/${id}/mood-rules`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -83,8 +83,18 @@ export default function MoodRulesPage() {
         priority: Object.keys(MOOD_PRESETS).indexOf(key),
       }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      toast(err.error || "Failed to add preset", "error");
+      return;
+    }
     fetchData();
   }
+
+  const activeRuleNames = new Set(restaurant?.moodRules.map((r) => r.name.toLowerCase()) || []);
+  const availablePresets = Object.entries(MOOD_PRESETS).filter(
+    ([, preset]) => !activeRuleNames.has(preset.name.toLowerCase())
+  );
 
   function deleteRule(ruleId: string) {
     setConfirmAction({
@@ -342,10 +352,11 @@ export default function MoodRulesPage() {
           </div>
 
           {/* Quick Add Presets */}
+          {availablePresets.length > 0 && (
           <div>
             <h2 className="text-base font-bold text-gray-900 mb-3">Quick Add Presets</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {Object.entries(MOOD_PRESETS).map(([key, preset]) => (
+              {availablePresets.map(([key, preset]) => (
                 <button
                   key={key}
                   onClick={() => addPreset(key)}
@@ -364,6 +375,7 @@ export default function MoodRulesPage() {
               ))}
             </div>
           </div>
+          )}
         </>
       )}
 

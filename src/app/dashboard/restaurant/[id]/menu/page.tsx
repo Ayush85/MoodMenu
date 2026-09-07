@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
-import { UtensilsCrossed, Search, ClipboardList } from "lucide-react";
+import { UtensilsCrossed, Search, ClipboardList, Pencil, ArrowLeftRight, Trash2, Plus } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface MenuItem {
@@ -820,15 +820,19 @@ export default function MenuManagePage() {
                   </button>
                   <button
                     onClick={() => setAddingItem(addingItem === cat.id ? null : cat.id)}
-                    className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition flex items-center gap-1"
+                    className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition flex items-center gap-1 w-7 h-7 sm:w-auto sm:h-auto justify-center"
+                    aria-label="Add item"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Item
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">Add Item</span>
                   </button>
-                  <button onClick={() => deleteCategory(cat.id)} className="text-sm text-red-400 hover:text-red-500 transition">
-                    Delete
+                  <button
+                    onClick={() => deleteCategory(cat.id)}
+                    className="text-sm text-red-400 hover:text-red-500 transition w-7 h-7 sm:w-auto sm:h-auto flex items-center justify-center"
+                    aria-label="Delete category"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 sm:hidden" />
+                    <span className="hidden sm:inline">Delete</span>
                   </button>
                 </div>
               </div>
@@ -892,21 +896,24 @@ export default function MenuManagePage() {
                   </div>
                 ) : (
                   cat.items.map((item) => (
-                    <div key={item.id} className={`px-5 sm:px-6 py-4 hover:bg-gray-50/50 transition ${!item.isAvailable ? "opacity-60" : ""}`}>
-                      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                        <div className="flex items-center gap-4">
+                    <div key={item.id} className={`px-4 sm:px-6 py-4 hover:bg-gray-50/50 transition ${!item.isAvailable ? "opacity-60" : ""}`}>
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center gap-3 sm:gap-4">
                           {item.image ? (
-                            <img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover shrink-0 ring-1 ring-gray-100" />
+                            <img src={item.image} alt={item.name} className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl object-cover shrink-0 ring-1 ring-gray-100" />
                           ) : (
-                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-50 to-rose-50 flex items-center justify-center shrink-0">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-orange-50 to-rose-50 flex items-center justify-center shrink-0">
                               <UtensilsCrossed className="w-5 h-5 text-orange-400" />
                             </div>
                           )}
-                          <div>
-                            <h3 className={`font-semibold text-sm ${item.isAvailable ? "text-gray-900" : "text-gray-400 line-through"}`}>
-                              {item.name}
-                              {item.isSpecial && <span className="ml-1.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">⭐ Special</span>}
-                            </h3>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <h3 className={`font-semibold text-sm ${item.isAvailable ? "text-gray-900" : "text-gray-400 line-through"}`}>
+                                {item.name}
+                                {item.isSpecial && <span className="ml-1.5 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-bold">⭐ Special</span>}
+                              </h3>
+                              <span className="font-bold text-gray-900 text-sm shrink-0">Rs. {item.price}</span>
+                            </div>
                             {item.description && (
                               <p className="text-gray-500 text-xs mt-0.5 line-clamp-1">{item.description}</p>
                             )}
@@ -921,36 +928,40 @@ export default function MenuManagePage() {
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                          <span className="font-bold text-gray-900 text-sm min-w-[60px] text-right">Rs. {item.price}</span>
+                        <div className="flex items-center gap-1.5 sm:justify-end">
                           <button onClick={() => toggleAvailability(item)}
-                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                            className={`text-xs px-2.5 py-1.5 rounded-full font-medium transition ${
                               item.isAvailable ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                             }`}
                           >
                             {item.isAvailable ? "Available" : "Unavailable"}
                           </button>
                           <button onClick={() => toggleSpecial(item)}
-                            className={`text-xs px-3 py-1.5 rounded-full font-medium transition ${
+                            className={`text-xs px-2.5 py-1.5 rounded-full font-medium transition ${
                               item.isSpecial ? "bg-amber-50 text-amber-700 hover:bg-amber-100" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                             }`}
                           >
                             {item.isSpecial ? "⭐ Special" : "Set Special"}
                           </button>
+                          <div className="flex-1 sm:hidden" />
                           <button onClick={() => openEdit(item)}
-                            className="text-xs px-3 py-1.5 rounded-full font-medium bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                            className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 hover:bg-blue-100 transition shrink-0"
+                            aria-label="Edit item"
                           >
-                            Edit
+                            <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setMovingItem({ item, fromCatId: cat.id })}
-                            className="text-xs px-3 py-1.5 rounded-full font-medium bg-gray-50 text-gray-500 hover:bg-gray-100 transition"
-                            title="Move to another category"
+                            className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-50 text-gray-500 hover:bg-gray-100 transition shrink-0"
+                            aria-label="Move to another category"
                           >
-                            Move
+                            <ArrowLeftRight className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => deleteItem(item.id)} className="text-sm text-red-400 hover:text-red-500 transition">
-                            Delete
+                          <button onClick={() => deleteItem(item.id)}
+                            className="w-8 h-8 rounded-full flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-500 transition shrink-0"
+                            aria-label="Delete item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>

@@ -28,7 +28,20 @@
       "Bash(curl -s http://localhost:3030 --max-time 10)",
       "Bash(curl -s -o /dev/null -w \"app health: %{http_code}\\\\n\" http://localhost:3030 --max-time 10)",
       "Bash(curl -s -o /tmp/menu_test.html -w \"menu page: %{http_code}\\\\n\" \"http://localhost:3030/menu/thaxaina?table=5\" --max-time 15)",
-      "Bash(curl -s -o /tmp/landing_test.html -w \"landing page: %{http_code}\\\\n\" http://localhost:3030 --max-time 15)"
+      "Bash(curl -s -o /tmp/landing_test.html -w \"landing page: %{http_code}\\\\n\" http://localhost:3030 --max-time 15)",
+      "Bash(npm view *)",
+      "Bash(xargs -I{} grep version {})",
+      "Bash(find / -iname \"*.local-chromium*\" -o -path \"*ms-playwright*\")",
+      "Bash(/usr/bin/google-chrome --version)",
+      "Bash(node --experimental-vm-modules /tmp/claude-1000/-home-ayush-Developments-MoodMenu/4e765ae7-5cfb-479f-b387-eccefec4cc24/scratchpad/audit.mjs)",
+      "Bash(NODE_PATH=/home/ayush/.npm/_npx/e41f203b7505f1fb/node_modules node /tmp/claude-1000/-home-ayush-Developments-MoodMenu/4e765ae7-5cfb-479f-b387-eccefec4cc24/scratchpad/audit.mjs)",
+      "Bash(PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install playwright-core@1.61.0)",
+      "Bash(node audit.mjs)",
+      "Bash(node debug_login.mjs)",
+      "Bash(grep -n \"href=\\\\`/dashboard/restaurant\" /home/ayush/Developments/MoodMenu/src/app/dashboard/page.tsx)",
+      "Bash(./node_modules/.bin/eslint \"src/app/dashboard/restaurant/[id]/menu/page.tsx\")",
+      "Bash(node verify.mjs)",
+      "Bash(tee /tmp/tsc_out.txt)"
     ],
     "additionalDirectories": [
       "/home/ayush/Developments/MoodMenu/src/app/uploads"

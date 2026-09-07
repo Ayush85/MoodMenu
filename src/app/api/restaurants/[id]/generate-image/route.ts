@@ -12,7 +12,8 @@ function buildPrompt(name: string, description?: string | null) {
   }, exactly as it would appear listed on a restaurant/bar menu.
 If this is a food or beverage dish, present it freshly plated or poured with appropriate garnish, natural steam if served hot, on a simple ceramic plate, bowl, or glass, 45-degree or top-down angle, editorial food-magazine quality.
 If this is a packaged or retail product (e.g. cigarettes, snacks, bottled goods), photograph the actual product/packaging as it is normally sold, on a clean neutral background — do not turn it into a food dish.
-Captured on a DSLR camera with a macro lens, soft natural lighting, shallow depth of field, realistic specular highlights, true-to-life textures and colors. This must look like an actual camera photograph, not digital art — do not render it as an illustration, cartoon, anime, 3D render, CGI, painting, sketch, or plastic-looking/artificial image. No watermark, no hands.`;
+Tight close-up framing: the dish or product fills most of the frame and is the unmistakable subject. Minimal visible background, table, or negative space — crop in close rather than showing a wide tabletop scene.
+Captured on a DSLR camera with a macro lens, soft natural lighting, shallow depth of field with the subject in sharp focus and any background softly blurred, realistic specular highlights, true-to-life textures and colors. This must look like an actual camera photograph, not digital art — do not render it as an illustration, cartoon, anime, 3D render, CGI, painting, sketch, or plastic-looking/artificial image. No watermark, no hands.`;
 }
 
 async function getStockSearchQuery(name: string, description: string | null, city: string | null): Promise<string | null> {
@@ -49,8 +50,12 @@ async function searchStockPhoto(name: string, description: string | null, city: 
   const query = await getStockSearchQuery(name, description, city);
   if (!query) return null; // Claude wasn't confident what this item is — go straight to AI
 
+  // Bias toward tight, food-focused shots rather than wide table/restaurant
+  // scenes — Pexels has no composition filter, so this has to ride the query.
+  const searchQuery = `${query} close up`;
+
   const res = await fetch(
-    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=square`,
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=8&orientation=square`,
     { headers: { Authorization: apiKey } }
   );
   if (!res.ok) return null;
@@ -67,10 +72,15 @@ async function searchStockPhoto(name: string, description: string | null, city: 
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 2);
 
-  const relevantPhoto = photos.find((p) => {
+  const relevantPhotos = photos.filter((p) => {
     const alt = (p.alt || "").toLowerCase();
     return queryWords.some((w) => alt.includes(w));
   });
+
+  // Among relevant matches, prefer one explicitly described as a close-up —
+  // otherwise take whichever relevant match ranked highest.
+  const relevantPhoto =
+    relevantPhotos.find((p) => /close[\s-]?up/i.test(p.alt || "")) ?? relevantPhotos[0];
 
   const photoUrl = relevantPhoto?.src?.large;
   if (!photoUrl) return null;

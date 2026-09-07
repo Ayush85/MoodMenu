@@ -1,6 +1,7 @@
 "use client";
 
 import { useId } from "react";
+import { BRAND_MARK_VIEWBOX, BRAND_MARK_PATH, BRAND_MARK_DOT, BRAND_GRADIENT_STOPS } from "@/lib/brand-mark";
 
 interface LogoProps {
   /** "mark" = icon only, "full" = icon + wordmark */
@@ -16,23 +17,16 @@ export default function Logo({ variant = "full", size = 36, className = "", word
 
   return (
     <span className={`inline-flex items-center gap-2 ${className}`}>
-      <svg width={size} height={size} viewBox="0 0 256 256" role="img" aria-label="Menuor logo" className="shrink-0">
+      <svg width={size} height={size} viewBox={BRAND_MARK_VIEWBOX} role="img" aria-label="Menuor logo" className="shrink-0">
         <defs>
           <linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="#06b6d4" />
-            <stop offset="100%" stopColor="#8b5cf6" />
+            {BRAND_GRADIENT_STOPS.map((stop) => (
+              <stop key={stop.offset} offset={stop.offset} stopColor={stop.color} />
+            ))}
           </linearGradient>
         </defs>
-        <g transform="translate(32,32)">
-          <path
-            d="M16 160 L64 72 L96 120 L128 56 L176 160 Z"
-            fill={`url(#${gradientId})`}
-            stroke="#0f172a"
-            strokeWidth={4}
-            strokeLinejoin="round"
-          />
-          <circle cx="200" cy="40" r="12" fill="#F97316" />
-        </g>
+        <path d={BRAND_MARK_PATH} fill={`url(#${gradientId})`} />
+        <circle cx={BRAND_MARK_DOT.cx} cy={BRAND_MARK_DOT.cy} r={BRAND_MARK_DOT.r} fill="#ffffff" opacity={0.9} />
       </svg>
       {variant === "full" && (
         <span className={`font-bold text-lg tracking-tight ${wordmarkClassName}`} style={wordmarkClassName ? undefined : { color: "var(--text-primary)" }}>

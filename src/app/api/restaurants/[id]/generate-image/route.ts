@@ -6,9 +6,10 @@ import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
 
 function buildPrompt(name: string, description?: string | null) {
-  return `Professional restaurant menu food photography of "${name}"${
-    description ? `, described as: ${description}` : ""
-  }. Appetizing, on a clean plate or bowl, natural lighting, shallow depth of field, top-down or 45-degree angle, high detail, realistic. No text, no watermark, no hands, no cutlery brand logos.`;
+  return `A photorealistic professional food photograph of "${name}"${
+    description ? `, ${description}` : ""
+  }, shot for a restaurant menu. Captured on a DSLR camera with a 100mm macro lens, soft natural window lighting, shallow depth of field with a softly blurred background. Freshly plated on a simple ceramic plate or bowl with appropriate garnish, natural steam if served hot, realistic specular highlights on sauces and oils, true-to-life textures and colors, 45-degree or top-down angle, editorial food-magazine quality.
+This must look like an actual camera photograph, not digital art. Do not render it as an illustration, cartoon, anime, 3D render, CGI, painting, sketch, or plastic-looking/artificial image. No text, no watermark, no logos, no hands, no cutlery brand names.`;
 }
 
 async function generateWithOpenAI(prompt: string): Promise<Buffer> {
@@ -20,6 +21,7 @@ async function generateWithOpenAI(prompt: string): Promise<Buffer> {
     model: "gpt-image-1",
     prompt,
     size: "1024x1024",
+    quality: "high",
     n: 1,
   });
 

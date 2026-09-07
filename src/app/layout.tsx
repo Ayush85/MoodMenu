@@ -54,9 +54,6 @@ export const metadata: Metadata = {
     title: APP_TITLE,
     description: APP_DESC,
   },
-  icons: {
-    icon: [{ url: "/logo-kathmandu.svg", type: "image/svg+xml" }],
-  },
 };
 
 export const viewport: Viewport = {

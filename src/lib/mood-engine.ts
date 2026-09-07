@@ -26,8 +26,10 @@ function isTimeInRange(timeRange: [string, string]): boolean {
 
 export function evaluateMood(
   rules: MoodRuleInput[],
-  weather: WeatherData | null
+  weather: WeatherData | null,
+  brandTheme?: Partial<MoodTheme> | null
 ): MoodResult {
+  const baseTheme: MoodTheme = { ...DEFAULT_THEME, ...brandTheme };
   const sorted = [...rules].sort((a, b) => b.priority - a.priority);
 
   for (const rule of sorted) {
@@ -66,5 +68,5 @@ export function evaluateMood(
     }
   }
 
-  return { theme: DEFAULT_THEME, featuredTags: [], ruleName: "Default", weather };
+  return { theme: baseTheme, featuredTags: [], ruleName: "Default", weather };
 }

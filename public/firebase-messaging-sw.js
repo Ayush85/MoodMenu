@@ -18,7 +18,7 @@ messaging.onBackgroundMessage((payload) => {
 
   self.registration.showNotification(title || "Menuor", {
     body,
-    icon: "/logo-kathmandu.svg",
+    icon: "/logo.svg",
     data,
   });
 });

@@ -93,7 +93,7 @@ export default function FcmInit() {
       unsubscribe = onMessage(messaging, (payload) => {
         const { title, body } = payload.notification || {};
         if (title && Notification.permission === "granted") {
-          new Notification(title, { body, icon: "/logo-kathmandu.svg" });
+          new Notification(title, { body, icon: "/logo.svg" });
         }
       });
     })();

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
-import { UtensilsCrossed, Search, ClipboardList, Pencil, ArrowLeftRight, Trash2, Plus } from "lucide-react";
+import { UtensilsCrossed, Search, ClipboardList, Pencil, ArrowLeftRight, Trash2, Plus, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface MenuItem {
@@ -137,15 +137,28 @@ export default function MenuManagePage() {
   // ─── Photo import state ───────────────────────────────────────────────────
   const [showImportModal, setShowImportModal] = useState(false);
   const [importMode, setImportMode] = useState<"photo" | "csv">("csv");
-  const [importFile, setImportFile] = useState<File | null>(null);
-  const [importPreview, setImportPreview] = useState<string | null>(null);
+  const [importFiles, setImportFiles] = useState<File[]>([]);
+  const [importPreviews, setImportPreviews] = useState<string[]>([]);
   const [importParsed, setImportParsed] = useState<{
     categories: { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] }[];
   } | null>(null);
   const [importLoading, setImportLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
+  const [importFileErrors, setImportFileErrors] = useState<string[]>([]);
   const [importError, setImportError] = useState<string | null>(null);
   const [importSaving, setImportSaving] = useState(false);
   const [selectedImportItems, setSelectedImportItems] = useState<Set<string>>(new Set());
+
+  // ─── Post-import bulk image generation ───────────────────────────────────
+  const [postImportItems, setPostImportItems] = useState<{ id: string; name: string; description: string | null }[]>([]);
+  const [bulkGenActive, setBulkGenActive] = useState(false);
+  const [bulkGenProgress, setBulkGenProgress] = useState({ current: 0, total: 0 });
+  const bulkGenStopRef = useRef(false);
+
+  // ─── Whole-menu bulk image generation (existing items with no image) ─────
+  const [wholeMenuGenActive, setWholeMenuGenActive] = useState(false);
+  const [wholeMenuGenProgress, setWholeMenuGenProgress] = useState({ current: 0, total: 0, currentName: "" });
+  const wholeMenuGenStopRef = useRef(false);
 
   // ─── CSV import state ─────────────────────────────────────────────────────
   const [csvRows, setCsvRows] = useState<CsvRow[]>([]);
@@ -392,40 +405,92 @@ export default function MenuManagePage() {
 
   // ─── Photo import ─────────────────────────────────────────────────────────
   function handleImportFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImportFile(file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setImportFiles(files);
     setImportParsed(null);
     setImportError(null);
+    setImportFileErrors([]);
     setSelectedImportItems(new Set());
-    const url = URL.createObjectURL(file);
-    setImportPreview(url);
+    setImportPreviews(files.map((f) => URL.createObjectURL(f)));
+  }
+
+  function removeImportFile(index: number) {
+    setImportFiles((prev) => prev.filter((_, i) => i !== index));
+    setImportPreviews((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  type ParsedMenu = { categories: { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] }[] };
+
+  function mergeParsedMenus(results: ParsedMenu[]): ParsedMenu {
+    const categoriesByKey = new Map<string, { name: string; items: { name: string; description: string | null; price: number; tags: string[] }[] }>();
+
+    for (const result of results) {
+      for (const cat of result.categories) {
+        const catKey = cat.name.trim().toLowerCase();
+        let merged = categoriesByKey.get(catKey);
+        if (!merged) {
+          merged = { name: cat.name, items: [] };
+          categoriesByKey.set(catKey, merged);
+        }
+
+        const existingItemKeys = new Set(merged.items.map((i) => i.name.trim().toLowerCase()));
+        for (const item of cat.items) {
+          const itemKey = item.name.trim().toLowerCase();
+          if (existingItemKeys.has(itemKey)) continue; // auto-merge exact name matches
+          existingItemKeys.add(itemKey);
+          merged.items.push(item);
+        }
+      }
+    }
+
+    return { categories: Array.from(categoriesByKey.values()) };
   }
 
   async function runPhotoImport() {
-    if (!importFile) return;
+    if (importFiles.length === 0) return;
     setImportLoading(true);
     setImportError(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", importFile);
-      const res = await fetch(`/api/restaurants/${id}/import-from-photo`, { method: "POST", body: fd });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to parse menu");
+    setImportFileErrors([]);
+
+    const results: ParsedMenu[] = [];
+    const failures: string[] = [];
+
+    for (let i = 0; i < importFiles.length; i++) {
+      setImportProgress({ current: i + 1, total: importFiles.length });
+      const file = importFiles[i];
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch(`/api/restaurants/${id}/import-from-photo`, { method: "POST", body: fd });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to parse menu");
+        }
+        const data = await res.json();
+        results.push(data);
+      } catch (err) {
+        failures.push(`${file.name}: ${err instanceof Error ? err.message : "Unknown error"}`);
       }
-      const data = await res.json();
-      setImportParsed(data);
-      const allKeys = new Set<string>();
-      data.categories.forEach((cat: { name: string; items: { name: string }[] }, ci: number) => {
-        cat.items.forEach((_: unknown, ii: number) => allKeys.add(`${ci}-${ii}`));
-      });
-      setSelectedImportItems(allKeys);
-    } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setImportLoading(false);
     }
+
+    setImportProgress(null);
+    setImportFileErrors(failures);
+
+    if (results.length === 0) {
+      setImportError(failures[0] || "Failed to parse any of the selected photos");
+      setImportLoading(false);
+      return;
+    }
+
+    const merged = mergeParsedMenus(results);
+    setImportParsed(merged);
+    const allKeys = new Set<string>();
+    merged.categories.forEach((cat, ci) => {
+      cat.items.forEach((_, ii) => allKeys.add(`${ci}-${ii}`));
+    });
+    setSelectedImportItems(allKeys);
+    setImportLoading(false);
   }
 
   async function savePhotoImportedItems() {
@@ -439,7 +504,7 @@ export default function MenuManagePage() {
         catMap[cat.name.toLowerCase()] = cat.id;
       }
 
-      let totalAdded = 0;
+      const created: { id: string; name: string; description: string | null }[] = [];
       for (const [ci, cat] of importParsed.categories.entries()) {
         const selectedItems = cat.items.filter((_, ii) => selectedImportItems.has(`${ci}-${ii}`));
         if (selectedItems.length === 0) continue;
@@ -458,17 +523,25 @@ export default function MenuManagePage() {
         }
 
         for (const item of selectedItems) {
-          await fetch(`/api/restaurants/${id}/items`, {
+          const itemRes = await fetch(`/api/restaurants/${id}/items`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ ...item, categoryId }),
           });
-          totalAdded++;
+          if (itemRes.ok) {
+            const itemData = await itemRes.json();
+            created.push({ id: itemData.id, name: itemData.name, description: itemData.description });
+          }
         }
       }
-      resetImportModal();
-      toast(`Imported ${totalAdded} item${totalAdded !== 1 ? "s" : ""} successfully`);
+
+      toast(`Imported ${created.length} item${created.length !== 1 ? "s" : ""} successfully`);
       fetchRestaurant();
+      if (created.length > 0) {
+        setPostImportItems(created);
+      } else {
+        resetImportModal();
+      }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Failed to import menu");
     } finally {
@@ -482,6 +555,126 @@ export default function MenuManagePage() {
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
+  }
+
+  // ─── Post-import bulk image generation ───────────────────────────────────
+  async function runBulkImageGeneration() {
+    setBulkGenActive(true);
+    bulkGenStopRef.current = false;
+    setBulkGenProgress({ current: 0, total: postImportItems.length });
+
+    let generated = 0;
+    for (let i = 0; i < postImportItems.length; i++) {
+      if (bulkGenStopRef.current) break;
+      const item = postImportItems[i];
+      setBulkGenProgress({ current: i + 1, total: postImportItems.length });
+
+      try {
+        const res = await fetch(`/api/restaurants/${id}/generate-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: item.name, description: item.description }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          // If the AI image provider isn't configured at all, no point retrying per item
+          if (String(data.error || "").includes("AI_IMAGE_PROVIDER")) {
+            toast(data.error, "error");
+            break;
+          }
+          continue;
+        }
+        if (data.url) {
+          await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: data.url }),
+          });
+          generated++;
+        }
+      } catch {
+        // Skip this item, continue with the rest
+      }
+    }
+
+    setBulkGenActive(false);
+    toast(`Generated ${generated} of ${postImportItems.length} image${postImportItems.length !== 1 ? "s" : ""}`);
+    fetchRestaurant();
+    resetImportModal();
+  }
+
+  function stopBulkImageGeneration() {
+    bulkGenStopRef.current = true;
+  }
+
+  function skipBulkImageGeneration() {
+    resetImportModal();
+  }
+
+  // ─── Whole-menu bulk image generation ────────────────────────────────────
+  const missingImageItems = (restaurant?.categories ?? []).flatMap((cat) =>
+    cat.items.filter((item) => !item.image)
+  );
+
+  async function runWholeMenuImageGeneration() {
+    const targets = missingImageItems;
+    if (targets.length === 0) return;
+
+    setWholeMenuGenActive(true);
+    wholeMenuGenStopRef.current = false;
+    setWholeMenuGenProgress({ current: 0, total: targets.length, currentName: "" });
+
+    let generated = 0;
+    for (let i = 0; i < targets.length; i++) {
+      if (wholeMenuGenStopRef.current) break;
+      const item = targets[i];
+      setWholeMenuGenProgress({ current: i + 1, total: targets.length, currentName: item.name });
+
+      try {
+        const res = await fetch(`/api/restaurants/${id}/generate-image`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: item.name, description: item.description }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (String(data.error || "").includes("AI_IMAGE_PROVIDER")) {
+            toast(data.error, "error");
+            break;
+          }
+          continue;
+        }
+        if (data.url) {
+          await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: data.url }),
+          });
+          generated++;
+          // Reflect the new image immediately so the grid updates live
+          setRestaurant((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  categories: prev.categories.map((cat) => ({
+                    ...cat,
+                    items: cat.items.map((i) => (i.id === item.id ? { ...i, image: data.url } : i)),
+                  })),
+                }
+              : prev
+          );
+        }
+      } catch {
+        // Skip this item, continue with the rest
+      }
+    }
+
+    setWholeMenuGenActive(false);
+    toast(`Generated ${generated} of ${targets.length} image${targets.length !== 1 ? "s" : ""}`);
+  }
+
+  function stopWholeMenuImageGeneration() {
+    wholeMenuGenStopRef.current = true;
   }
 
   // ─── CSV import ───────────────────────────────────────────────────────────
@@ -569,9 +762,14 @@ export default function MenuManagePage() {
         throw new Error(err.error || "Import failed");
       }
       const result = await res.json();
-      resetImportModal();
       toast(`Imported ${result.itemsCreated} items${result.categoriesCreated > 0 ? ` in ${result.categoriesCreated} new categories` : ""}`);
       fetchRestaurant();
+      const created: { id: string; name: string; description: string | null }[] = Array.isArray(result.items) ? result.items : [];
+      if (created.length > 0) {
+        setPostImportItems(created);
+      } else {
+        resetImportModal();
+      }
     } catch (err) {
       setImportError(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -591,14 +789,19 @@ export default function MenuManagePage() {
 
   function resetImportModal() {
     setShowImportModal(false);
-    setImportFile(null);
-    setImportPreview(null);
+    setImportFiles([]);
+    setImportPreviews([]);
     setImportParsed(null);
     setImportError(null);
+    setImportFileErrors([]);
+    setImportProgress(null);
     setCsvRows([]);
     setCsvErrors([]);
     setCsvSelected(new Set());
     setCsvFileName(null);
+    setPostImportItems([]);
+    setBulkGenActive(false);
+    setBulkGenProgress({ current: 0, total: 0 });
   }
 
   // ─── Filtered categories ──────────────────────────────────────────────────
@@ -710,7 +913,37 @@ export default function MenuManagePage() {
           </svg>
           Bulk Import
         </button>
+        {missingImageItems.length > 0 && !wholeMenuGenActive && (
+          <button onClick={runWholeMenuImageGeneration}
+            className="flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition w-full sm:w-auto justify-center"
+          >
+            <Sparkles className="w-4 h-4" />
+            Generate {missingImageItems.length} Missing Image{missingImageItems.length !== 1 ? "s" : ""}
+          </button>
+        )}
       </div>
+
+      {/* ── Whole-menu image generation progress ── */}
+      {wholeMenuGenActive && (
+        <div className="surface-card p-4 mb-5 border-2 border-purple-200">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-500" />
+              Generating image {wholeMenuGenProgress.current} of {wholeMenuGenProgress.total}
+              {wholeMenuGenProgress.currentName && <span className="text-gray-400 font-normal truncate">— {wholeMenuGenProgress.currentName}</span>}
+            </p>
+            <button onClick={stopWholeMenuImageGeneration} className="text-xs text-red-500 hover:text-red-600 font-medium shrink-0">
+              Stop
+            </button>
+          </div>
+          <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div
+              className="h-full bg-purple-500 transition-all"
+              style={{ width: `${(wholeMenuGenProgress.current / Math.max(wholeMenuGenProgress.total, 1)) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* ── Search bar ── */}
       {(restaurant.categories.length > 0) && (
@@ -1070,7 +1303,7 @@ export default function MenuManagePage() {
       ══════════════════════════════════════════════ */}
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => { if (!importLoading && !importSaving && !csvSaving) resetImportModal(); }} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => { if (!importLoading && !importSaving && !csvSaving && !bulkGenActive) resetImportModal(); }} />
           <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white z-10">
@@ -1078,7 +1311,7 @@ export default function MenuManagePage() {
                 <h3 className="text-lg font-bold text-gray-900">Bulk Import Menu</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Import via CSV spreadsheet or photo scan</p>
               </div>
-              <button onClick={resetImportModal} className="text-gray-400 hover:text-gray-600 ml-4">
+              <button onClick={resetImportModal} disabled={bulkGenActive} className="text-gray-400 hover:text-gray-600 ml-4 disabled:opacity-30">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1086,35 +1319,86 @@ export default function MenuManagePage() {
             </div>
 
             {/* Tab switcher */}
-            <div className="flex gap-1 px-6 pt-4">
-              <button
-                onClick={() => { setImportMode("csv"); setImportError(null); }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 ${
-                  importMode === "csv" ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                CSV / Spreadsheet
-              </button>
-              <button
-                onClick={() => { setImportMode("photo"); setImportError(null); }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 ${
-                  importMode === "photo" ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                AI Photo Scan
-              </button>
-            </div>
+            {postImportItems.length === 0 && (
+              <div className="flex gap-1 px-6 pt-4">
+                <button
+                  onClick={() => { setImportMode("csv"); setImportError(null); }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 ${
+                    importMode === "csv" ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  CSV / Spreadsheet
+                </button>
+                <button
+                  onClick={() => { setImportMode("photo"); setImportError(null); }}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 ${
+                    importMode === "photo" ? "bg-violet-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  AI Photo Scan
+                </button>
+              </div>
+            )}
 
             <div className="p-6 space-y-5">
+              {/* ── Post-import: bulk-generate images ── */}
+              {postImportItems.length > 0 && (
+                <div className="space-y-4">
+                  {!bulkGenActive ? (
+                    <>
+                      <div className="text-center py-4">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-violet-100 flex items-center justify-center mx-auto mb-3">
+                          <svg className="w-7 h-7 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {postImportItems.length} item{postImportItems.length !== 1 ? "s" : ""} imported without a photo
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">Generate photos automatically with AI?</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={skipBulkImageGeneration} className="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
+                          Skip
+                        </button>
+                        <button onClick={runBulkImageGeneration} className="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-purple-600 text-white hover:bg-purple-700 transition">
+                          Generate Images
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="py-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-gray-800">
+                          Generating image {bulkGenProgress.current} of {bulkGenProgress.total}…
+                        </p>
+                        <button onClick={stopBulkImageGeneration} className="text-xs text-red-500 hover:text-red-600 font-medium">
+                          Stop
+                        </button>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                        <div
+                          className="h-full bg-purple-500 transition-all"
+                          style={{ width: `${(bulkGenProgress.current / Math.max(bulkGenProgress.total, 1)) * 100}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-gray-400 mt-2 truncate">
+                        {postImportItems[bulkGenProgress.current - 1]?.name}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* ── CSV mode ── */}
-              {importMode === "csv" && (
+              {postImportItems.length === 0 && importMode === "csv" && (
                 <div className="space-y-4">
                   {/* Template download */}
                   <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
@@ -1278,29 +1562,61 @@ export default function MenuManagePage() {
               )}
 
               {/* ── Photo mode ── */}
-              {importMode === "photo" && (
+              {postImportItems.length === 0 && importMode === "photo" && (
                 <div className="space-y-4">
                   {!importParsed && (
                     <>
-                      <label className="block w-full cursor-pointer">
-                        <div className={`border-2 border-dashed rounded-2xl p-8 text-center transition ${
-                          importFile ? "border-violet-300 bg-violet-50" : "border-gray-200 hover:border-violet-300 hover:bg-violet-50/50"
-                        }`}>
-                          {importPreview ? (
-                            <img src={importPreview} alt="Menu preview" className="max-h-48 mx-auto rounded-xl object-contain mb-3" />
-                          ) : (
+                      {importPreviews.length === 0 ? (
+                        <label className="block w-full cursor-pointer">
+                          <div className="border-2 border-dashed rounded-2xl p-8 text-center transition border-gray-200 hover:border-violet-300 hover:bg-violet-50/50">
                             <div className="w-14 h-14 rounded-2xl bg-violet-100 flex items-center justify-center mx-auto mb-3">
                               <svg className="w-7 h-7 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
                             </div>
-                          )}
-                          <p className="text-sm font-medium text-gray-700">{importFile ? importFile.name : "Click to select or take a photo"}</p>
-                          <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP up to 10MB</p>
+                            <p className="text-sm font-medium text-gray-700">Click to select photos</p>
+                            <p className="text-xs text-gray-400 mt-1">JPG, PNG, WebP up to 10MB each — select multiple pages at once</p>
+                          </div>
+                          <input type="file" accept="image/*" multiple className="hidden" onChange={handleImportFileChange} />
+                        </label>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                            {importPreviews.map((preview, i) => (
+                              <div key={i} className="relative group">
+                                <img src={preview} alt={`Menu photo ${i + 1}`} className="w-full aspect-square object-cover rounded-xl border border-gray-200" />
+                                <button
+                                  type="button"
+                                  onClick={() => removeImportFile(i)}
+                                  className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-white shadow border border-gray-200 flex items-center justify-center text-gray-500 hover:text-red-500 hover:border-red-300 transition"
+                                  aria-label="Remove photo"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                            <label className="w-full aspect-square rounded-xl border-2 border-dashed border-gray-200 hover:border-violet-300 hover:bg-violet-50/50 flex items-center justify-center cursor-pointer transition">
+                              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                              </svg>
+                              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImportFileChange} />
+                            </label>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            {importPreviews.length} photo{importPreviews.length !== 1 ? "s" : ""} selected
+                          </p>
                         </div>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleImportFileChange} />
-                      </label>
+                      )}
+
+                      {importFileErrors.length > 0 && (
+                        <div className="text-amber-700 text-xs bg-amber-50 rounded-xl px-4 py-3 space-y-1">
+                          <p className="font-semibold">Some photos couldn&apos;t be scanned:</p>
+                          {importFileErrors.map((e, i) => <p key={i}>{e}</p>)}
+                        </div>
+                      )}
 
                       {importError && (
                         <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 rounded-xl px-4 py-3">
@@ -1311,11 +1627,11 @@ export default function MenuManagePage() {
                         </div>
                       )}
 
-                      <button onClick={runPhotoImport} disabled={!importFile || importLoading}
+                      <button onClick={runPhotoImport} disabled={importFiles.length === 0 || importLoading}
                         className="w-full py-3 rounded-xl font-semibold text-sm bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40 transition flex items-center justify-center gap-2"
                       >
                         {importLoading ? (
-                          <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Scanning menu with AI...</>
+                          <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>{importProgress ? `Scanning photo ${importProgress.current} of ${importProgress.total}…` : "Scanning menu with AI..."}</>
                         ) : (
                           <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>Scan & Extract Menu Items</>
                         )}
@@ -1329,10 +1645,10 @@ export default function MenuManagePage() {
                         <p className="text-sm font-semibold text-gray-700">
                           Found {importParsed.categories.reduce((s, c) => s + c.items.length, 0)} items in {importParsed.categories.length} categories
                         </p>
-                        <button onClick={() => { setImportParsed(null); setImportFile(null); setImportPreview(null); }}
+                        <button onClick={() => { setImportParsed(null); setImportFiles([]); setImportPreviews([]); setImportFileErrors([]); }}
                           className="text-xs text-violet-600 hover:text-violet-700 font-medium"
                         >
-                          Try another photo
+                          Try different photos
                         </button>
                       </div>
 

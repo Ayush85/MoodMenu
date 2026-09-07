@@ -24,7 +24,7 @@ export async function GET(
       tables: { orderBy: { number: "asc" } },
       categories: {
         orderBy: { order: "asc" },
-        include: { items: { orderBy: { createdAt: "asc" } } },
+        include: { items: { orderBy: { order: "asc" } } },
       },
       moodRules: { orderBy: { priority: "desc" } },
     },
@@ -68,6 +68,8 @@ export async function PATCH(
       logo: data.logo,
       latitude: data.latitude,
       longitude: data.longitude,
+      brandTheme: data.brandTheme,
+      cardStyle: data.cardStyle,
     },
   });
 

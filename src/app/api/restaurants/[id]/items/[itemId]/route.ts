@@ -33,13 +33,20 @@ export async function PATCH(
   const data = await req.json();
 
   // If moving to another category, validate the target belongs to this restaurant
-  if (data.categoryId) {
+  // and append to the end of its order so it doesn't collide with existing items there.
+  let newOrder: number | undefined;
+  if (data.categoryId && data.categoryId !== item.categoryId) {
     const targetCat = await prisma.category.findFirst({
       where: { id: data.categoryId, restaurantId: id },
     });
     if (!targetCat) {
       return NextResponse.json({ error: "Target category not found" }, { status: 404 });
     }
+    const maxOrder = await prisma.menuItem.aggregate({
+      where: { categoryId: data.categoryId },
+      _max: { order: true },
+    });
+    newOrder = (maxOrder._max.order ?? -1) + 1;
   }
 
   const updated = await prisma.menuItem.update({
@@ -53,6 +60,7 @@ export async function PATCH(
       isAvailable: data.isAvailable,
       isSpecial: data.isSpecial,
       categoryId: data.categoryId,
+      order: newOrder,
     },
   });
 

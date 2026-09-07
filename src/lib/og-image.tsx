@@ -1,3 +1,5 @@
+import { BRAND_MARK_VIEWBOX, BRAND_MARK_PATH, BRAND_MARK_DOT, BRAND_GRADIENT_CSS } from "@/lib/brand-mark";
+
 export const ogImageSize = { width: 1200, height: 630 };
 export const ogImageContentType = "image/png";
 
@@ -11,15 +13,13 @@ export function OgImageContent() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        background: "linear-gradient(135deg, #f97316, #ec4899, #8b5cf6)",
+        background: BRAND_GRADIENT_CSS,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-        <svg width={96} height={96} viewBox="0 0 256 256">
-          <g transform="translate(32,32)">
-            <path d="M16 160 L64 72 L96 120 L128 56 L176 160 Z" fill="#ffffff" stroke="#0f172a" strokeWidth={4} strokeLinejoin="round" />
-            <circle cx="200" cy="40" r="12" fill="#0f172a" />
-          </g>
+        <svg width={96} height={96} viewBox={BRAND_MARK_VIEWBOX}>
+          <path d={BRAND_MARK_PATH} fill="#ffffff" />
+          <circle cx={BRAND_MARK_DOT.cx} cy={BRAND_MARK_DOT.cy} r={BRAND_MARK_DOT.r} fill="#0f172a" />
         </svg>
         <span style={{ fontSize: 96, fontWeight: 800, color: "#ffffff" }}>Menuor</span>
       </div>

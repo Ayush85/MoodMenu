@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getWeather } from "@/lib/weather";
 import { evaluateMood } from "@/lib/mood-engine";
-import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS } from "@/types";
+import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS, getFontOption } from "@/types";
 import MenuClient from "@/components/menu/MenuClient";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +64,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         include: {
           items: {
             where: { isAvailable: true },
-            orderBy: { createdAt: "asc" },
+            orderBy: { order: "asc" },
           },
         },
       },
@@ -89,7 +89,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     priority: r.priority,
   }));
 
-  let mood = evaluateMood(rules, weather);
+  let mood = evaluateMood(rules, weather, restaurant.brandTheme as unknown as Partial<MoodTheme> | null);
 
   // Preview mode: override theme with a named preset for demo/testing
   const previewPreset = previewParam ? MOOD_PRESETS[previewParam] : null;
@@ -170,13 +170,18 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     ...(menuItems.length > 0 ? { menu: menuItems } : {}),
   };
 
+  const fontOption = getFontOption(theme.fontFamily);
+
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      {fontOption && <link rel="stylesheet" href={fontOption.stylesheetUrl} />}
       <MenuClient
+      cardStyle={restaurant.cardStyle as "list" | "grid"}
+      fontFamily={fontOption?.cssFamily}
       restaurant={{
         name: restaurant.name,
         city: restaurant.city,

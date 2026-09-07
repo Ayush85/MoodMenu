@@ -57,6 +57,8 @@ model Restaurant {
   latitude      Float?
   longitude     Float?
   logo          String?
+  brandTheme    Json?
+  cardStyle     String       @default("list")
   wifiSsid      String?
   wifiPassword  String?
   allowedIp     String?
@@ -169,6 +171,7 @@ model MenuItem {
   isAvailable   Boolean      @default(true)
   isSpecial     Boolean      @default(false)
   tags          String[]
+  order         Int          @default(0)
   categoryId    String
   category      Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   createdAt     DateTime     @default(now())

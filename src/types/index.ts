@@ -9,6 +9,57 @@ export interface MoodTheme {
   accent: string;
   bg: string;
   text: string;
+  fontFamily?: string;
+}
+
+export interface FontOption {
+  label: string;
+  value: string;
+  cssFamily: string;
+  stylesheetUrl: string;
+}
+
+export const FONT_OPTIONS: FontOption[] = [
+  {
+    label: "Inter (default)",
+    value: "inter",
+    cssFamily: "'Inter', sans-serif",
+    stylesheetUrl: "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap",
+  },
+  {
+    label: "Poppins",
+    value: "poppins",
+    cssFamily: "'Poppins', sans-serif",
+    stylesheetUrl: "https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap",
+  },
+  {
+    label: "Playfair Display",
+    value: "playfair-display",
+    cssFamily: "'Playfair Display', serif",
+    stylesheetUrl: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;800&display=swap",
+  },
+  {
+    label: "DM Sans",
+    value: "dm-sans",
+    cssFamily: "'DM Sans', sans-serif",
+    stylesheetUrl: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;800&display=swap",
+  },
+  {
+    label: "Space Grotesk",
+    value: "space-grotesk",
+    cssFamily: "'Space Grotesk', sans-serif",
+    stylesheetUrl: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap",
+  },
+  {
+    label: "Lora",
+    value: "lora",
+    cssFamily: "'Lora', serif",
+    stylesheetUrl: "https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&display=swap",
+  },
+];
+
+export function getFontOption(value?: string): FontOption | undefined {
+  return FONT_OPTIONS.find((f) => f.value === value);
 }
 
 export interface WeatherData {

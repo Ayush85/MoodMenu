@@ -64,8 +64,8 @@ export async function POST(
     categoryMap[existing.name.toLowerCase()] = existing.id;
   }
 
-  let created = 0;
   let categoriesCreated = 0;
+  const createdItems: { id: string; name: string; description: string | null }[] = [];
 
   const maxOrderResult = await prisma.category.aggregate({
     where: { restaurantId: id },
@@ -90,22 +90,32 @@ export async function POST(
       categoriesCreated++;
     }
 
-    // Batch create items
-    await prisma.menuItem.createMany({
-      data: catRows.map((row) => ({
-        name: row.name.trim(),
-        description: row.description?.trim() || null,
-        price: row.price,
-        tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
-        categoryId,
-      })),
+    const maxItemOrder = await prisma.menuItem.aggregate({
+      where: { categoryId },
+      _max: { order: true },
     });
-    created += catRows.length;
+    let nextItemOrder = (maxItemOrder._max.order ?? -1) + 1;
+
+    for (const row of catRows) {
+      const item = await prisma.menuItem.create({
+        data: {
+          name: row.name.trim(),
+          description: row.description?.trim() || null,
+          price: row.price,
+          tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
+          order: nextItemOrder++,
+          categoryId,
+        },
+        select: { id: true, name: true, description: true },
+      });
+      createdItems.push(item);
+    }
   }
 
   return NextResponse.json({
     ok: true,
-    itemsCreated: created,
+    itemsCreated: createdItems.length,
     categoriesCreated,
+    items: createdItems,
   });
 }

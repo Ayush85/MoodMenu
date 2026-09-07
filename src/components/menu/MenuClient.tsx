@@ -62,6 +62,8 @@ interface Props {
   tableNumber: number | null;
   autoOpenWifiPrompt?: boolean;
   previewMode?: boolean;
+  cardStyle?: "list" | "grid";
+  fontFamily?: string;
 }
 
 export default function MenuClient({
@@ -76,6 +78,8 @@ export default function MenuClient({
   tableNumber,
   autoOpenWifiPrompt = false,
   previewMode = false,
+  cardStyle = "list",
+  fontFamily,
 }: Props) {
   const isDark = theme.mode === "dark";
   const totalItems = categories.reduce((acc, c) => acc + c.items.length, 0);
@@ -295,10 +299,12 @@ export default function MenuClient({
     }
   }
 
+  const itemsWrapperClass = cardStyle === "grid" ? "grid grid-cols-2 gap-3" : "space-y-2";
+
   return (
     <div
       className="min-h-screen transition-colors duration-700"
-      style={{ backgroundColor: theme.bg, color: theme.text }}
+      style={{ backgroundColor: theme.bg, color: theme.text, fontFamily }}
     >
       {/* Preview Mode Banner */}
       {previewMode && (
@@ -446,12 +452,13 @@ export default function MenuClient({
                 <p className="text-[11px] font-semibold opacity-40 mb-2 uppercase tracking-wider">
                   {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
                 </p>
-                <div className="space-y-2">
+                <div className={itemsWrapperClass}>
                   {searchResults.map((item) => (
                     <MenuItemCard
                       key={item.id}
                       item={item}
                       theme={theme}
+                      layout={cardStyle}
                       onTap={setSelectedItem}
                       cartQty={getCartQty(item.id)}
                       onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
@@ -482,12 +489,13 @@ export default function MenuClient({
                     Today&apos;s Specials
                   </h2>
                 </div>
-                <div className="space-y-2">
+                <div className={itemsWrapperClass}>
                   {todaysSpecials.map((item) => (
                     <MenuItemCard
                       key={item.id}
                       item={item}
                       theme={theme}
+                      layout={cardStyle}
                       onTap={setSelectedItem}
                       cartQty={getCartQty(item.id)}
                       onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
@@ -508,12 +516,13 @@ export default function MenuClient({
                   <span className="text-xs font-medium opacity-30">{cat.items.length}</span>
                 </div>
 
-                <div className="space-y-2">
+                <div className={itemsWrapperClass}>
                   {cat.items.map((item) => (
                     <MenuItemCard
                       key={item.id}
                       item={item}
                       theme={theme}
+                      layout={cardStyle}
                       onTap={setSelectedItem}
                       cartQty={getCartQty(item.id)}
                       onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}

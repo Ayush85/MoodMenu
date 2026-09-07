@@ -153,11 +153,13 @@ export default function MenuManagePage() {
   const [postImportItems, setPostImportItems] = useState<{ id: string; name: string; description: string | null }[]>([]);
   const [bulkGenActive, setBulkGenActive] = useState(false);
   const [bulkGenProgress, setBulkGenProgress] = useState({ current: 0, total: 0 });
+  const [bulkGenSource, setBulkGenSource] = useState<"stock" | "ai">("stock");
   const bulkGenStopRef = useRef(false);
 
   // ─── Whole-menu bulk image generation (existing items with no image) ─────
   const [wholeMenuGenActive, setWholeMenuGenActive] = useState(false);
   const [wholeMenuGenProgress, setWholeMenuGenProgress] = useState({ current: 0, total: 0, currentName: "" });
+  const [wholeMenuGenSource, setWholeMenuGenSource] = useState<"stock" | "ai">("stock");
   const wholeMenuGenStopRef = useRef(false);
 
   // ─── CSV import state ─────────────────────────────────────────────────────
@@ -573,7 +575,7 @@ export default function MenuManagePage() {
         const res = await fetch(`/api/restaurants/${id}/generate-image`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: item.name, description: item.description }),
+          body: JSON.stringify({ name: item.name, description: item.description, source: bulkGenSource }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -634,7 +636,7 @@ export default function MenuManagePage() {
         const res = await fetch(`/api/restaurants/${id}/generate-image`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: item.name, description: item.description }),
+          body: JSON.stringify({ name: item.name, description: item.description, source: wholeMenuGenSource }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -914,12 +916,26 @@ export default function MenuManagePage() {
           Bulk Import
         </button>
         {missingImageItems.length > 0 && !wholeMenuGenActive && (
-          <button onClick={runWholeMenuImageGeneration}
-            className="flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition w-full sm:w-auto justify-center"
-          >
-            <Sparkles className="w-4 h-4" />
-            Generate {missingImageItems.length} Missing Image{missingImageItems.length !== 1 ? "s" : ""}
-          </button>
+          <div className="flex items-stretch rounded-xl border border-purple-200 overflow-hidden w-full sm:w-auto">
+            <div className="flex items-center bg-purple-50">
+              <button type="button" onClick={() => setWholeMenuGenSource("stock")}
+                className={`px-2.5 py-3 text-xs font-semibold transition ${wholeMenuGenSource === "stock" ? "bg-purple-600 text-white" : "text-purple-700 hover:bg-purple-100"}`}
+              >
+                Stock
+              </button>
+              <button type="button" onClick={() => setWholeMenuGenSource("ai")}
+                className={`px-2.5 py-3 text-xs font-semibold transition ${wholeMenuGenSource === "ai" ? "bg-purple-600 text-white" : "text-purple-700 hover:bg-purple-100"}`}
+              >
+                AI
+              </button>
+            </div>
+            <button onClick={runWholeMenuImageGeneration}
+              className="flex items-center gap-2 px-4 py-3 font-semibold text-sm bg-purple-50 text-purple-700 hover:bg-purple-100 transition flex-1 justify-center"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate {missingImageItems.length} Missing Image{missingImageItems.length !== 1 ? "s" : ""}
+            </button>
+          </div>
         )}
       </div>
 
@@ -1362,7 +1378,19 @@ export default function MenuManagePage() {
                         <p className="text-sm font-semibold text-gray-800">
                           {postImportItems.length} item{postImportItems.length !== 1 ? "s" : ""} imported without a photo
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">Generate photos automatically with AI?</p>
+                        <p className="text-xs text-gray-500 mt-1">Generate photos automatically?</p>
+                      </div>
+                      <div className="flex gap-2 justify-center">
+                        <button type="button" onClick={() => setBulkGenSource("stock")}
+                          className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${bulkGenSource === "stock" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                        >
+                          Stock Photos (cheaper)
+                        </button>
+                        <button type="button" onClick={() => setBulkGenSource("ai")}
+                          className={`px-4 py-2 rounded-lg text-xs font-semibold transition ${bulkGenSource === "ai" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                        >
+                          AI Generated
+                        </button>
                       </div>
                       <div className="flex gap-3">
                         <button onClick={skipBulkImageGeneration} className="flex-1 py-2.5 rounded-xl font-semibold text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition">

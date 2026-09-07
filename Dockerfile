@@ -21,7 +21,7 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-RUN apk add --no-cache postgresql-client && \
+RUN apk add --no-cache postgresql-client su-exec && \
     addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
@@ -43,8 +43,6 @@ COPY --from=builder /app/scripts ./scripts
 COPY docker-entrypoint.sh ./docker-entrypoint.sh
 RUN sed -i 's/\r$//' ./docker-entrypoint.sh && chmod +x ./docker-entrypoint.sh && \
     sed -i 's/\r$//' ./scripts/seed-prod.sh && chmod +x ./scripts/seed-prod.sh
-
-USER nextjs
 
 EXPOSE 3030
 ENV PORT=3030

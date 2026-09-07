@@ -1,27 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: menuor-db
-    restart: unless-stopped
-
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-menuor}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Mo0dMenu!2026}
-      POSTGRES_DB: ${POSTGRES_DB:-menuor}
-
-    volumes:
-      - ./storage/postgres:/var/lib/postgresql/data
-      - ./scripts/pg-start.sh:/pg-start.sh
-
-    entrypoint: ["/bin/sh", "/pg-start.sh"]
-
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-menuor}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-
   app:
     build:
       context: .
@@ -31,23 +8,22 @@ services:
     restart: unless-stopped
 
     ports:
-      - "${APP_PORT:-3030}:3030"
+      - "127.0.0.1:${APP_PORT:-3030}:3030"
 
     env_file:
       - .env
 
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://menuor:Mo0dMenu!2026@db:5432/menuor}
+      DATABASE_URL: ${DATABASE_URL}
 
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXTAUTH_URL: https://menuor.com
 
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
     volumes:
       - ./storage/uploads:/app/uploads
-
-    depends_on:
-      db:
-        condition: service_healthy
 
 
   ftp:

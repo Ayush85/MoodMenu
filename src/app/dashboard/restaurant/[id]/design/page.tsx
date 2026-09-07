@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { Sun, Moon, LayoutGrid, List, ChevronUp, ChevronDown, Image as ImageIcon, Pencil } from "lucide-react";
-import { FONT_OPTIONS, DEFAULT_THEME } from "@/types";
+import { FONT_OPTIONS, DEFAULT_THEME, DESIGN_TEMPLATES, DesignTemplate } from "@/types";
 
 interface MenuItemRow {
   id: string;
@@ -75,6 +75,17 @@ export default function DesignPage() {
   }
 
   useEffect(() => { fetchData(); }, [id]);
+
+  function applyTemplate(tpl: DesignTemplate) {
+    setMode(tpl.theme.mode);
+    setPrimary(tpl.theme.primary);
+    setAccent(tpl.theme.accent);
+    setBg(tpl.theme.bg);
+    setText(tpl.theme.text);
+    setFontFamily(tpl.theme.fontFamily || FONT_OPTIONS[0].value);
+    setCardStyle(tpl.cardStyle);
+    toast(`Applied "${tpl.name}" — click Save Design to keep it`);
+  }
 
   async function saveDesign() {
     setSaving(true);
@@ -186,6 +197,29 @@ export default function DesignPage() {
         <div>
           <h3 className="font-bold text-gray-900">Logo</h3>
           <p className="text-xs text-gray-500 mt-0.5">Shown on your public menu and QR code page</p>
+        </div>
+      </div>
+
+      {/* Look templates */}
+      <div className="surface-card p-5 mb-6">
+        <h3 className="font-bold text-gray-900 mb-1">Look Templates</h3>
+        <p className="text-xs text-gray-500 mb-4">Start from a preset, then fine-tune below</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {DESIGN_TEMPLATES.map((tpl) => (
+            <button
+              key={tpl.key}
+              type="button"
+              onClick={() => applyTemplate(tpl)}
+              className="text-left rounded-xl border border-gray-200 hover:border-purple-300 hover:shadow-sm transition p-3"
+            >
+              <div
+                className="w-full h-10 rounded-lg mb-2"
+                style={{ background: `linear-gradient(135deg, ${tpl.theme.primary}, ${tpl.theme.accent})` }}
+              />
+              <p className="text-xs font-bold text-gray-800">{tpl.name}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-2">{tpl.description}</p>
+            </button>
+          ))}
         </div>
       </div>
 

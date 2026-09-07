@@ -62,6 +62,73 @@ export function getFontOption(value?: string): FontOption | undefined {
   return FONT_OPTIONS.find((f) => f.value === value);
 }
 
+export interface DesignTemplate {
+  key: string;
+  name: string;
+  description: string;
+  theme: MoodTheme;
+  cardStyle: "list" | "grid";
+}
+
+export const DESIGN_TEMPLATES: DesignTemplate[] = [
+  {
+    key: "classic-orange",
+    name: "Classic Orange",
+    description: "Warm and friendly — the default look",
+    theme: { mode: "light", primary: "#F97316", accent: "#FDE68A", bg: "#FFFFFF", text: "#1F2937", fontFamily: "inter" },
+    cardStyle: "list",
+  },
+  {
+    key: "elegant-dark",
+    name: "Elegant Dark",
+    description: "Moody and upscale for fine dining",
+    theme: { mode: "dark", primary: "#D4AF37", accent: "#8B7355", bg: "#1A1A1A", text: "#F5F5F0", fontFamily: "playfair-display" },
+    cardStyle: "list",
+  },
+  {
+    key: "fresh-cafe",
+    name: "Fresh Cafe",
+    description: "Light and airy for coffee shops",
+    theme: { mode: "light", primary: "#10B981", accent: "#A7F3D0", bg: "#F0FDF4", text: "#064E3B", fontFamily: "dm-sans" },
+    cardStyle: "grid",
+  },
+  {
+    key: "bold-vibrant",
+    name: "Bold & Vibrant",
+    description: "Punchy colors for a fun, casual spot",
+    theme: { mode: "light", primary: "#EC4899", accent: "#FBCFE8", bg: "#FFF1F5", text: "#831843", fontFamily: "poppins" },
+    cardStyle: "grid",
+  },
+  {
+    key: "midnight-violet",
+    name: "Midnight Violet",
+    description: "Dark and modern for bars & lounges",
+    theme: { mode: "dark", primary: "#8B5CF6", accent: "#DDD6FE", bg: "#0F0B1E", text: "#F3F0FF", fontFamily: "space-grotesk" },
+    cardStyle: "grid",
+  },
+  {
+    key: "minimal-mono",
+    name: "Minimal Mono",
+    description: "Clean and understated",
+    theme: { mode: "light", primary: "#111827", accent: "#9CA3AF", bg: "#FFFFFF", text: "#111827", fontFamily: "inter" },
+    cardStyle: "list",
+  },
+  {
+    key: "rustic-warmth",
+    name: "Rustic Warmth",
+    description: "Cozy and earthy for a homestyle feel",
+    theme: { mode: "light", primary: "#B45309", accent: "#FDE68A", bg: "#FFFBEB", text: "#451A03", fontFamily: "lora" },
+    cardStyle: "list",
+  },
+  {
+    key: "ocean-breeze",
+    name: "Ocean Breeze",
+    description: "Cool and coastal",
+    theme: { mode: "light", primary: "#0EA5E9", accent: "#BAE6FD", bg: "#F0F9FF", text: "#0C4A6E", fontFamily: "dm-sans" },
+    cardStyle: "grid",
+  },
+];
+
 export interface WeatherData {
   main: string;
   description: string;

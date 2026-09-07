@@ -4,6 +4,7 @@ import { signIn, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import Logo from "@/components/ui/Logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -48,154 +49,92 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #0f0f14, #1a1025, #0f172a)",
-        padding: "16px",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: "420px" }}>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden px-4 py-8">
+      {/* Animated gradient background */}
+      <div
+        className="absolute inset-0 animate-gradient pointer-events-none"
+        style={{
+          background: "linear-gradient(135deg, #0f0f14, #1a1025, #0f172a, #0f0f14)",
+          backgroundSize: "400% 400%",
+        }}
+      />
+      {/* Ambient glow */}
+      <div className="absolute top-1/3 right-1/4 w-96 h-96 rounded-full bg-rose-500/10 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/3 left-1/4 w-96 h-96 rounded-full bg-violet-500/10 blur-[120px] pointer-events-none" />
+
+      <div className="relative w-full max-w-md animate-fade-in-up">
         {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <div
-              style={{
-                width: "40px",
-                height: "40px",
-                borderRadius: "12px",
-                background: "linear-gradient(135deg, #f97316, #ec4899, #8b5cf6)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span style={{ color: "#fff", fontSize: "18px", fontWeight: 900 }}>M</span>
-            </div>
-            <span style={{ fontSize: "24px", fontWeight: 700, color: "#fff" }}>
-              Mood<span style={{ color: "#f97316" }}>Menu</span>
-            </span>
-          </div>
+        <div className="flex items-center justify-center mb-8">
+          <Logo variant="full" size={40} wordmarkClassName="text-white text-2xl" />
         </div>
 
         {/* Card */}
-        <div
-          style={{
-            background: "rgba(15, 15, 20, 0.8)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: "20px",
-            padding: "40px 32px",
-          }}
-        >
-          <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#fff", textAlign: "center", marginBottom: "4px" }}>
+        <div className="glass-dark p-8 sm:p-10 !rounded-2xl">
+          <h1 className="text-2xl font-bold text-white text-center mb-1">
             Welcome back
           </h1>
-          <p style={{ fontSize: "14px", color: "#9ca3af", textAlign: "center", marginBottom: "32px" }}>
+          <p className="text-sm text-gray-400 text-center mb-8">
             Sign in to your Menuor account
           </p>
 
           {error && (
-            <div
-              style={{
-                background: "rgba(239,68,68,0.1)",
-                border: "1px solid rgba(239,68,68,0.2)",
-                color: "#fca5a5",
-                padding: "12px 16px",
-                borderRadius: "12px",
-                marginBottom: "20px",
-                fontSize: "14px",
-              }}
-            >
+            <div className="bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-3 rounded-xl mb-5 text-sm animate-fade-in">
               {error}
             </div>
           )}
 
-          {/* Email */}
-          <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#d1d5db", marginBottom: "6px" }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              placeholder="you@restaurant.com"
-              onKeyDown={(e) => e.key === "Enter" && doLogin()}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: "12px",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "#ffffff",
-                fontSize: "14px",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="you@restaurant.com"
+                onKeyDown={(e) => e.key === "Enter" && doLogin()}
+                className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder:text-gray-500 text-sm outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                onKeyDown={(e) => e.key === "Enter" && doLogin()}
+                className="w-full px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 text-white placeholder:text-gray-500 text-sm outline-none focus:border-orange-500/50 focus:ring-2 focus:ring-orange-500/20 transition"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={doLogin}
+              disabled={loading}
+              className="btn-primary w-full !py-3.5 !rounded-xl !text-sm"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Signing in...
+                </span>
+              ) : (
+                "Sign In"
+              )}
+            </button>
           </div>
 
-          {/* Password */}
-          <div style={{ marginBottom: "24px" }}>
-            <label style={{ display: "block", fontSize: "14px", fontWeight: 500, color: "#d1d5db", marginBottom: "6px" }}>
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              onKeyDown={(e) => e.key === "Enter" && doLogin()}
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                borderRadius: "12px",
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.1)",
-                color: "#ffffff",
-                fontSize: "14px",
-                outline: "none",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-
-          {/* Button */}
-          <button
-            type="button"
-            onClick={doLogin}
-            disabled={loading}
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "12px",
-              background: loading ? "#666" : "linear-gradient(135deg, #f97316, #ec4899)",
-              color: "#fff",
-              fontSize: "14px",
-              fontWeight: 700,
-              border: "none",
-              cursor: loading ? "not-allowed" : "pointer",
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? "Signing in..." : "Sign In"}
-          </button>
-
-          <p style={{ textAlign: "center", color: "#6b7280", fontSize: "14px", marginTop: "24px" }}>
+          <p className="text-center text-gray-500 text-sm mt-6">
             Don&apos;t have an account?{" "}
-            <Link href="/register" style={{ color: "#f97316", fontWeight: 500, textDecoration: "none" }}>
+            <Link href="/register" className="text-orange-400 hover:text-orange-300 font-medium transition">
               Sign up
             </Link>
           </p>

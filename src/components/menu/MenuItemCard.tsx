@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
 
@@ -28,7 +29,7 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
       tabIndex={0}
       onClick={() => onTap(item)}
       onKeyDown={(e) => e.key === "Enter" && onTap(item)}
-      className="w-full text-left rounded-xl overflow-hidden cursor-pointer relative"
+      className="w-full flex items-center gap-3 rounded-2xl p-2.5 cursor-pointer"
       style={{
         backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "#ffffff",
         boxShadow: isDark ? "none" : "0 1px 4px rgba(0,0,0,0.05)",
@@ -38,61 +39,62 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
       }}
     >
       {/* Image */}
-      {item.image ? (
-        <img
-          src={item.image}
-          alt={item.name}
-          loading="lazy"
-          decoding="async"
-          className="w-full aspect-square object-cover bg-gray-100"
-          draggable={false}
-        />
-      ) : (
-        <div
-          className="w-full aspect-square flex items-center justify-center"
-          style={{ background: `linear-gradient(135deg, ${theme.primary}12, ${theme.accent}20)` }}
-        >
-          <span className="text-2xl font-black opacity-15" style={{ color: theme.primary }}>
-            {initial}
-          </span>
-        </div>
-      )}
-
-      {/* Cart qty badge */}
-      {cartQty > 0 && (
-        <div
-          className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-white font-extrabold text-[10px] px-1"
-          style={{ backgroundColor: theme.primary }}
-        >
-          {cartQty}
-        </div>
-      )}
-
-      {/* Info */}
-      <div className="px-1.5 py-1.5 flex items-end justify-between gap-1">
-        <div className="min-w-0">
-          <h3 className="font-bold text-[11px] leading-tight truncate">{item.name}</h3>
-          <span className="text-[11px] font-extrabold" style={{ color: theme.primary }}>
-            {formatPrice(item.price)}
-          </span>
-        </div>
-
-        {/* Quick-add button */}
-        {onQuickAdd && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onQuickAdd(item);
-            }}
-            onKeyDown={(e) => e.stopPropagation()}
-            className="w-5 h-5 rounded-md flex items-center justify-center text-white font-bold text-sm shrink-0 mb-0.5"
-            style={{ backgroundColor: theme.primary, touchAction: "manipulation" }}
-            aria-label={`Add ${item.name} to order`}
+      <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
+        {item.image ? (
+          <img
+            src={item.image}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            className="w-full h-full object-cover bg-gray-100"
+            draggable={false}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${theme.primary}12, ${theme.accent}20)` }}
           >
-            +
-          </button>
+            <span className="text-2xl font-black opacity-15" style={{ color: theme.primary }}>
+              {initial}
+            </span>
+          </div>
+        )}
+        {cartQty > 0 && (
+          <div
+            className="absolute top-1 right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-white font-extrabold text-[10px] px-1"
+            style={{ backgroundColor: theme.primary }}
+          >
+            {cartQty}
+          </div>
         )}
       </div>
+
+      {/* Info */}
+      <div className="flex-1 min-w-0 py-0.5">
+        <h3 className="font-bold text-sm leading-snug line-clamp-2">{item.name}</h3>
+        {item.description && (
+          <p className="text-xs opacity-50 line-clamp-1 mt-0.5">{item.description}</p>
+        )}
+        <span className="block text-sm font-extrabold mt-1" style={{ color: theme.primary }}>
+          {formatPrice(item.price)}
+        </span>
+      </div>
+
+      {/* Add-to-cart button — 44px tap target, separated from row's own tap zone */}
+      {onQuickAdd && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onQuickAdd(item);
+          }}
+          onKeyDown={(e) => e.stopPropagation()}
+          className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+          style={{ backgroundColor: theme.primary, touchAction: "manipulation" }}
+          aria-label={`Add ${item.name} to order`}
+        >
+          <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
+        </button>
+      )}
     </div>
   );
 }

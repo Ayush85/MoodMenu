@@ -25,12 +25,9 @@
   --text-secondary: #475569;
   --text-muted: #94a3b8;
 
-  --dash-bg: #0f0f14;
-  --dash-surface: rgba(255, 255, 255, 0.04);
-  --dash-surface-hover: rgba(255, 255, 255, 0.08);
-  --dash-border: rgba(255, 255, 255, 0.06);
-  --dash-text: #e2e8f0;
-  --dash-text-muted: #64748b;
+  --success: #059669;
+  --error: #dc2626;
+  --info: #2563eb;
 }
 
 @theme inline {
@@ -322,17 +319,4 @@ img, video, canvas, svg {
   .stagger-3 { animation-delay: 0.3s; }
   .stagger-4 { animation-delay: 0.4s; }
   .stagger-5 { animation-delay: 0.5s; }
-
-  /* Dashboard-specific */
-  .dash-card {
-    @apply rounded-2xl p-5;
-    background: var(--dash-surface);
-    border: 1px solid var(--dash-border);
-    transition: all 0.3s ease;
-  }
-
-  .dash-card:hover {
-    background: var(--dash-surface-hover);
-    border-color: rgba(255, 255, 255, 0.1);
-  }
 }

@@ -1,15 +1,32 @@
 "use client";
 
 import { useState, useCallback, useEffect, useMemo } from "react";
+import { Star, Search, X } from "lucide-react";
 import { MoodTheme, WeatherData } from "@/types";
 import QRCode from "qrcode";
 import MenuHero from "./MenuHero";
 import CategoryNav from "./CategoryNav";
 import MenuItemCard from "./MenuItemCard";
+import FeaturedSection from "./FeaturedSection";
 import BottomBar from "./BottomBar";
 import CallWaiterModal from "./CallWaiterModal";
 import ItemDetailModal from "./ItemDetailModal";
 import CartDrawer, { CartItem } from "./CartDrawer";
+import { useToast } from "@/components/Toast";
+
+function statusColor(status: string, fallback: string) {
+  if (status === "PAID") return "#10b981";
+  if (status === "SERVED") return "#8b5cf6";
+  if (status === "PREPARING" || status === "PENDING") return "#f59e0b";
+  return fallback;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "Order received",
+  PREPARING: "Preparing your order",
+  SERVED: "Served — enjoy!",
+  PAID: "Paid",
+};
 
 interface MenuItemData {
   id: string;
@@ -63,6 +80,9 @@ export default function MenuClient({
   const isDark = theme.mode === "dark";
   const totalItems = categories.reduce((acc, c) => acc + c.items.length, 0);
   const canOrder = tableNumber !== null;
+  const { toast } = useToast();
+  const cartStorageKey = `menuor:cart:${restaurant.slug}`;
+  const [lostTableBanner, setLostTableBanner] = useState<number | null>(null);
 
   // Waiter call state
   const [callStatus, setCallStatus] = useState<"idle" | "calling" | "sent" | "error">("idle");
@@ -115,6 +135,10 @@ export default function MenuClient({
 
   useEffect(() => {
     refreshSession();
+    if (!tableNumber) return;
+    // Poll for order status changes (Pending → Preparing → Served) without requiring the diner to reopen the sheet
+    const interval = setInterval(refreshSession, 15000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableNumber]);
 
@@ -123,6 +147,35 @@ export default function MenuClient({
     () => categories.flatMap((cat) => cat.items.map((item) => ({ ...item, categoryName: cat.name }))),
     [categories]
   );
+
+  // Rehydrate cart from localStorage (namespaced per restaurant), re-validating against the live menu
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(cartStorageKey);
+      if (!raw) return;
+      const saved: { table: number | null; items: CartItem[] } = JSON.parse(raw);
+
+      if (tableNumber !== null && saved.table === tableNumber && saved.items?.length) {
+        const validIds = new Set(allMenuItems.map((i) => i.id));
+        const valid = saved.items.filter((i) => validIds.has(i.id));
+        if (valid.length < saved.items.length) {
+          toast("Some saved cart items are no longer available and were removed", "info");
+        }
+        if (valid.length > 0) setCartItems(valid);
+      } else if (tableNumber === null && saved.table !== null && saved.items?.length) {
+        setLostTableBanner(saved.table);
+      }
+    } catch { /* corrupt/unavailable storage — ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist cart + table so a refresh or backgrounded browser doesn't silently lose the order
+  useEffect(() => {
+    if (tableNumber === null) return;
+    try {
+      localStorage.setItem(cartStorageKey, JSON.stringify({ table: tableNumber, items: cartItems }));
+    } catch { /* storage unavailable — non-critical */ }
+  }, [cartItems, tableNumber, cartStorageKey]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -269,7 +322,30 @@ export default function MenuClient({
         theme={theme}
       />
 
+      {/* Recommended-for-the-weather rail */}
+      <div className="max-w-lg mx-auto">
+        <FeaturedSection items={featuredItems} ruleName={ruleName} theme={theme} onTap={setSelectedItem} />
+      </div>
+
       <div className="max-w-lg mx-auto px-4">
+
+        {/* ── Lost table-context banner ── */}
+        {lostTableBanner !== null && !tableNumber && (
+          <div
+            className="mb-4 rounded-2xl p-3.5 flex items-center justify-between gap-3"
+            style={{ backgroundColor: theme.primary + "12", border: `1px solid ${theme.primary}30` }}
+          >
+            <p className="text-xs leading-relaxed" style={{ color: theme.text }}>
+              You have a saved cart for <strong>Table {lostTableBanner}</strong>. Reopen that table&apos;s menu link to keep ordering.
+            </p>
+            <button
+              onClick={() => setLostTableBanner(null)}
+              className="text-[11px] font-bold shrink-0 opacity-50"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* ── Active Session Banner ── */}
         {activeSession && tableNumber && (
@@ -293,6 +369,18 @@ export default function MenuClient({
                 <p className="text-[11px] opacity-60" style={{ color: theme.text }}>
                   {activeSession.orders.length} order{activeSession.orders.length !== 1 ? "s" : ""} · Rs. {activeSession.totalAmount.toLocaleString("en-IN")} total
                 </p>
+                {activeSession.orders.length > 0 && (
+                  <p
+                    className="text-[10px] font-bold mt-1 inline-flex items-center gap-1"
+                    style={{ color: statusColor(activeSession.orders[activeSession.orders.length - 1].status, theme.primary) }}
+                  >
+                    <span
+                      className="w-1.5 h-1.5 rounded-full animate-pulse"
+                      style={{ backgroundColor: statusColor(activeSession.orders[activeSession.orders.length - 1].status, theme.primary) }}
+                    />
+                    {STATUS_LABEL[activeSession.orders[activeSession.orders.length - 1].status] || activeSession.orders[activeSession.orders.length - 1].status}
+                  </p>
+                )}
               </div>
             </div>
             <button
@@ -310,9 +398,7 @@ export default function MenuClient({
           {showSearch ? (
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" fill="none" stroke={theme.text} strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" style={{ color: theme.text }} />
                 <input
                   type="text"
                   value={searchQuery}
@@ -329,10 +415,11 @@ export default function MenuClient({
               </div>
               <button
                 onClick={() => { setShowSearch(false); setSearchQuery(""); }}
-                className="px-3 py-2.5 rounded-xl text-xs font-semibold shrink-0"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                 style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)", color: theme.text }}
+                aria-label="Cancel search"
               >
-                Cancel
+                <X className="w-4 h-4" />
               </button>
             </div>
           ) : (
@@ -341,9 +428,7 @@ export default function MenuClient({
               className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm text-left"
               style={{ backgroundColor: isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)", color: theme.text }}
             >
-              <svg className="w-4 h-4 opacity-40 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <Search className="w-4 h-4 opacity-40 shrink-0" />
               <span className="opacity-40">Search {totalItems} items…</span>
             </button>
           )}
@@ -361,7 +446,7 @@ export default function MenuClient({
                 <p className="text-[11px] font-semibold opacity-40 mb-2 uppercase tracking-wider">
                   {searchResults.length} result{searchResults.length !== 1 ? "s" : ""}
                 </p>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="space-y-2">
                   {searchResults.map((item) => (
                     <MenuItemCard
                       key={item.id}
@@ -392,12 +477,12 @@ export default function MenuClient({
             {todaysSpecials.length > 0 && (
               <section className="mb-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm">⭐</span>
+                  <Star className="w-4 h-4" fill={theme.primary} style={{ color: theme.primary }} />
                   <h2 className="text-sm font-extrabold" style={{ color: theme.primary }}>
                     Today&apos;s Specials
                   </h2>
                 </div>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="space-y-2">
                   {todaysSpecials.map((item) => (
                     <MenuItemCard
                       key={item.id}
@@ -423,7 +508,7 @@ export default function MenuClient({
                   <span className="text-xs font-medium opacity-30">{cat.items.length}</span>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="space-y-2">
                   {cat.items.map((item) => (
                     <MenuItemCard
                       key={item.id}

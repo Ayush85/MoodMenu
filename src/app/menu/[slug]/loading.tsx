@@ -12,15 +12,16 @@ export default function MenuLoading() {
           ))}
         </div>
 
-        {/* Item card skeletons */}
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex gap-4 p-4 mb-3 rounded-2xl bg-white">
-            <div className="w-24 h-24 rounded-xl bg-gray-200 animate-pulse shrink-0" />
-            <div className="flex-1 space-y-3 py-1">
-              <div className="h-4 w-2/3 bg-gray-200 rounded animate-pulse" />
+        {/* Item row skeletons — mirrors MenuItemCard's list-row layout */}
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-center gap-3 p-2.5 mb-2 rounded-2xl bg-white">
+            <div className="w-20 h-20 rounded-xl bg-gray-200 animate-pulse shrink-0" />
+            <div className="flex-1 space-y-2 py-1">
+              <div className="h-3.5 w-2/3 bg-gray-200 rounded animate-pulse" />
               <div className="h-3 w-full bg-gray-100 rounded animate-pulse" />
-              <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
+              <div className="h-3.5 w-14 bg-gray-200 rounded animate-pulse" />
             </div>
+            <div className="w-11 h-11 rounded-full bg-gray-200 animate-pulse shrink-0" />
           </div>
         ))}
       </div>

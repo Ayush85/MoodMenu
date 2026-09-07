@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import Logo from "@/components/ui/Logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -65,13 +66,8 @@ export default function RegisterPage() {
 
       <div className="relative w-full max-w-md animate-fade-in-up">
         {/* Logo */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <span className="text-white text-lg font-black">M</span>
-          </div>
-          <span className="text-2xl font-bold text-white">
-            Mood<span className="gradient-text">Menu</span>
-          </span>
+        <div className="flex items-center justify-center mb-8">
+          <Logo variant="full" size={40} wordmarkClassName="text-white text-2xl" />
         </div>
 
         {/* Card */}

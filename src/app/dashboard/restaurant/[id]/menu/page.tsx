@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
+import { UtensilsCrossed, Search, ClipboardList } from "lucide-react";
 import * as XLSX from "xlsx";
 
 interface MenuItem {
@@ -618,14 +620,14 @@ export default function MenuManagePage() {
   if (loading) {
     return (
       <div className="page-shell">
-        <div className="h-8 w-48 bg-gray-200 rounded-lg animate-pulse mb-6" />
-        <div className="h-12 w-full bg-gray-100 rounded-xl animate-pulse mb-6" />
+        <div className="mb-6"><SkeletonLine width="192px" height="32px" /></div>
+        <div className="mb-6"><SkeletonBlock height="h-12" /></div>
         {[1, 2].map((i) => (
           <div key={i} className="surface-card p-6 mb-4">
-            <div className="h-5 w-28 bg-gray-200 rounded animate-pulse mb-4" />
+            <div className="mb-4"><SkeletonLine width="112px" height="20px" /></div>
             <div className="space-y-3">
-              <div className="h-16 bg-gray-50 rounded-xl animate-pulse" />
-              <div className="h-16 bg-gray-50 rounded-xl animate-pulse" />
+              <SkeletonBlock height="h-16" />
+              <SkeletonBlock height="h-16" />
             </div>
           </div>
         ))}
@@ -644,7 +646,7 @@ export default function MenuManagePage() {
             <img src={restaurant.logo} alt={restaurant.name} className="w-14 h-14 rounded-2xl object-cover ring-1 ring-gray-200" />
           ) : (
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-100 to-rose-100 flex items-center justify-center">
-              <span className="text-2xl">🍽️</span>
+              <UtensilsCrossed className="w-6 h-6 text-orange-400" />
             </div>
           )}
           <div className="absolute inset-0 bg-black/40 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
@@ -763,7 +765,7 @@ export default function MenuManagePage() {
       {filteredCategories?.length === 0 ? (
         <div className="surface-card p-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">{menuSearch ? "🔍" : "📋"}</span>
+            {menuSearch ? <Search className="w-7 h-7 text-orange-400" /> : <ClipboardList className="w-7 h-7 text-orange-400" />}
           </div>
           <p className="text-gray-500">
             {menuSearch ? `No items match "${menuSearch}"` : "Add a category to start building your menu"}
@@ -897,7 +899,7 @@ export default function MenuManagePage() {
                             <img src={item.image} alt={item.name} className="w-14 h-14 rounded-xl object-cover shrink-0 ring-1 ring-gray-100" />
                           ) : (
                             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-50 to-rose-50 flex items-center justify-center shrink-0">
-                              <span className="text-xl">🍽️</span>
+                              <UtensilsCrossed className="w-5 h-5 text-orange-400" />
                             </div>
                           )}
                           <div>

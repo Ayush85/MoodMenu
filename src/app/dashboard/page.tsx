@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { PartyPopper, Rocket, Store, ClipboardList, Wifi, Smartphone } from "lucide-react";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 
 interface Restaurant {
   id: string;
@@ -43,19 +45,15 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="page-shell">
-        <div className="mb-8">
-          <div className="h-8 w-56 bg-gray-200 rounded-xl animate-pulse mb-2" />
-          <div className="h-4 w-36 bg-gray-100 rounded-lg animate-pulse" />
+        <div className="mb-8 space-y-2">
+          <SkeletonLine width="224px" height="32px" />
+          <SkeletonLine width="144px" height="16px" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="surface-card p-4 h-20 animate-pulse" />
-          ))}
+          {[1, 2, 3, 4].map((i) => <SkeletonBlock key={i} height="h-20" />)}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="surface-card p-6 h-40 animate-pulse" />
-          ))}
+          {[1, 2, 3].map((i) => <SkeletonBlock key={i} height="h-40" />)}
         </div>
       </div>
     );
@@ -154,15 +152,17 @@ export default function DashboardPage() {
         <div className="surface-card p-8 sm:p-12">
           {isStaff ? (
             <div className="text-center">
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4 text-2xl">👋</div>
+              <div className="w-14 h-14 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <PartyPopper className="w-6 h-6 text-gray-500" />
+              </div>
               <h2 className="text-xl font-bold text-gray-900 mb-2">Welcome!</h2>
               <p className="text-gray-500 text-sm">No restaurant is assigned to your staff account yet. Ask your manager to add you.</p>
             </div>
           ) : (
             <>
               <div className="text-center mb-10">
-                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg shadow-orange-200">
-                  🚀
+                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-200">
+                  <Rocket className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">Set up your first restaurant</h2>
                 <p className="text-gray-500 text-sm">Go live in minutes — follow these 4 steps</p>
@@ -172,16 +172,16 @@ export default function DashboardPage() {
                 {[
                   {
                     step: "1",
-                    icon: "🏪",
+                    icon: <Store className="w-4 h-4" />,
                     title: "Create your restaurant",
                     desc: "Add name, city, and a unique URL slug",
                     href: "/dashboard/restaurant/new",
                     btn: "Create Restaurant",
                     active: true,
                   },
-                  { step: "2", icon: "📋", title: "Add your menu", desc: "Create categories and add items with photos & prices", href: null, btn: null, active: false },
-                  { step: "3", icon: "📶", title: "Set up WiFi & tables", desc: "Configure WiFi and add table numbers", href: null, btn: null, active: false },
-                  { step: "4", icon: "📱", title: "Print QR codes", desc: "Generate and print QR tent cards for tables", href: null, btn: null, active: false },
+                  { step: "2", icon: <ClipboardList className="w-4 h-4" />, title: "Add your menu", desc: "Create categories and add items with photos & prices", href: null, btn: null, active: false },
+                  { step: "3", icon: <Wifi className="w-4 h-4" />, title: "Set up WiFi & tables", desc: "Configure WiFi and add table numbers", href: null, btn: null, active: false },
+                  { step: "4", icon: <Smartphone className="w-4 h-4" />, title: "Print QR codes", desc: "Generate and print QR tent cards for tables", href: null, btn: null, active: false },
                 ].map((item, i) => (
                   <div
                     key={item.step}

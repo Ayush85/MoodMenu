@@ -1,3 +1,4 @@
+import { Sparkles } from "lucide-react";
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
 
@@ -14,90 +15,76 @@ interface Props {
   items: MenuItemData[];
   ruleName: string;
   theme: MoodTheme;
+  onTap: (item: MenuItemData) => void;
 }
 
-export default function FeaturedSection({ items, ruleName, theme }: Props) {
+export default function FeaturedSection({ items, ruleName, theme, onTap }: Props) {
   const isDark = theme.mode === "dark";
   if (items.length === 0) return null;
 
-  const displayItems = items.slice(0, 4);
-
   return (
-    <section className="mb-8">
-      <div className="mb-4">
+    <section className="mb-5">
+      <div className="mb-3 px-4">
         <div className="flex items-center gap-2">
-          <span className="text-lg animate-float">⛅</span>
-          <h2 className="text-base font-bold" style={{ color: theme.primary }}>
-            Weather Picks
+          <Sparkles className="w-4 h-4" style={{ color: theme.primary }} />
+          <h2 className="text-sm font-extrabold" style={{ color: theme.primary }}>
+            Recommended right now
           </h2>
         </div>
-        <p className="text-xs opacity-40 mt-1">
-          Curated for today&apos;s mood{ruleName !== "Default" ? ` — ${ruleName}` : ""}
+        <p className="text-xs opacity-40 mt-0.5">
+          Picked for today&apos;s weather{ruleName !== "Default" ? ` — ${ruleName}` : ""}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {displayItems.map((item, i) => {
+      <div className="flex gap-3 overflow-x-auto no-scrollbar px-4 pb-1 snap-x snap-mandatory">
+        {items.map((item, i) => {
           const initial = item.name.charAt(0).toUpperCase();
           return (
-            <div
+            <button
               key={item.id}
-              className="relative rounded-2xl overflow-hidden group animate-fade-in-up"
+              onClick={() => onTap(item)}
+              className="relative w-40 shrink-0 rounded-2xl overflow-hidden text-left snap-start animate-fade-in-up"
               style={{
-                animationDelay: `${i * 0.1}s`,
+                animationDelay: `${i * 0.08}s`,
                 boxShadow: isDark ? "none" : "0 2px 12px rgba(0,0,0,0.08)",
+                touchAction: "manipulation",
               }}
             >
-              {/* Background */}
               {item.image ? (
                 <img
                   src={item.image}
                   alt={item.name}
                   loading="lazy"
                   decoding="async"
-                  className="w-full h-40 object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-32 object-cover"
                 />
               ) : (
                 <div
-                  className="w-full h-40 flex items-center justify-center"
-                  style={{
-                    background: `linear-gradient(135deg, ${theme.primary}30, ${theme.accent}40)`,
-                  }}
+                  className="w-full h-32 flex items-center justify-center"
+                  style={{ background: `linear-gradient(135deg, ${theme.primary}30, ${theme.accent}40)` }}
                 >
-                  <span className="text-5xl font-black opacity-20" style={{ color: theme.primary }}>
+                  <span className="text-4xl font-black opacity-20" style={{ color: theme.primary }}>
                     {initial}
                   </span>
                 </div>
               )}
 
-              {/* Overlay gradient */}
               <div
                 className="absolute inset-0"
-                style={{
-                  background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)",
-                }}
+                style={{ background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 55%, transparent 100%)" }}
               />
 
-              {/* Price badge */}
               <div
-                className="absolute top-2.5 right-2.5 text-xs font-bold px-2.5 py-1 rounded-lg"
-                style={{
-                  backgroundColor: theme.primary,
-                  color: "#fff",
-                  boxShadow: `0 2px 8px ${theme.primary}40`,
-                }}
+                className="absolute top-2 right-2 text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                style={{ backgroundColor: theme.primary, color: "#fff" }}
               >
                 {formatPrice(item.price)}
               </div>
 
-              {/* Text overlay */}
-              <div className="absolute bottom-0 left-0 right-0 p-3.5">
-                <h3 className="font-bold text-white text-sm leading-snug">{item.name}</h3>
-                {item.description && (
-                  <p className="text-white/60 text-xs mt-1 line-clamp-1">{item.description}</p>
-                )}
+              <div className="absolute bottom-0 left-0 right-0 p-2.5">
+                <h3 className="font-bold text-white text-xs leading-snug line-clamp-2">{item.name}</h3>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

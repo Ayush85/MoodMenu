@@ -1,8 +1,9 @@
+import { Sun, Cloud, CloudRain, CloudDrizzle, CloudLightning, Snowflake, CloudFog, Armchair } from "lucide-react";
 import { MoodTheme, WeatherData } from "@/types";
 
-const WEATHER_EMOJI: Record<string, string> = {
-  Clear: "☀️", Clouds: "☁️", Rain: "🌧️", Drizzle: "🌦️",
-  Thunderstorm: "⛈️", Snow: "❄️", Mist: "🌫️", Fog: "🌫️", Haze: "🌫️",
+const WEATHER_ICON: Record<string, typeof Sun> = {
+  Clear: Sun, Clouds: Cloud, Rain: CloudRain, Drizzle: CloudDrizzle,
+  Thunderstorm: CloudLightning, Snow: Snowflake, Mist: CloudFog, Fog: CloudFog, Haze: CloudFog,
 };
 
 interface Props {
@@ -54,7 +55,8 @@ export default function MenuHero({ name, city, logo, totalItems, tableNumber, we
                 className="relative flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-full"
                 style={{ backgroundColor: theme.primary, color: "#fff", boxShadow: `0 4px 14px ${theme.primary}40` }}
               >
-                🪑 Table {tableNumber}
+                <Armchair className="w-4 h-4" />
+                Table {tableNumber}
               </div>
             </div>
           ) : <div />}
@@ -68,7 +70,10 @@ export default function MenuHero({ name, city, logo, totalItems, tableNumber, we
                 boxShadow: isDark ? "none" : "0 2px 8px rgba(0,0,0,0.06)",
               }}
             >
-              <span className="text-xl animate-float">{WEATHER_EMOJI[weather.main] || "🌤️"}</span>
+              {(() => {
+                const WeatherIcon = WEATHER_ICON[weather.main] || Cloud;
+                return <WeatherIcon className="w-5 h-5 animate-float" style={{ color: theme.primary }} />;
+              })()}
               <div>
                 <span className="font-bold">{weather.temp}°</span>
                 <span className="text-xs opacity-50 ml-1 capitalize">{weather.description}</span>

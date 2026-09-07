@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
+import { Sun, Moon, Sparkles } from "lucide-react";
 import { MOOD_PRESETS } from "@/types";
 
 interface MoodRule {
@@ -154,9 +156,9 @@ export default function MoodRulesPage() {
   if (loading) {
     return (
       <div className="page-shell max-w-5xl">
-        <div className="h-8 w-40 bg-gray-200 rounded-lg animate-pulse mb-6" />
+        <div className="mb-6"><SkeletonLine width="160px" height="32px" /></div>
         <div className="space-y-4">
-          {[1, 2].map((i) => <div key={i} className="surface-card h-24 animate-pulse" />)}
+          {[1, 2].map((i) => <SkeletonBlock key={i} height="h-24" />)}
         </div>
       </div>
     );
@@ -252,12 +254,12 @@ export default function MoodRulesPage() {
                   <label className="block text-xs font-semibold text-gray-600 mb-2">Theme</label>
                   <div className="flex gap-2 mb-3">
                     <button type="button" onClick={() => { setFormMode("light"); setFormBg("#FFFFFF"); setFormText("#1F2937"); }}
-                      className={`text-xs px-4 py-2 rounded-lg border transition ${formMode === "light" ? "bg-white border-orange-400 text-orange-600 font-bold" : "bg-gray-50 border-gray-200"}`}>
-                      ☀️ Light
+                      className={`text-xs px-4 py-2 rounded-lg border transition inline-flex items-center gap-1.5 ${formMode === "light" ? "bg-white border-orange-400 text-orange-600 font-bold" : "bg-gray-50 border-gray-200"}`}>
+                      <Sun className="w-3.5 h-3.5" /> Light
                     </button>
                     <button type="button" onClick={() => { setFormMode("dark"); setFormBg("#1C1917"); setFormText("#FAFAF9"); }}
-                      className={`text-xs px-4 py-2 rounded-lg border transition ${formMode === "dark" ? "bg-gray-900 border-gray-700 text-white font-bold" : "bg-gray-50 border-gray-200"}`}>
-                      🌙 Dark
+                      className={`text-xs px-4 py-2 rounded-lg border transition inline-flex items-center gap-1.5 ${formMode === "dark" ? "bg-gray-900 border-gray-700 text-white font-bold" : "bg-gray-50 border-gray-200"}`}>
+                      <Moon className="w-3.5 h-3.5" /> Dark
                     </button>
                   </div>
                   <div className="grid grid-cols-4 gap-3">
@@ -303,7 +305,7 @@ export default function MoodRulesPage() {
 
             {restaurant.moodRules.length === 0 ? (
               <div className="surface-card p-8 text-center">
-                <span className="text-3xl">✨</span>
+                <Sparkles className="w-7 h-7 mx-auto text-gray-400" />
                 <p className="text-gray-500 mt-2">No mood rules yet. Add a preset or create a custom one.</p>
               </div>
             ) : (

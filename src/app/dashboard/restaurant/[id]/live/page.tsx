@@ -59,7 +59,7 @@ function showBrowserNotification(call: WaiterCall) {
   if (Notification.permission !== "granted") return;
   new Notification(`${call.tableLabel || `Table ${call.tableNumber}`} needs help`, {
     body: call.message || "Customer requesting assistance",
-    icon: "/logo.png",
+    icon: "/logo-kathmandu.svg",
     tag: call.id,
     ...({ renotify: true } as object),
   } as NotificationOptions);

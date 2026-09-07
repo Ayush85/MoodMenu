@@ -1,5 +1,6 @@
 "use client";
 
+import { Wifi, Bell, CheckCircle2, ShoppingCart, ChevronUp } from "lucide-react";
 import { MoodTheme } from "@/types";
 
 interface Props {
@@ -55,9 +56,7 @@ export default function BottomBar({
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ opacity: 0.7 }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.858 15.355-5.858 21.213 0" />
-              </svg>
+              <Wifi className="w-5 h-5" style={{ opacity: 0.7 }} />
             </div>
           )}
 
@@ -70,7 +69,7 @@ export default function BottomBar({
                 if (callStatus !== "calling" && callStatus !== "sent") onCallWaiter();
               }}
               onKeyDown={(e) => e.key === "Enter" && onCallWaiter()}
-              className="flex-1 py-3 rounded-xl font-bold text-white text-sm text-center cursor-pointer select-none"
+              className="flex-1 py-3 rounded-xl font-bold text-white text-sm text-center cursor-pointer select-none flex items-center justify-center gap-1.5"
               style={{
                 backgroundColor: callStatus === "sent" ? "#22c55e" : theme.primary,
                 boxShadow: callStatus === "sent"
@@ -81,11 +80,17 @@ export default function BottomBar({
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              {callStatus === "sent"
-                ? "✅ Waiter called!"
-                : callStatus === "calling"
-                ? "Calling..."
-                : "🔔 Call Waiter"}
+              {callStatus === "sent" ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" /> Waiter called!
+                </>
+              ) : callStatus === "calling" ? (
+                "Calling..."
+              ) : (
+                <>
+                  <Bell className="w-4 h-4" /> Call Waiter
+                </>
+              )}
             </div>
           )}
 
@@ -103,16 +108,11 @@ export default function BottomBar({
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <svg
+              <ShoppingCart
                 className="w-5 h-5"
-                fill="none"
-                stroke={cartCount > 0 ? "#fff" : "currentColor"}
-                strokeWidth={2}
-                viewBox="0 0 24 24"
+                color={cartCount > 0 ? "#fff" : "currentColor"}
                 style={{ opacity: cartCount > 0 ? 1 : 0.6 }}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
+              />
               {cartCount > 0 && (
                 <span
                   className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-white text-[10px] font-extrabold flex items-center justify-center px-1"
@@ -137,9 +137,7 @@ export default function BottomBar({
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              <svg className="w-5 h-5" style={{ opacity: 0.5 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
+              <ChevronUp className="w-5 h-5" style={{ opacity: 0.5 }} />
             </div>
           )}
         </div>

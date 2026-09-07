@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { Wifi, Lock } from "lucide-react";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 
 interface Table {
   id: string;
@@ -118,9 +120,9 @@ export default function TablesPage() {
   if (loading) {
     return (
       <div className="page-shell max-w-5xl">
-        <div className="h-8 w-44 bg-gray-200 rounded-lg animate-pulse mb-6" />
-        <div className="surface-card h-40 animate-pulse mb-6" />
-        <div className="surface-card h-40 animate-pulse" />
+        <div className="mb-6"><SkeletonLine width="176px" height="32px" /></div>
+        <div className="mb-6"><SkeletonBlock height="h-40" /></div>
+        <SkeletonBlock height="h-40" />
       </div>
     );
   }
@@ -136,7 +138,7 @@ export default function TablesPage() {
       <div className="surface-card p-5 sm:p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-            <span className="text-lg">📶</span>
+            <Wifi className="w-4.5 h-4.5 text-blue-500" />
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900">WiFi Settings</h2>
@@ -188,7 +190,7 @@ export default function TablesPage() {
       <div className="surface-card p-5 sm:p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-            <span className="text-lg">🔒</span>
+            <Lock className="w-4.5 h-4.5 text-red-500" />
           </div>
           <div>
             <h2 className="text-base font-bold text-gray-900">Waiter Call Protection</h2>

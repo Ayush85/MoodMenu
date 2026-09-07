@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import QRCode from "qrcode";
+import { Armchair } from "lucide-react";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 
 interface Table {
   id: string;
@@ -67,9 +69,9 @@ export default function QRCodePage() {
   if (loading) {
     return (
       <div className="page-shell">
-        <div className="h-8 w-36 bg-gray-200 rounded-lg animate-pulse mb-6" />
-        <div className="surface-card h-40 animate-pulse mb-4" />
-        <div className="surface-card h-40 animate-pulse" />
+        <div className="mb-6"><SkeletonLine width="144px" height="32px" /></div>
+        <div className="mb-4"><SkeletonBlock height="h-40" /></div>
+        <SkeletonBlock height="h-40" />
       </div>
     );
   }
@@ -271,7 +273,7 @@ export default function QRCodePage() {
       ) : (
         <div className="surface-card p-10 text-center">
           <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">🪑</span>
+            <Armchair className="w-7 h-7 text-amber-500" />
           </div>
           <p className="text-gray-800 font-semibold mb-2">No tables configured</p>
           <p className="text-gray-500 text-sm mb-4">Add tables to generate per-table QR cards.</p>

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { CheckCircle2, XCircle, Info } from "lucide-react";
 
 interface Toast {
   id: number;
@@ -17,6 +18,12 @@ const ToastContext = createContext<ToastContextType>({ toast: () => {} });
 export function useToast() {
   return useContext(ToastContext);
 }
+
+const TOAST_STYLES: Record<Toast["type"], { bg: string; icon: typeof CheckCircle2 }> = {
+  success: { bg: "var(--success)", icon: CheckCircle2 },
+  error: { bg: "var(--error)", icon: XCircle },
+  info: { bg: "var(--info)", icon: Info },
+};
 
 let toastId = 0;
 
@@ -36,30 +43,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
 
       {/* Toast container */}
-      <div className="fixed top-4 right-4 z-[100] space-y-2 pointer-events-none" style={{ maxWidth: "360px" }}>
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className="pointer-events-auto animate-fade-in-up"
-            style={{
-              backgroundColor: t.type === "success" ? "#059669" : t.type === "error" ? "#dc2626" : "#2563eb",
-              color: "#fff",
-              padding: "12px 16px",
-              borderRadius: "12px",
-              fontSize: "14px",
-              fontWeight: 600,
-              boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <span>
-              {t.type === "success" ? "✓" : t.type === "error" ? "✕" : "ℹ"}
-            </span>
-            {t.message}
-          </div>
-        ))}
+      <div className="fixed top-4 right-4 z-100 space-y-2 pointer-events-none max-w-90">
+        {toasts.map((t) => {
+          const { bg, icon: Icon } = TOAST_STYLES[t.type];
+          return (
+            <div
+              key={t.id}
+              className="pointer-events-auto animate-fade-in-up flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
+              style={{ backgroundColor: bg }}
+            >
+              <Icon className="w-4.5 h-4.5 shrink-0" />
+              {t.message}
+            </div>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

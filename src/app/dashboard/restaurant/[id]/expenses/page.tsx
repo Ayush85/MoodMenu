@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import { SkeletonBlock } from "@/components/Skeleton";
 
 type Category = "INGREDIENTS" | "UTILITIES" | "STAFF" | "RENT" | "MAINTENANCE" | "MARKETING" | "EQUIPMENT" | "OTHER";
 
@@ -211,10 +212,10 @@ export default function ExpensesPage() {
 
       {/* Date range filter */}
       <div className="flex items-center gap-2 mb-6 flex-wrap">
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="tab-bar">
           {(["today", "week", "month", "custom"] as const).map((r) => (
             <button key={r} onClick={() => setRangeMode(r)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${rangeMode === r ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              className={`tab-btn !px-3 ${rangeMode === r ? "tab-btn-active" : ""}`}>
               {rangeLabelMap[r]}
             </button>
           ))}
@@ -230,7 +231,7 @@ export default function ExpensesPage() {
 
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {[1,2,3].map(i => <div key={i} className="surface-card h-32 animate-pulse" />)}
+          {[1, 2, 3].map((i) => <SkeletonBlock key={i} height="h-32" />)}
         </div>
       ) : (
         <>

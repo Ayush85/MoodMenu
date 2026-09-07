@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 
 interface AnalyticsData {
   revenue: { total: number; today: number; week: number; month: number };
@@ -58,14 +59,14 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="page-shell animate-pulse">
-        <div className="h-8 w-48 bg-gray-200 rounded-xl mb-8" />
+      <div className="page-shell">
+        <div className="mb-8"><SkeletonLine width="192px" height="32px" /></div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[1,2,3,4].map(i => <div key={i} className="surface-card h-24" />)}
+          {[1, 2, 3, 4].map((i) => <SkeletonBlock key={i} height="h-24" />)}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          <div className="surface-card h-64 lg:col-span-2" />
-          <div className="surface-card h-64" />
+          <SkeletonBlock height="h-64" className="lg:col-span-2" />
+          <SkeletonBlock height="h-64" />
         </div>
       </div>
     );
@@ -87,14 +88,12 @@ export default function AnalyticsPage() {
           <h1 className="page-title">Analytics</h1>
           <p className="page-subtitle mt-1">Revenue, orders, and performance insights</p>
         </div>
-        <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+        <div className="tab-bar">
           {(["7", "14"] as const).map((r) => (
             <button
               key={r}
               onClick={() => setRange(r)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                range === r ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
+              className={`tab-btn ${range === r ? "tab-btn-active" : ""}`}
             >
               {r}d
             </button>
@@ -150,13 +149,15 @@ export default function AnalyticsPage() {
             color: "text-orange-600", bg: "bg-orange-50",
           },
         ].map((card) => (
-          <div key={card.label} className="surface-card p-4 sm:p-5">
-            <div className={`w-9 h-9 rounded-xl ${card.bg} ${card.color} flex items-center justify-center mb-3`}>
+          <div key={card.label} className="stat-card">
+            <div className={`stat-card-icon ${card.bg} ${card.color}`}>
               {card.icon}
             </div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{card.label}</p>
-            <p className={`text-xl sm:text-2xl font-extrabold ${card.color} mt-0.5 leading-tight`}>{card.value}</p>
-            <p className="text-xs text-gray-400 mt-1">{card.sub}</p>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{card.label}</p>
+              <p className={`text-xl sm:text-2xl font-extrabold ${card.color} mt-0.5 leading-tight`}>{card.value}</p>
+              <p className="text-xs text-gray-400 mt-1">{card.sub}</p>
+            </div>
           </div>
         ))}
       </div>

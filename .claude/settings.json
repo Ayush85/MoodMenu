@@ -21,7 +21,13 @@
       "Bash(npm uninstall *)",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3030/uploads/test-file.png)",
       "Bash(curl -s -o /dev/null -w \"menuor.com -> HTTP %{http_code}\\\\n\" https://menuor.com --max-time 8)",
-      "Bash(chmod -R u+rwX,g+rwX,o+rwX /home/ayush/Developments/MoodMenu/storage/uploads)"
+      "Bash(chmod -R u+rwX,g+rwX,o+rwX /home/ayush/Developments/MoodMenu/storage/uploads)",
+      "Bash(node -e \"console.log\\(require.resolve\\('next/dist/server/web/spec-extension/image-response'\\)\\)\")",
+      "Bash(curl -s -o /dev/null -w \"og-image: %{http_code}\\\\n\" http://localhost:3030/opengraph-image --max-time 10)",
+      "Bash(curl -s -o /dev/null -w \"apple-icon: %{http_code}\\\\n\" http://localhost:3030/apple-icon --max-time 10)",
+      "Bash(curl -s http://localhost:3030 --max-time 10)",
+      "Bash(curl -s -o /dev/null -w \"app health: %{http_code}\\\\n\" http://localhost:3030 --max-time 10)",
+      "Bash(curl -s -o /tmp/menu_test.html -w \"menu page: %{http_code}\\\\n\" \"http://localhost:3030/menu/thaxaina?table=5\" --max-time 15)"
     ],
     "additionalDirectories": [
       "/home/ayush/Developments/MoodMenu/src/app/uploads"

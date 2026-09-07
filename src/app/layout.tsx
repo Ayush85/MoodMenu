@@ -48,20 +48,14 @@ export const metadata: Metadata = {
     title: APP_TITLE,
     description: APP_DESC,
     url: APP_URL,
-    images: [{ url: "/logo.png", width: 512, height: 512, alt: "Menuor" }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: APP_TITLE,
     description: APP_DESC,
-    images: ["/logo.png"],
   },
   icons: {
-    icon: [
-      { url: "/logo-kathmandu.svg", type: "image/svg+xml" },
-      { url: "/logo.png", type: "image/png" },
-    ],
-    apple: "/logo.png",
+    icon: [{ url: "/logo-kathmandu.svg", type: "image/svg+xml" }],
   },
 };
 

@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import Logo from "@/components/ui/Logo";
+import NavLink from "@/components/ui/NavLink";
 
 interface RestaurantOption {
   id: string;
@@ -120,11 +122,6 @@ export default function Sidebar() {
 
   const currentRestaurant = restaurants.find((r) => r.id === currentRestaurantId);
 
-  function isActive(href: string) {
-    if (href === "/dashboard") return pathname === "/dashboard";
-    return pathname.startsWith(href);
-  }
-
   const close = () => setMobileOpen(false);
 
   const sidebarContent = (
@@ -132,11 +129,9 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={close}>
-          <img
-            src="/logo.png"
-            alt="Menuor"
-            className="w-8 h-8 rounded-xl object-cover transition-all group-hover:scale-105"
-          />
+          <span className="transition-all group-hover:scale-105">
+            <Logo variant="mark" size={32} />
+          </span>
           <div>
             <span className="text-[15px] font-bold text-gray-900 block leading-none">Menuor</span>
             <span className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5 block">
@@ -184,67 +179,52 @@ export default function Sidebar() {
 
             {/* Restaurant sub-nav */}
             <nav className="space-y-0.5">
-              {RESTAURANT_NAV.map((item) => {
-                const href = `/dashboard/restaurant/${currentRestaurantId}${item.suffix}`;
-                const active = pathname === href || pathname.startsWith(href);
-                return (
-                  <Link
-                    key={item.key}
-                    href={href}
-                    onClick={close}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 group text-sm ${active
-                        ? "bg-orange-50 text-orange-700 font-semibold"
-                        : "text-gray-500 hover:text-gray-800 hover:bg-gray-50 font-medium"
-                      }`}
-                  >
-                    {active && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b from-orange-500 to-rose-500" />
-                    )}
-                    <span className={active ? "text-orange-500" : "text-gray-400 group-hover:text-gray-500"}>
-                      {item.icon}
-                    </span>
-                    {item.label}
-                  </Link>
-                );
-              })}
+              {RESTAURANT_NAV.map((item) => (
+                <NavLink
+                  key={item.key}
+                  href={`/dashboard/restaurant/${currentRestaurantId}${item.suffix}`}
+                  pathname={pathname}
+                  label={item.label}
+                  icon={item.icon}
+                  onClick={close}
+                />
+              ))}
 
               {/* View Menu external link */}
               {(() => {
                 const slug = restaurants.find((r) => r.id === currentRestaurantId)?.slug;
                 return slug ? (
-                  <a
+                  <NavLink
                     href={`/menu/${slug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    pathname={pathname}
+                    label="View Live Menu"
+                    external
                     onClick={close}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm text-gray-500 hover:text-gray-800 hover:bg-gray-50 font-medium group"
-                  >
-                    <span className="text-gray-400 group-hover:text-gray-500">
+                    icon={
                       <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
-                    </span>
-                    View Live Menu
-                  </a>
+                    }
+                  />
                 ) : null;
               })()}
             </nav>
 
             {/* Divider */}
             <div className="mt-4 pt-4 border-t border-gray-100">
-              <Link
+              <NavLink
                 href="/dashboard"
+                pathname={pathname}
+                exact
                 onClick={close}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname === "/dashboard"
-                    ? "bg-orange-50 text-orange-700"
-                    : "text-gray-400 hover:text-gray-700 hover:bg-gray-50"
-                  }`}
-              >
-                <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-                All Restaurants
-              </Link>
+                label="All Restaurants"
+                accentClassName="bg-orange-50 text-orange-700"
+                icon={
+                  <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                  </svg>
+                }
+              />
             </div>
           </div>
         )}
@@ -252,17 +232,17 @@ export default function Sidebar() {
         {/* Staff inside restaurant */}
         {insideRestaurant && isStaff && (
           <nav className="space-y-0.5">
-            <Link
+            <NavLink
               href={`/dashboard/restaurant/${currentRestaurantId}/staff`}
+              pathname={pathname}
               onClick={close}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname.includes("/staff") ? "bg-orange-50 text-orange-700" : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                }`}
-            >
-              <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              Staff Panel
-            </Link>
+              label="Staff Panel"
+              icon={
+                <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              }
+            />
           </nav>
         )}
 
@@ -270,44 +250,32 @@ export default function Sidebar() {
         {!insideRestaurant && (
           <nav className="space-y-0.5">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 mb-1.5">Navigation</p>
-            <Link
+            <NavLink
               href="/dashboard"
+              pathname={pathname}
+              exact
               onClick={close}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname === "/dashboard"
-                  ? "bg-orange-50 text-orange-700"
-                  : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                }`}
-            >
-              {pathname === "/dashboard" && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b from-orange-500 to-rose-500" />
-              )}
-              <span className={pathname === "/dashboard" ? "text-orange-500" : "text-gray-400 group-hover:text-gray-500"}>
+              label="Overview"
+              icon={
                 <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
-              </span>
-              Overview
-            </Link>
+              }
+            />
 
             {!isStaff && (
-              <Link
+              <NavLink
                 href="/dashboard/restaurant/new"
+                pathname={pathname}
+                exact
                 onClick={close}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${pathname === "/dashboard/restaurant/new"
-                    ? "bg-orange-50 text-orange-700"
-                    : "text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
-              >
-                {pathname === "/dashboard/restaurant/new" && (
-                  <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b from-orange-500 to-rose-500" />
-                )}
-                <span className={pathname === "/dashboard/restaurant/new" ? "text-orange-500" : "text-gray-400 group-hover:text-gray-500"}>
+                label="Add Restaurant"
+                icon={
                   <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4v16m8-8H4" />
                   </svg>
-                </span>
-                Add Restaurant
-              </Link>
+                }
+              />
             )}
           </nav>
         )}
@@ -360,7 +328,7 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden sticky top-0 z-40 px-4 h-14 flex items-center justify-between bg-white border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <img src="/logo.png" alt="Menuor" className="w-7 h-7 rounded-lg object-cover" />
+          <Logo variant="mark" size={28} />
           <span className="text-sm font-bold text-gray-900">Menuor</span>
         </Link>
         <div className="flex items-center gap-1">

@@ -1,3 +1,7 @@
+export function SkeletonBlock({ className = "", height = "h-20" }: { className?: string; height?: string }) {
+  return <div className={`surface-card animate-pulse ${height} ${className}`} />;
+}
+
 export function SkeletonLine({ width = "100%", height = "16px" }: { width?: string; height?: string }) {
   return (
     <div

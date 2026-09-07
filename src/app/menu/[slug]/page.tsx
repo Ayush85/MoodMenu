@@ -181,6 +181,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       {fontOption && <link rel="stylesheet" href={fontOption.stylesheetUrl} />}
       <MenuClient
       cardStyle={restaurant.cardStyle as "list" | "grid"}
+      layoutTemplate={restaurant.layoutTemplate as "classic" | "tabbed" | "magazine"}
       fontFamily={fontOption?.cssFamily}
       restaurant={{
         name: restaurant.name,

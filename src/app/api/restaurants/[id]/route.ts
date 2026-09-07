@@ -70,6 +70,7 @@ export async function PATCH(
       longitude: data.longitude,
       brandTheme: data.brandTheme,
       cardStyle: data.cardStyle,
+      layoutTemplate: data.layoutTemplate,
     },
   });
 

@@ -33,6 +33,7 @@ interface Restaurant {
   logo: string | null;
   brandTheme: BrandTheme | null;
   cardStyle: string;
+  layoutTemplate: string;
   categories: CategoryRow[];
 }
 
@@ -52,6 +53,7 @@ export default function DesignPage() {
   const [text, setText] = useState(DEFAULT_THEME.text);
   const [fontFamily, setFontFamily] = useState(FONT_OPTIONS[0].value);
   const [cardStyle, setCardStyle] = useState<"list" | "grid">("list");
+  const [layoutTemplate, setLayoutTemplate] = useState<"classic" | "tabbed" | "magazine">("classic");
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export default function DesignPage() {
         setText(brand.text || DEFAULT_THEME.text);
         setFontFamily(brand.fontFamily || FONT_OPTIONS[0].value);
         setCardStyle(data.cardStyle === "grid" ? "grid" : "list");
+        setLayoutTemplate(data.layoutTemplate === "tabbed" || data.layoutTemplate === "magazine" ? data.layoutTemplate : "classic");
         setCategories(data.categories || []);
         setLoading(false);
       });
@@ -84,6 +87,7 @@ export default function DesignPage() {
     setText(tpl.theme.text);
     setFontFamily(tpl.theme.fontFamily || FONT_OPTIONS[0].value);
     setCardStyle(tpl.cardStyle);
+    setLayoutTemplate(tpl.layoutTemplate);
     toast(`Applied "${tpl.name}" — click Save Design to keep it`);
   }
 
@@ -95,6 +99,7 @@ export default function DesignPage() {
       body: JSON.stringify({
         brandTheme: { mode, primary, accent, bg, text, fontFamily },
         cardStyle,
+        layoutTemplate,
       }),
     });
     setSaving(false);
@@ -302,6 +307,54 @@ export default function DesignPage() {
           >
             <LayoutGrid className="w-4 h-4" /> Grid
           </button>
+        </div>
+      </div>
+
+      {/* Page layout */}
+      <div className="surface-card p-5 mb-6">
+        <h3 className="font-bold text-gray-900 mb-1">Page Layout</h3>
+        <p className="text-xs text-gray-500 mb-4">How your menu page is structured for customers</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {(
+            [
+              { value: "classic", label: "Classic", description: "One continuous scroll" },
+              { value: "tabbed", label: "Tabbed", description: "One category at a time" },
+              { value: "magazine", label: "Magazine", description: "Bold, editorial sections" },
+            ] as const
+          ).map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setLayoutTemplate(opt.value)}
+              className={`text-left rounded-xl border p-3 transition ${layoutTemplate === opt.value ? "border-orange-400 bg-orange-50" : "border-gray-200 hover:border-gray-300"}`}
+            >
+              <div className="w-full h-16 rounded-lg bg-white border border-gray-200 p-1.5 mb-2 flex flex-col gap-1">
+                <div className="h-3 rounded bg-gray-300" />
+                {opt.value === "classic" && (
+                  <>
+                    <div className="flex gap-1"><div className="h-1.5 w-4 rounded-full bg-gray-300" /><div className="h-1.5 w-4 rounded-full bg-gray-200" /><div className="h-1.5 w-4 rounded-full bg-gray-200" /></div>
+                    <div className="flex-1 rounded bg-gray-100" />
+                    <div className="flex-1 rounded bg-gray-100" />
+                  </>
+                )}
+                {opt.value === "tabbed" && (
+                  <>
+                    <div className="flex gap-1"><div className="h-2 w-5 rounded-full bg-gray-400" /><div className="h-2 w-4 rounded-full bg-gray-200" /><div className="h-2 w-4 rounded-full bg-gray-200" /></div>
+                    <div className="flex-1 rounded bg-gray-100" />
+                  </>
+                )}
+                {opt.value === "magazine" && (
+                  <>
+                    <div className="h-1 w-6 rounded-full bg-gray-300" />
+                    <div className="h-2 rounded bg-gray-300 w-2/3" />
+                    <div className="flex-1 rounded bg-gray-100" />
+                  </>
+                )}
+              </div>
+              <p className="text-xs font-bold text-gray-800">{opt.label}</p>
+              <p className="text-[10px] text-gray-400">{opt.description}</p>
+            </button>
+          ))}
         </div>
       </div>
 

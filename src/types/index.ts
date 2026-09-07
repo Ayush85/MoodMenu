@@ -68,6 +68,7 @@ export interface DesignTemplate {
   description: string;
   theme: MoodTheme;
   cardStyle: "list" | "grid";
+  layoutTemplate: "classic" | "tabbed" | "magazine";
 }
 
 export const DESIGN_TEMPLATES: DesignTemplate[] = [
@@ -77,6 +78,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Warm and friendly — the default look",
     theme: { mode: "light", primary: "#F97316", accent: "#FDE68A", bg: "#FFFFFF", text: "#1F2937", fontFamily: "inter" },
     cardStyle: "list",
+    layoutTemplate: "classic",
   },
   {
     key: "elegant-dark",
@@ -84,6 +86,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Moody and upscale for fine dining",
     theme: { mode: "dark", primary: "#D4AF37", accent: "#8B7355", bg: "#1A1A1A", text: "#F5F5F0", fontFamily: "playfair-display" },
     cardStyle: "list",
+    layoutTemplate: "magazine",
   },
   {
     key: "fresh-cafe",
@@ -91,6 +94,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Light and airy for coffee shops",
     theme: { mode: "light", primary: "#10B981", accent: "#A7F3D0", bg: "#F0FDF4", text: "#064E3B", fontFamily: "dm-sans" },
     cardStyle: "grid",
+    layoutTemplate: "tabbed",
   },
   {
     key: "bold-vibrant",
@@ -98,6 +102,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Punchy colors for a fun, casual spot",
     theme: { mode: "light", primary: "#EC4899", accent: "#FBCFE8", bg: "#FFF1F5", text: "#831843", fontFamily: "poppins" },
     cardStyle: "grid",
+    layoutTemplate: "tabbed",
   },
   {
     key: "midnight-violet",
@@ -105,6 +110,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Dark and modern for bars & lounges",
     theme: { mode: "dark", primary: "#8B5CF6", accent: "#DDD6FE", bg: "#0F0B1E", text: "#F3F0FF", fontFamily: "space-grotesk" },
     cardStyle: "grid",
+    layoutTemplate: "magazine",
   },
   {
     key: "minimal-mono",
@@ -112,6 +118,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Clean and understated",
     theme: { mode: "light", primary: "#111827", accent: "#9CA3AF", bg: "#FFFFFF", text: "#111827", fontFamily: "inter" },
     cardStyle: "list",
+    layoutTemplate: "classic",
   },
   {
     key: "rustic-warmth",
@@ -119,6 +126,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Cozy and earthy for a homestyle feel",
     theme: { mode: "light", primary: "#B45309", accent: "#FDE68A", bg: "#FFFBEB", text: "#451A03", fontFamily: "lora" },
     cardStyle: "list",
+    layoutTemplate: "classic",
   },
   {
     key: "ocean-breeze",
@@ -126,6 +134,7 @@ export const DESIGN_TEMPLATES: DesignTemplate[] = [
     description: "Cool and coastal",
     theme: { mode: "light", primary: "#0EA5E9", accent: "#BAE6FD", bg: "#F0F9FF", text: "#0C4A6E", fontFamily: "dm-sans" },
     cardStyle: "grid",
+    layoutTemplate: "tabbed",
   },
 ];
 

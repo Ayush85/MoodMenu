@@ -39,143 +39,144 @@ enum StaffRole {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  email         String       @unique
-  password      String?
-  name          String
-  role          Role         @default(ADMIN)
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  restaurants   Restaurant[]
+  id          String       @id @default(cuid())
+  email       String       @unique
+  password    String?
+  name        String
+  role        Role         @default(ADMIN)
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  restaurants Restaurant[]
 }
 
 model Restaurant {
-  id            String       @id @default(cuid())
-  slug          String       @unique
-  name          String
-  city          String
-  latitude      Float?
-  longitude     Float?
-  logo          String?
-  brandTheme    Json?
-  cardStyle     String       @default("list")
-  wifiSsid      String?
-  wifiPassword  String?
-  allowedIp     String?
-  ownerId       String
-  owner         User         @relation(fields: [ownerId], references: [id])
-  categories    Category[]
-  moodRules     MoodRule[]
-  tables        RestaurantTable[]
-  waiterCalls   WaiterCall[]
-  orders        OrderTicket[]
-  staffMembers  RestaurantStaff[]
-  sessions      TableSession[]
-  expenses      Expense[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id             String            @id @default(cuid())
+  slug           String            @unique
+  name           String
+  city           String
+  latitude       Float?
+  longitude      Float?
+  logo           String?
+  brandTheme     Json?
+  cardStyle      String            @default("list")
+  layoutTemplate String            @default("classic")
+  wifiSsid       String?
+  wifiPassword   String?
+  allowedIp      String?
+  ownerId        String
+  owner          User              @relation(fields: [ownerId], references: [id])
+  categories     Category[]
+  moodRules      MoodRule[]
+  tables         RestaurantTable[]
+  waiterCalls    WaiterCall[]
+  orders         OrderTicket[]
+  staffMembers   RestaurantStaff[]
+  sessions       TableSession[]
+  expenses       Expense[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 }
 
 model RestaurantStaff {
-  id            String       @id @default(cuid())
-  name          String
-  email         String       @unique
-  password      String?
-  phone         String?
-  role          StaffRole
-  isActive      Boolean      @default(true)
-  restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  password     String?
+  phone        String?
+  role         StaffRole
+  isActive     Boolean    @default(true)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
 }
 
 model RestaurantTable {
-  id            String         @id @default(cuid())
-  number        Int
-  label         String?
-  restaurantId  String
-  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  waiterCalls   WaiterCall[]
-  orders        OrderTicket[]
-  sessions      TableSession[]
+  id           String         @id @default(cuid())
+  number       Int
+  label        String?
+  restaurantId String
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  waiterCalls  WaiterCall[]
+  orders       OrderTicket[]
+  sessions     TableSession[]
 
   @@unique([restaurantId, number])
 }
 
 model TableSession {
-  id            String         @id @default(cuid())
-  restaurantId  String
-  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  tableId       String
-  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  status        SessionStatus  @default(ACTIVE)
-  totalAmount   Float          @default(0)
-  startedAt     DateTime       @default(now())
-  endedAt       DateTime?
-  orders        OrderTicket[]
+  id           String          @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId      String
+  table        RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  status       SessionStatus   @default(ACTIVE)
+  totalAmount  Float           @default(0)
+  startedAt    DateTime        @default(now())
+  endedAt      DateTime?
+  orders       OrderTicket[]
 }
 
 model WaiterCall {
-  id            String       @id @default(cuid())
-  status        CallStatus   @default(PENDING)
-  message       String?
-  tableId       String
-  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
-  resolvedAt    DateTime?
+  id           String          @id @default(cuid())
+  status       CallStatus      @default(PENDING)
+  message      String?
+  tableId      String
+  table        RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+  resolvedAt   DateTime?
 }
 
 model OrderTicket {
-  id            String         @id @default(cuid())
-  restaurantId  String
-  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  tableId       String
-  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  sessionId     String?
-  session       TableSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  status        OrderStatus    @default(NEW)
-  note          String?
-  total         Float          @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  items         OrderLine[]
+  id           String          @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId      String
+  table        RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  sessionId    String?
+  session      TableSession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  status       OrderStatus     @default(NEW)
+  note         String?
+  total        Float           @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  items        OrderLine[]
 }
 
 model OrderLine {
-  id            String       @id @default(cuid())
-  orderId       String
-  order         OrderTicket  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  itemName      String
-  quantity      Int          @default(1)
-  unitPrice     Float
-  lineTotal     Float
+  id        String      @id @default(cuid())
+  orderId   String
+  order     OrderTicket @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemName  String
+  quantity  Int         @default(1)
+  unitPrice Float
+  lineTotal Float
 }
 
 model Category {
-  id            String       @id @default(cuid())
-  name          String
-  order         Int          @default(0)
-  restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  items         MenuItem[]
+  id           String     @id @default(cuid())
+  name         String
+  order        Int        @default(0)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  items        MenuItem[]
 }
 
 model MenuItem {
-  id            String       @id @default(cuid())
-  name          String
-  description   String?
-  price         Float
-  image         String?
-  isAvailable   Boolean      @default(true)
-  isSpecial     Boolean      @default(false)
-  tags          String[]
-  order         Int          @default(0)
-  categoryId    String
-  category      Category     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  isAvailable Boolean  @default(true)
+  isSpecial   Boolean  @default(false)
+  tags        String[]
+  order       Int      @default(0)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 enum ExpenseCategory {
@@ -190,15 +191,15 @@ enum ExpenseCategory {
 }
 
 model Expense {
-  id            String          @id @default(cuid())
-  restaurantId  String
-  restaurant    Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  title         String
-  amount        Float
-  category      ExpenseCategory @default(OTHER)
-  note          String?
-  date          DateTime        @default(now())
-  createdAt     DateTime        @default(now())
+  id           String          @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  title        String
+  amount       Float
+  category     ExpenseCategory @default(OTHER)
+  note         String?
+  date         DateTime        @default(now())
+  createdAt    DateTime        @default(now())
 }
 
 model PushToken {
@@ -211,12 +212,12 @@ model PushToken {
 }
 
 model MoodRule {
-  id            String       @id @default(cuid())
-  name          String
-  condition     Json         @default("{}")
-  theme         Json         @default("{}")
-  featuredTags  String[]
-  priority      Int          @default(0)
-  restaurantId  String
-  restaurant    Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  name         String
+  condition    Json       @default("{}")
+  theme        Json       @default("{}")
+  featuredTags String[]
+  priority     Int        @default(0)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 }

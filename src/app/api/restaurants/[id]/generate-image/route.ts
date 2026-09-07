@@ -122,6 +122,13 @@ export async function POST(
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to generate image";
     console.error("AI image generation error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+
+    // Account-level failures (billing/quota/auth) won't resolve by retrying
+    // the next item — surface them distinctly so bulk callers can stop early
+    // instead of burning through every remaining item with the same error.
+    const providerStatus = (err as { status?: number })?.status;
+    const isAccountLevel = providerStatus === 429 || providerStatus === 401 || providerStatus === 403;
+
+    return NextResponse.json({ error: message }, { status: isAccountLevel ? 429 : 500 });
   }
 }

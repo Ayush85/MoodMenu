@@ -579,20 +579,21 @@ export default function MenuManagePage() {
         });
         const data = await res.json();
         if (!res.ok) {
-          // If the AI image provider isn't configured at all, no point retrying per item
-          if (String(data.error || "").includes("AI_IMAGE_PROVIDER")) {
-            toast(data.error, "error");
+          // Account-level failures (misconfigured provider, no credits, bad key)
+          // won't resolve by retrying the next item — stop the whole batch.
+          if (res.status === 429 || res.status === 503) {
+            toast(data.error || "Image generation failed", "error");
             break;
           }
           continue;
         }
         if (data.url) {
-          await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+          const saveRes = await fetch(`/api/restaurants/${id}/items/${item.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ image: data.url }),
           });
-          generated++;
+          if (saveRes.ok) generated++;
         }
       } catch {
         // Skip this item, continue with the rest
@@ -640,31 +641,33 @@ export default function MenuManagePage() {
         });
         const data = await res.json();
         if (!res.ok) {
-          if (String(data.error || "").includes("AI_IMAGE_PROVIDER")) {
-            toast(data.error, "error");
+          if (res.status === 429 || res.status === 503) {
+            toast(data.error || "Image generation failed", "error");
             break;
           }
           continue;
         }
         if (data.url) {
-          await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+          const saveRes = await fetch(`/api/restaurants/${id}/items/${item.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ image: data.url }),
           });
-          generated++;
-          // Reflect the new image immediately so the grid updates live
-          setRestaurant((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  categories: prev.categories.map((cat) => ({
-                    ...cat,
-                    items: cat.items.map((i) => (i.id === item.id ? { ...i, image: data.url } : i)),
-                  })),
-                }
-              : prev
-          );
+          if (saveRes.ok) {
+            generated++;
+            // Reflect the new image immediately so the grid updates live
+            setRestaurant((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    categories: prev.categories.map((cat) => ({
+                      ...cat,
+                      items: cat.items.map((i) => (i.id === item.id ? { ...i, image: data.url } : i)),
+                    })),
+                  }
+                : prev
+            );
+          }
         }
       } catch {
         // Skip this item, continue with the rest

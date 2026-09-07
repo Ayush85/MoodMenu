@@ -1,20 +1,14 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
-import OneSignalInit from "@/components/OneSignalInit";
+import FcmInit from "@/components/FcmInit";
 import { ToastProvider } from "@/components/Toast";
 
-export default function Providers({
-  children,
-  oneSignalAppId,
-}: {
-  children: React.ReactNode;
-  oneSignalAppId?: string;
-}) {
+export default function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <ToastProvider>
-        <OneSignalInit appId={oneSignalAppId} />
+        <FcmInit />
         {children}
       </ToastProvider>
     </SessionProvider>

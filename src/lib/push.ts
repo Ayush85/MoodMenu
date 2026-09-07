@@ -1,9 +1,11 @@
 /**
- * Server-side push notification helper using OneSignal REST API v2.
- * Sends to specific users by their external_id (User.id or RestaurantStaff.id).
+ * Server-side push notification helper using Firebase Cloud Messaging.
+ * Sends to specific users by looking up their registered device tokens.
  */
 
-const ONESIGNAL_API_URL = "https://api.onesignal.com/notifications";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
+import { prisma } from "./db";
 
 interface PushPayload {
   title: string;
@@ -13,39 +15,55 @@ interface PushPayload {
   data?: Record<string, string>;
 }
 
-export async function sendPush({ title, body, userIds, url, data }: PushPayload): Promise<boolean> {
-  const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-  const apiKey = process.env.ONESIGNAL_REST_API_KEY;
+function getAdminApp() {
+  if (getApps().length) return getApps()[0];
 
-  if (!appId || !apiKey || userIds.length === 0) return false;
+  return initializeApp({
+    credential: cert({
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    }),
+  });
+}
+
+export async function sendPush({ title, body, userIds, url, data }: PushPayload): Promise<boolean> {
+  if (!process.env.FIREBASE_CLIENT_EMAIL || !process.env.FIREBASE_PRIVATE_KEY || userIds.length === 0) {
+    return false;
+  }
+
+  const tokens = await prisma.pushToken.findMany({
+    where: { ownerId: { in: userIds } },
+    select: { token: true },
+  });
+
+  if (tokens.length === 0) return false;
 
   try {
-    const res = await fetch(ONESIGNAL_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Basic ${apiKey}`,
-      },
-      body: JSON.stringify({
-        app_id: appId,
-        include_aliases: { external_id: userIds },
-        target_channel: "push",
-        headings: { en: title },
-        contents: { en: body },
-        ...(url && { url }),
-        ...(data && { data }),
-      }),
+    const messaging = getMessaging(getAdminApp());
+
+    const res = await messaging.sendEachForMulticast({
+      tokens: tokens.map((t) => t.token),
+      notification: { title, body },
+      data: { ...(url && { url }), ...(data || {}) },
+      webpush: url ? { fcmOptions: { link: url } } : undefined,
     });
 
-    if (!res.ok) {
-      const err = await res.text();
-      console.error("[Push] OneSignal error:", res.status, err);
-      return false;
+    const staleTokens = res.responses
+      .map((r, i) =>
+        !r.success && r.error?.code === "messaging/registration-token-not-registered"
+          ? tokens[i].token
+          : null
+      )
+      .filter((t): t is string => t !== null);
+
+    if (staleTokens.length > 0) {
+      await prisma.pushToken.deleteMany({ where: { token: { in: staleTokens } } });
     }
 
-    return true;
+    return res.successCount > 0;
   } catch (err) {
-    console.error("[Push] Network error:", err);
+    console.error("[Push] FCM error:", err);
     return false;
   }
 }

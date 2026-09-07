@@ -198,6 +198,15 @@ model Expense {
   createdAt     DateTime        @default(now())
 }
 
+model PushToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  @@index([ownerId])
+}
+
 model MoodRule {
   id            String       @id @default(cuid())
   name          String

@@ -69,12 +69,10 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const oneSignalAppId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-
   return (
     <html lang="en" className={`${inter.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
-        <Providers oneSignalAppId={oneSignalAppId}>{children}</Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { isSessionStale } from "@/lib/session";
 
 // GET /api/menu/[slug]/session?table=5
 // Returns the active session for a table (public, no auth needed)
@@ -38,6 +39,17 @@ export async function GET(
   });
 
   if (!session) return NextResponse.json({ session: null, table });
+
+  if (isSessionStale(session)) {
+    // Fire-and-forget — a stale session shouldn't linger as "ACTIVE" in staff
+    // views just because no new order ever triggers the order route's own check
+    prisma.tableSession.update({
+      where: { id: session.id },
+      data: { status: "CLOSED", endedAt: new Date() },
+    }).catch(() => { /* best-effort */ });
+
+    return NextResponse.json({ session: null, table });
+  }
 
   return NextResponse.json({
     session: {

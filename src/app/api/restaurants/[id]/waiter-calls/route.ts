@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import type { CallStatus } from "@/generated/prisma/client";
+
+const VALID_TRANSITIONS: Record<CallStatus, CallStatus[]> = {
+  PENDING: ["ACKNOWLEDGED", "RESOLVED"],
+  ACKNOWLEDGED: ["RESOLVED"],
+  RESOLVED: [],
+};
 
 type AccessInfo =
   | { kind: "OWNER" }
@@ -80,10 +87,31 @@ export async function PATCH(
   }
   const { callId, status } = await req.json();
 
+  if (!VALID_TRANSITIONS[status as CallStatus]) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  const existing = await prisma.waiterCall.findFirst({
+    where: { id: callId, restaurantId: id },
+    select: { status: true },
+  });
+  if (!existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  if (!VALID_TRANSITIONS[existing.status].includes(status)) {
+    return NextResponse.json(
+      { error: `Cannot move a call from ${existing.status} to ${status}` },
+      { status: 409 }
+    );
+  }
+
   const call = await prisma.waiterCall.update({
     where: { id: callId, restaurantId: id },
     data: {
       status,
+      handledBy: session.user.id,
+      acknowledgedAt: status === "ACKNOWLEDGED" ? new Date() : undefined,
       resolvedAt: status === "RESOLVED" ? new Date() : undefined,
     },
     include: { table: true },

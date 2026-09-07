@@ -3,8 +3,8 @@ set -e
 
 echo "Checking if database needs seeding..."
 
-# Run count query directly on the db container via env vars
-COUNT=$(PGPASSWORD="${POSTGRES_PASSWORD:-moodmenu_prod_2026}" psql -U menuor -d menuor -h db -tAc "SELECT count(*) FROM \"User\";" 2>/dev/null || echo "0")
+# Run count query using DATABASE_URL directly, so this works regardless of DB host
+COUNT=$(psql "$DATABASE_URL" -tAc "SELECT count(*) FROM \"User\";" 2>/dev/null || echo "0")
 
 if [ "$COUNT" != "0" ] && [ "$COUNT" != "" ]; then
   echo "Database has $COUNT users. Skipping seed."
@@ -16,7 +16,7 @@ HASH1=$(node -e "require('bcryptjs').hash('Admin@123',12).then(h=>process.stdout
 HASH2=$(node -e "require('bcryptjs').hash('admin@123',12).then(h=>process.stdout.write(h))")
 
 echo "Inserting seed data..."
-PGPASSWORD="${POSTGRES_PASSWORD:-moodmenu_prod_2026}" psql -U menuor -d menuor -h db -v ON_ERROR_STOP=1 <<SQL
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<SQL
 
 -- Users
 INSERT INTO "User" (id, email, name, password, role, "isActive", "createdAt")

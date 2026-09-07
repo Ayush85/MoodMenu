@@ -69,7 +69,6 @@ export default function StaffPage() {
   const { toast } = useToast();
   const id = params.id as string;
   const [pendingCalls, setPendingCalls] = useState<WaiterCall[]>([]);
-  const [allCalls, setAllCalls] = useState<RawWaiterCall[]>([]);
   const [tables, setTables] = useState<RestaurantTableData[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [orders, setOrders] = useState<OrderTicket[]>([]);
@@ -96,100 +95,14 @@ export default function StaffPage() {
   const canTakeOrders = actorType === "USER" || staffRole === "WAITER";
   const [showStaffSection, setShowStaffSection] = useState(false);
   const [visibleOrders, setVisibleOrders] = useState(6);
-  const [visibleCalls, setVisibleCalls] = useState(6);
   const [simpleView, setSimpleView] = useState(true);
   const [orderPollKey, setOrderPollKey] = useState(0);
-
-  // Sessions
-  interface TableSessionData {
-    id: string;
-    status: string;
-    totalAmount: number;
-    startedAt: string;
-    table: { number: number; label: string | null };
-    orders: { id: string; status: string; total: number; items: { itemName: string; quantity: number }[] }[];
-  }
-  const [activeSessions, setActiveSessions] = useState<TableSessionData[]>([]);
-  const [closingSession, setClosingSession] = useState<string | null>(null);
-
-  async function fetchSessions() {
-    try {
-      const res = await fetch(`/api/restaurants/${id}/sessions?status=ACTIVE`);
-      if (res.ok) setActiveSessions(await res.json());
-    } catch { /* silent */ }
-  }
-
-  async function closeSession(sessionId: string) {
-    setClosingSession(sessionId);
-    try {
-      await fetch(`/api/restaurants/${id}/sessions/${sessionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "close" }),
-      });
-      await fetchSessions();
-    } finally {
-      setClosingSession(null);
-    }
-  }
 
   useEffect(() => {
     if (!canUseCalls && activeTab === "calls") {
       setActiveTab("orders");
     }
   }, [canUseCalls, activeTab]);
-
-  // Poll for pending waiter calls every 4 seconds (works on Vercel + Docker)
-  useEffect(() => {
-    if (!canUseCalls) return;
-
-    let prevCount = 0;
-
-    async function pollCalls() {
-      try {
-        const res = await fetch(`/api/restaurants/${id}/waiter-calls`);
-        if (!res.ok) return;
-        const calls: RawWaiterCall[] = await res.json();
-        const active = calls
-          .filter((c) => c.status === "PENDING" || c.status === "ACKNOWLEDGED")
-          .map((c) => ({
-            id: c.id,
-            tableNumber: c.table.number,
-            tableLabel: c.table.label,
-            message: c.message,
-            status: c.status,
-            createdAt: c.createdAt,
-          }));
-
-        const pendingOnly = active.filter((c) => c.status === "PENDING");
-        if (pendingOnly.length > prevCount && prevCount >= 0) {
-          playNotificationSound();
-          if (pendingOnly[0]) showBrowserNotification(pendingOnly[0]);
-        }
-        prevCount = pendingOnly.length;
-        setPendingCalls(active);
-      } catch {
-        // Silently retry on next interval
-      }
-    }
-
-    pollCalls();
-    const interval = setInterval(pollCalls, 4000);
-    return () => clearInterval(interval);
-  }, [id, canUseCalls]);
-
-  // Load all calls history
-  useEffect(() => {
-    if (!canUseCalls) {
-      setAllCalls([]);
-      return;
-    }
-
-    fetch(`/api/restaurants/${id}/waiter-calls`)
-      .then((r) => r.json())
-      .then((data) => setAllCalls(Array.isArray(data) ? data : []))
-      .catch(() => setAllCalls([]));
-  }, [id, pendingCalls, canUseCalls]);
 
   // Load tables and menu items for order pad
   useEffect(() => {
@@ -210,7 +123,8 @@ export default function StaffPage() {
       });
   }, [id]);
 
-  // Poll orders + sessions every 8 seconds
+  // Poll orders every 8 seconds; fold in a lightweight pending-call count
+  // (the /live board is the canonical place to actually act on calls)
   useEffect(() => {
     function fetchOrders() {
       fetch(`/api/restaurants/${id}/orders`)
@@ -219,11 +133,33 @@ export default function StaffPage() {
         .catch(() => {});
     }
 
-    fetchSessions();
+    function fetchCallCount() {
+      if (!canUseCalls) return;
+      fetch(`/api/restaurants/${id}/waiter-calls`)
+        .then((r) => r.json())
+        .then((data: RawWaiterCall[]) => {
+          const active = Array.isArray(data)
+            ? data.filter((c) => c.status === "PENDING" || c.status === "ACKNOWLEDGED")
+            : [];
+          setPendingCalls(
+            active.map((c) => ({
+              id: c.id,
+              tableNumber: c.table.number,
+              tableLabel: c.table.label,
+              message: c.message,
+              status: c.status,
+              createdAt: c.createdAt,
+            }))
+          );
+        })
+        .catch(() => {});
+    }
+
     fetchOrders();
-    const interval = setInterval(() => { fetchOrders(); fetchSessions(); }, 8000);
+    fetchCallCount();
+    const interval = setInterval(() => { fetchOrders(); fetchCallCount(); }, 8000);
     return () => clearInterval(interval);
-  }, [id, orderPollKey]);
+  }, [id, orderPollKey, canUseCalls]);
 
   useEffect(() => {
     if (!canManageStaff) {
@@ -236,51 +172,6 @@ export default function StaffPage() {
       .then((data) => setStaff(Array.isArray(data) ? data : []))
       .catch(() => setStaff([]));
   }, [id, canManageStaff]);
-
-  function showBrowserNotification(call?: WaiterCall) {
-    if (typeof window === "undefined" || !("Notification" in window)) return;
-    if (Notification.permission === "granted" && call) {
-      const title = `Waiter Call: Table ${call.tableNumber}`;
-      const body = call.message || "Customer requested assistance";
-      new Notification(title, { body });
-    }
-  }
-
-  function playNotificationSound() {
-    try {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 800;
-      osc.type = "sine";
-      gain.gain.value = 0.3;
-      osc.start();
-      osc.stop(ctx.currentTime + 0.2);
-      setTimeout(() => {
-        const osc2 = ctx.createOscillator();
-        const gain2 = ctx.createGain();
-        osc2.connect(gain2);
-        gain2.connect(ctx.destination);
-        osc2.frequency.value = 1000;
-        osc2.type = "sine";
-        gain2.gain.value = 0.3;
-        osc2.start();
-        osc2.stop(ctx.currentTime + 0.3);
-      }, 200);
-    } catch {
-      // Audio not available
-    }
-  }
-
-  async function updateCallStatus(callId: string, status: string) {
-    await fetch(`/api/restaurants/${id}/waiter-calls`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ callId, status }),
-    });
-  }
 
   function incrementItem(itemId: string) {
     setSelectedItems((prev) => ({ ...prev, [itemId]: (prev[itemId] || 0) + 1 }));
@@ -343,7 +234,6 @@ export default function StaffPage() {
   }, [orders, orderStatusFilter, orderTableFilter]);
 
   const visibleFilteredOrders = filteredOrders.slice(0, visibleOrders);
-  const visibleAllCalls = allCalls.slice(0, visibleCalls);
 
   const paidRevenue = useMemo(() => {
     return orders
@@ -362,10 +252,6 @@ export default function StaffPage() {
   useEffect(() => {
     setVisibleOrders(6);
   }, [orderStatusFilter, orderTableFilter, orders]);
-
-  useEffect(() => {
-    setVisibleCalls(6);
-  }, [allCalls]);
 
   async function submitOrder() {
     if (!selectedTableId) { toast("Please select a table", "error"); return; }
@@ -566,8 +452,6 @@ export default function StaffPage() {
     return `${Math.floor(minutes / 60)}h ago`;
   }
 
-  const focusCall = pendingCalls[0] || null;
-
   const STATUS_META: Record<OrderTicket["status"], { badge: string; label: string }> = {
     NEW:       { badge: "bg-blue-100 text-blue-700",    label: "New" },
     PREPARING: { badge: "bg-amber-100 text-amber-700",  label: "Preparing" },
@@ -688,148 +572,23 @@ export default function StaffPage() {
       </div>
 
       {activeTab === "calls" && canUseCalls && (
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          <div className="lg:col-span-7 space-y-4">
-            <div className="surface-card p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-bold text-gray-900">Priority Call</h2>
-                <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700 font-semibold">
-                  {pendingCalls.length} waiting
-                </span>
-              </div>
-
-              {focusCall ? (
-                <div className={`rounded-2xl border-2 p-4 ${
-                  focusCall.status === "ACKNOWLEDGED"
-                    ? "border-amber-200 bg-amber-50"
-                    : "border-red-200 bg-red-50"
-                }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`w-14 h-14 rounded-2xl text-white flex items-center justify-center font-extrabold text-2xl shrink-0 ${
-                      focusCall.status === "ACKNOWLEDGED" ? "bg-amber-500" : "bg-red-500"
-                    }`}>
-                      {focusCall.tableNumber}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-lg font-bold ${focusCall.status === "ACKNOWLEDGED" ? "text-amber-900" : "text-red-900"}`}>
-                          {focusCall.tableLabel || `Table ${focusCall.tableNumber}`}
-                        </p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          focusCall.status === "ACKNOWLEDGED"
-                            ? "bg-amber-200 text-amber-800"
-                            : "bg-red-200 text-red-800"
-                        }`}>
-                          {focusCall.status === "ACKNOWLEDGED" ? "ON THE WAY" : "WAITING"}
-                        </span>
-                      </div>
-                      {focusCall.message && <p className={`mt-1 text-sm ${focusCall.status === "ACKNOWLEDGED" ? "text-amber-700" : "text-red-700"}`}>"{focusCall.message}"</p>}
-                      <p className={`text-xs mt-2 ${focusCall.status === "ACKNOWLEDGED" ? "text-amber-500" : "text-red-500"}`}>{timeAgo(focusCall.createdAt)}</p>
-                    </div>
-                  </div>
-                  <div className={`grid gap-2 mt-4 ${focusCall.status === "PENDING" ? "grid-cols-2" : "grid-cols-1"}`}>
-                    {focusCall.status === "PENDING" && (
-                      <button
-                        onClick={() => updateCallStatus(focusCall.id, "ACKNOWLEDGED")}
-                        className="rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold py-2.5 transition"
-                      >
-                        On My Way
-                      </button>
-                    )}
-                    <button
-                      onClick={() => updateCallStatus(focusCall.id, "RESOLVED")}
-                      className="rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold py-2.5 transition"
-                    >
-                      {focusCall.status === "ACKNOWLEDGED" ? "Mark Resolved" : "Resolve Now"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
-                  <p className="text-2xl mb-2">All clear</p>
-                  <p className="text-sm text-emerald-700 font-medium">No active waiter calls</p>
-                </div>
-              )}
-            </div>
-
-            <div className="surface-card overflow-hidden">
-              <div className="px-4 sm:px-5 py-3 border-b border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900">Call Queue</h3>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {pendingCalls.length === 0 ? (
-                  <div className="px-4 sm:px-5 py-5 text-sm text-gray-400">No queue right now</div>
-                ) : (
-                  pendingCalls.slice(0, 8).map((call) => (
-                    <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${
-                          call.status === "ACKNOWLEDGED" ? "bg-amber-400" : "bg-red-400 animate-pulse"
-                        }`} />
-                        <div>
-                          <p className="font-semibold text-gray-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
-                          <p className="text-[11px] text-gray-400">{timeAgo(call.createdAt)}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 shrink-0">
-                        {call.status === "PENDING" && (
-                          <button
-                            onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
-                            className="text-xs px-2.5 py-1 rounded-lg border border-amber-300 text-amber-700 bg-amber-50 hover:bg-amber-100 transition"
-                          >
-                            Acknowledge
-                          </button>
-                        )}
-                        <button
-                          onClick={() => updateCallStatus(call.id, "RESOLVED")}
-                          className="text-xs px-2.5 py-1 rounded-lg border border-emerald-300 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition"
-                        >
-                          Resolve
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
+        <section className="surface-card p-8 text-center max-w-md mx-auto">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${pendingCalls.length > 0 ? "bg-red-50" : "bg-emerald-50"}`}>
+            <svg className={`w-6 h-6 ${pendingCalls.length > 0 ? "text-red-500" : "text-emerald-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
           </div>
-
-          <div className="lg:col-span-5 surface-card overflow-hidden">
-            <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-gray-900">Recent Call History</h3>
-              {!simpleView && <span className="text-xs text-gray-400">{allCalls.length} total</span>}
-            </div>
-            <div className="divide-y divide-gray-100">
-              {allCalls.length === 0 ? (
-                <div className="px-4 sm:px-5 py-8 text-center text-sm text-gray-400">No waiter calls yet</div>
-              ) : (
-                visibleAllCalls.map((call) => (
-                  <div key={call.id} className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{call.table?.label || `Table ${call.table?.number}`}</p>
-                      {!simpleView && call.message && <p className="text-xs text-gray-500 truncate">{call.message}</p>}
-                    </div>
-                    <div className="text-right">
-                      <span className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
-                        call.status === "PENDING" ? "bg-red-100 text-red-700" :
-                        call.status === "ACKNOWLEDGED" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
-                      }`}>
-                        {call.status}
-                      </span>
-                      {!simpleView && <p className="text-[11px] text-gray-400 mt-1">{timeAgo(call.createdAt)}</p>}
-                    </div>
-                  </div>
-                ))
-              )}
-              {allCalls.length > visibleCalls && (
-                <div className="p-3 border-t border-gray-100">
-                  <button onClick={() => setVisibleCalls((v) => v + 6)} className="btn-soft w-full">
-                    Show More Calls
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          <p className="text-3xl font-extrabold text-gray-900">{pendingCalls.length}</p>
+          <p className="text-sm text-gray-500 mb-5">
+            {pendingCalls.length === 0
+              ? "No active waiter calls"
+              : pendingCalls.length === 1
+                ? "waiter call waiting"
+                : "waiter calls waiting"}
+          </p>
+          <Link href={`/dashboard/restaurant/${id}/live`} className="btn-primary inline-flex">
+            Open Live Board
+          </Link>
         </section>
       )}
 
@@ -909,7 +668,7 @@ export default function StaffPage() {
                             ))}
                             {order.note && (
                               <p className="text-xs text-gray-500 italic pt-1 border-t border-gray-200 mt-1">
-                                "{order.note}"
+                                &ldquo;{order.note}&rdquo;
                               </p>
                             )}
                           </div>

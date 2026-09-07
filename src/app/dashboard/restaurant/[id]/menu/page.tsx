@@ -366,7 +366,7 @@ export default function MenuManagePage() {
       const res = await fetch(`/api/restaurants/${id}/generate-image`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
+        body: JSON.stringify({ name, description, source: "stock" }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -403,6 +403,18 @@ export default function MenuManagePage() {
       fetchRestaurant();
     }
     setGeneratingEditImage(false);
+  }
+
+  async function handleRemoveEditImage() {
+    if (!editingItem) return;
+    setEditForm((p) => ({ ...p, image: "" }));
+    await fetch(`/api/restaurants/${id}/items/${editingItem.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: null }),
+    });
+    toast("Photo removed");
+    fetchRestaurant();
   }
 
   // ─── Photo import ─────────────────────────────────────────────────────────
@@ -1118,15 +1130,22 @@ export default function MenuManagePage() {
                       disabled={!itemForm.name.trim() || generatingItemImage}
                       className="text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 whitespace-nowrap"
                     >
-                      {generatingItemImage ? "Generating..." : "Generate with AI"}
+                      {generatingItemImage ? "Finding photo..." : "Find Photo"}
                     </button>
                     {itemForm.image && (
-                      <span className="text-green-600 text-xs flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Image ready
-                      </span>
+                      <>
+                        <span className="text-green-600 text-xs flex items-center gap-1">
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Image ready
+                        </span>
+                        <button type="button" onClick={() => setItemForm((p) => ({ ...p, image: "" }))}
+                          className="text-xs font-medium text-red-500 hover:text-red-600"
+                        >
+                          Remove
+                        </button>
+                      </>
                     )}
                   </div>
                   <div className="flex gap-2 pt-1">
@@ -1269,8 +1288,15 @@ export default function MenuManagePage() {
                     disabled={!editForm.name.trim() || generatingEditImage}
                     className="text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 whitespace-nowrap"
                   >
-                    {generatingEditImage ? "Generating..." : "Generate with AI"}
+                    {generatingEditImage ? "Finding photo..." : "Find Photo"}
                   </button>
+                  {editForm.image && (
+                    <button type="button" onClick={handleRemoveEditImage}
+                      className="text-sm font-medium text-red-500 hover:text-red-600 rounded-lg px-2 py-2 whitespace-nowrap"
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

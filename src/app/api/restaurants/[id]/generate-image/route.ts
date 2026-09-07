@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
+import Anthropic from "@anthropic-ai/sdk";
 
 function buildPrompt(name: string, description?: string | null) {
   return `A photorealistic professional product photograph of "${name}"${
@@ -14,18 +15,64 @@ If this is a packaged or retail product (e.g. cigarettes, snacks, bottled goods)
 Captured on a DSLR camera with a macro lens, soft natural lighting, shallow depth of field, realistic specular highlights, true-to-life textures and colors. This must look like an actual camera photograph, not digital art — do not render it as an illustration, cartoon, anime, 3D render, CGI, painting, sketch, or plastic-looking/artificial image. No watermark, no hands.`;
 }
 
-async function searchStockPhoto(query: string): Promise<Buffer | null> {
+async function getStockSearchQuery(name: string, description: string | null, city: string | null): Promise<string | null> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return name;
+
+  try {
+    const client = new Anthropic({ apiKey });
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 40,
+      messages: [
+        {
+          role: "user",
+          content: `This is a menu item from a restaurant${city ? ` in ${city}, Nepal` : ""}. Item: "${name}"${description ? ` — ${description}` : ""}.
+Return ONLY a short English search phrase (3-6 words, no punctuation) describing the actual dish or product (main ingredient/type + how it's prepared) for finding a matching photo on a general stock photography site. Translate local-language dish names into their real English description rather than transliterating them. If you are not confident what this item actually is, return exactly the single word "unknown" instead of guessing.`,
+        },
+      ],
+    });
+
+    const block = response.content.find((b) => b.type === "text");
+    const text = block && "text" in block ? block.text.trim() : "";
+    if (!text || text.toLowerCase() === "unknown") return null;
+    return text;
+  } catch {
+    return name;
+  }
+}
+
+async function searchStockPhoto(name: string, description: string | null, city: string | null): Promise<Buffer | null> {
   const apiKey = process.env.PEXELS_API_KEY;
   if (!apiKey) return null;
 
+  const query = await getStockSearchQuery(name, description, city);
+  if (!query) return null; // Claude wasn't confident what this item is — go straight to AI
+
   const res = await fetch(
-    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=1&orientation=square`,
+    `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5&orientation=square`,
     { headers: { Authorization: apiKey } }
   );
   if (!res.ok) return null;
 
   const data = await res.json();
-  const photoUrl = data.photos?.[0]?.src?.large;
+  const photos: { alt?: string; src?: { large?: string } }[] = data.photos || [];
+  if (photos.length === 0) return null;
+
+  // Pexels returns its "closest" match even when nothing is actually relevant
+  // (e.g. searching "Buff Tass" once returned an unrelated portrait). Only
+  // trust a result whose own description shares a real word with the query.
+  const queryWords = query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 2);
+
+  const relevantPhoto = photos.find((p) => {
+    const alt = (p.alt || "").toLowerCase();
+    return queryWords.some((w) => alt.includes(w));
+  });
+
+  const photoUrl = relevantPhoto?.src?.large;
   if (!photoUrl) return null;
 
   const imgRes = await fetch(photoUrl);
@@ -94,14 +141,15 @@ export async function POST(
   }
 
   const trimmedName = name.trim();
-  const prompt = buildPrompt(trimmedName, typeof description === "string" ? description.trim() : null);
+  const trimmedDescription = typeof description === "string" ? description.trim() || null : null;
+  const prompt = buildPrompt(trimmedName, trimmedDescription);
 
   try {
     let buffer: Buffer | null = null;
     let usedSource: "stock" | "ai" = "ai";
 
     if (source === "stock") {
-      buffer = await searchStockPhoto(trimmedName);
+      buffer = await searchStockPhoto(trimmedName, trimmedDescription, restaurant.city ?? null);
       if (buffer) usedSource = "stock";
     }
 

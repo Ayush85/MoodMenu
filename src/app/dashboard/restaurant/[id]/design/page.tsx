@@ -34,6 +34,7 @@ interface Restaurant {
   brandTheme: BrandTheme | null;
   cardStyle: string;
   layoutTemplate: string;
+  customDomain: string | null;
   categories: CategoryRow[];
 }
 
@@ -58,6 +59,9 @@ export default function DesignPage() {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
 
+  const [domain, setDomain] = useState("");
+  const [domainSaving, setDomainSaving] = useState(false);
+
   function fetchData() {
     fetch(`/api/restaurants/${id}`)
       .then((res) => res.json())
@@ -72,6 +76,7 @@ export default function DesignPage() {
         setFontFamily(brand.fontFamily || FONT_OPTIONS[0].value);
         setCardStyle(data.cardStyle === "grid" ? "grid" : "list");
         setLayoutTemplate(data.layoutTemplate === "tabbed" || data.layoutTemplate === "magazine" ? data.layoutTemplate : "classic");
+        setDomain(data.customDomain || "");
         setCategories(data.categories || []);
         setLoading(false);
       });
@@ -109,6 +114,28 @@ export default function DesignPage() {
       toast("Couldn't save design", "error");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveDomain() {
+    setDomainSaving(true);
+    try {
+      const res = await fetch(`/api/restaurants/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customDomain: domain.trim() || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || "Couldn't save domain", "error");
+        return;
+      }
+      setDomain(data.customDomain || "");
+      toast(data.customDomain ? "Domain saved" : "Domain removed");
+    } catch {
+      toast("Couldn't save domain", "error");
+    } finally {
+      setDomainSaving(false);
     }
   }
 
@@ -383,6 +410,36 @@ export default function DesignPage() {
       <button onClick={saveDesign} disabled={saving} className="btn-primary w-full mb-8 disabled:opacity-50">
         {saving ? "Saving…" : "Save Design"}
       </button>
+
+      {/* Custom domain */}
+      <div className="surface-card p-5 mb-6">
+        <h3 className="font-bold text-gray-900 mb-1">Custom Domain</h3>
+        <p className="text-xs text-gray-500 mb-4">
+          Use your own domain instead of menuor.com — your menu shows at the root, and <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/admin</code> and{" "}
+          <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/staff</code> reach this dashboard and the staff view under it. Logins are tied to
+          the domain you&apos;re on, so you&apos;ll need to sign in once on your new domain too — it won&apos;t reuse a menuor.com session.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-2 mb-3">
+          <input
+            type="text"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="yourrestaurant.com"
+            className="control-input flex-1"
+          />
+          <button onClick={saveDomain} disabled={domainSaving} className="btn-primary !w-auto px-6 disabled:opacity-50">
+            {domainSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
+
+        <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-600 space-y-1.5">
+          <p className="font-semibold text-gray-700">To connect your domain:</p>
+          <p>1. At your domain registrar, add an <strong>A record</strong> pointing to <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">168.144.77.104</code></p>
+          <p>2. Save the domain here once DNS is set</p>
+          <p>3. Let us know — HTTPS activation is a quick manual step on our end once your domain resolves</p>
+        </div>
+      </div>
 
       {/* Reorder categories & items */}
       <div className="surface-card p-5">

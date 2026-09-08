@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
-    select: { name: true, city: true, logo: true },
+    select: { name: true, city: true, logo: true, customDomain: true },
   });
 
   if (!restaurant) {
@@ -25,15 +25,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const title = `${restaurant.name} Menu`;
   const description = `Browse the full menu at ${restaurant.name} in ${restaurant.city}. Order food and call your waiter directly from your phone.`;
+  const canonicalUrl = restaurant.customDomain
+    ? `https://${restaurant.customDomain}/`
+    : `${process.env.APP_BASE_URL || "https://menuor.com"}/menu/${slug}`;
 
   return {
     title,
     description,
     robots: { index: true, follow: true },
+    alternates: { canonical: canonicalUrl },
     openGraph: {
       type: "website",
       title,
       description,
+      url: canonicalUrl,
       ...(restaurant.logo ? { images: [{ url: restaurant.logo, alt: restaurant.name }] } : {}),
     },
     twitter: {
@@ -122,6 +127,9 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
 
   const theme = mood.theme || DEFAULT_THEME;
   const baseUrl = process.env.APP_BASE_URL || "https://menuor.com";
+  const canonicalMenuUrl = restaurant.customDomain
+    ? `https://${restaurant.customDomain}/`
+    : `${baseUrl}/menu/${restaurant.slug}`;
 
   const menuItems = restaurant.categories.flatMap((cat) =>
     cat.items.map((item) => ({
@@ -147,7 +155,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       addressCountry: "NP",
     },
     ...(restaurant.logo ? { image: restaurant.logo } : {}),
-    url: `${baseUrl}/menu/${restaurant.slug}`,
+    url: canonicalMenuUrl,
     servesCuisine: "Various",
     hasMenu: {
       "@type": "Menu",

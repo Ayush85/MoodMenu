@@ -1,8 +1,13 @@
 import QRCode from "qrcode";
 
-export async function generateMenuQR(slug: string, tableNumber?: number): Promise<string> {
-  const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-  let menuUrl = `${baseUrl}/menu/${slug}`;
+export async function generateMenuQR(slug: string, tableNumber?: number, customDomain?: string | null): Promise<string> {
+  let menuUrl: string;
+  if (customDomain) {
+    menuUrl = `https://${customDomain}/`;
+  } else {
+    const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+    menuUrl = `${baseUrl}/menu/${slug}`;
+  }
   if (tableNumber) menuUrl += `?table=${tableNumber}`;
 
   return QRCode.toDataURL(menuUrl, {

@@ -60,6 +60,7 @@ model Restaurant {
   brandTheme     Json?
   cardStyle      String            @default("list")
   layoutTemplate String            @default("classic")
+  customDomain   String?           @unique
   wifiSsid       String?
   wifiPassword   String?
   allowedIp      String?

@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { geocodeLocation } from "@/lib/weather";
+import { Prisma } from "@/generated/prisma/client";
+
+const HOSTNAME_REGEX = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
+
+function normalizeDomain(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  return trimmed || null;
+}
 
 export async function GET(
   _req: NextRequest,
@@ -60,19 +70,36 @@ export async function PATCH(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const updated = await prisma.restaurant.update({
-    where: { id },
-    data: {
-      name: data.name,
-      city: data.city,
-      logo: data.logo,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      brandTheme: data.brandTheme,
-      cardStyle: data.cardStyle,
-      layoutTemplate: data.layoutTemplate,
-    },
-  });
+  const customDomain = normalizeDomain(data.customDomain);
+  if (customDomain && !HOSTNAME_REGEX.test(customDomain)) {
+    return NextResponse.json(
+      { error: "That doesn't look like a valid domain (e.g. yourrestaurant.com) — no paths, ports, or query strings" },
+      { status: 400 }
+    );
+  }
+
+  let updated;
+  try {
+    updated = await prisma.restaurant.update({
+      where: { id },
+      data: {
+        name: data.name,
+        city: data.city,
+        logo: data.logo,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        brandTheme: data.brandTheme,
+        cardStyle: data.cardStyle,
+        layoutTemplate: data.layoutTemplate,
+        customDomain,
+      },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return NextResponse.json({ error: "That domain is already in use by another restaurant" }, { status: 409 });
+    }
+    throw err;
+  }
 
   if ((data.latitude === undefined || data.longitude === undefined) && data.city) {
     const coordinates = await geocodeLocation(data.city);

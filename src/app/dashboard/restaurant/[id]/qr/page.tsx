@@ -18,6 +18,7 @@ interface RestaurantData {
   name: string;
   wifiSsid: string | null;
   wifiPassword: string | null;
+  customDomain: string | null;
 }
 
 export default function QRCodePage() {
@@ -39,9 +40,11 @@ export default function QRCodePage() {
       setRestaurant(restData);
       setTables(tablesData);
 
-      const baseUrl = window.location.origin;
+      const menuUrl = restData.customDomain
+        ? `https://${restData.customDomain}/`
+        : `${window.location.origin}/menu/${restData.slug}`;
 
-      const gQr = await QRCode.toDataURL(`${baseUrl}/menu/${restData.slug}`, {
+      const gQr = await QRCode.toDataURL(menuUrl, {
         width: 400, margin: 2, color: { dark: "#1F2937", light: "#FFFFFF" },
       });
       setGeneralMenuQR(gQr);
@@ -57,7 +60,7 @@ export default function QRCodePage() {
       const codes: Record<number, string> = {};
       for (const table of tablesData) {
         codes[table.number] = await QRCode.toDataURL(
-          `${baseUrl}/menu/${restData.slug}?table=${table.number}`,
+          `${menuUrl}?table=${table.number}`,
           { width: 300, margin: 2, color: { dark: "#1F2937", light: "#FFFFFF" } }
         );
       }

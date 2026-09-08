@@ -1089,31 +1089,27 @@ export default function MenuManagePage() {
                     onChange={(e) => setItemForm((p) => ({ ...p, tags: e.target.value }))}
                     className="control-input w-full !bg-white"
                   />
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    <input type="file" accept="image/*" onChange={handleItemImageUpload}
-                      className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
-                    />
+                  {itemForm.image && (
+                    <div className="flex items-center gap-3">
+                      <img src={itemForm.image} alt="Preview" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                      <button type="button" onClick={() => setItemForm((p) => ({ ...p, image: "" }))}
+                        className="text-sm font-medium text-red-500 hover:text-red-600"
+                      >
+                        Remove photo
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg px-4 py-2 cursor-pointer whitespace-nowrap">
+                      Upload
+                      <input type="file" accept="image/*" onChange={handleItemImageUpload} className="hidden" />
+                    </label>
                     <PhotoPicker
                       restaurantId={id}
                       name={itemForm.name}
                       description={itemForm.description}
                       onSelect={(url) => setItemForm((p) => ({ ...p, image: url }))}
                     />
-                    {itemForm.image && (
-                      <>
-                        <span className="text-green-600 text-xs flex items-center gap-1">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Image ready
-                        </span>
-                        <button type="button" onClick={() => setItemForm((p) => ({ ...p, image: "" }))}
-                          className="text-xs font-medium text-red-500 hover:text-red-600"
-                        >
-                          Remove
-                        </button>
-                      </>
-                    )}
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => addItem(cat.id)} disabled={savingItem || !itemForm.name || !itemForm.price}
@@ -1246,24 +1242,27 @@ export default function MenuManagePage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Image</label>
-                {editForm.image && <img src={editForm.image} alt="Preview" className="w-20 h-20 rounded-xl object-cover mb-2" />}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                  <input type="file" accept="image/*" onChange={handleEditImageUpload}
-                    className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
-                  />
+                {editForm.image && (
+                  <div className="flex items-center gap-3 mb-2">
+                    <img src={editForm.image} alt="Preview" className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                    <button type="button" onClick={handleRemoveEditImage}
+                      className="text-sm font-medium text-red-500 hover:text-red-600"
+                    >
+                      Remove photo
+                    </button>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg px-4 py-2 cursor-pointer whitespace-nowrap">
+                    Upload
+                    <input type="file" accept="image/*" onChange={handleEditImageUpload} className="hidden" />
+                  </label>
                   <PhotoPicker
                     restaurantId={id}
                     name={editForm.name}
                     description={editForm.description}
                     onSelect={handleSelectEditImage}
                   />
-                  {editForm.image && (
-                    <button type="button" onClick={handleRemoveEditImage}
-                      className="text-sm font-medium text-red-500 hover:text-red-600 rounded-lg px-2 py-2 whitespace-nowrap"
-                    >
-                      Remove
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

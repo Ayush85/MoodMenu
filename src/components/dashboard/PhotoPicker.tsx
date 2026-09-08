@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, ImageIcon } from "lucide-react";
 
 interface PhotoOption {
   url: string;
@@ -56,35 +56,36 @@ export default function PhotoPicker({ restaurantId, name, description, onSelect,
   }
 
   return (
-    <div className="relative inline-block">
+    <>
       <button type="button" onClick={openPicker} disabled={!name.trim()}
-        className="text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 whitespace-nowrap"
+        className="flex items-center gap-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 whitespace-nowrap"
       >
+        <ImageIcon className="w-4 h-4" />
         {triggerLabel}
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute z-40 mt-2 w-[22rem] max-w-[90vw] bg-white rounded-xl shadow-xl border border-gray-200 p-4 left-0">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-bold text-gray-900">Find a photo</h4>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-5 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-base font-bold text-gray-900">Find a photo</h4>
               <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-4">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && runSearch({ query })}
                 placeholder="Search term..."
-                className="control-input flex-1 !text-sm !py-2"
+                className="control-input flex-1 !text-sm"
               />
               <button type="button" onClick={() => runSearch({ query })} disabled={loading || !query.trim()}
-                className="px-3 rounded-lg bg-purple-600 text-white text-sm font-semibold disabled:opacity-50 shrink-0"
+                className="px-3 rounded-lg bg-purple-600 text-white disabled:opacity-50 shrink-0"
                 aria-label="Search"
               >
                 <Search className="w-4 h-4" />
@@ -92,7 +93,7 @@ export default function PhotoPicker({ restaurantId, name, description, onSelect,
             </div>
 
             {loading ? (
-              <div className="py-8 text-center text-sm text-gray-400">Searching…</div>
+              <div className="py-10 text-center text-sm text-gray-400">Searching…</div>
             ) : results.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
                 {results.map((r, i) => (
@@ -105,11 +106,11 @@ export default function PhotoPicker({ restaurantId, name, description, onSelect,
                 ))}
               </div>
             ) : searched ? (
-              <p className="text-sm text-gray-400 text-center py-6">No results — try a different search term</p>
+              <p className="text-sm text-gray-400 text-center py-10">No results — try a different search term</p>
             ) : null}
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   );
 }

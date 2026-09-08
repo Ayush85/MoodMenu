@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
-import Anthropic from "@anthropic-ai/sdk";
+import { getStockSearchQuery, searchPexelsPhotos } from "@/lib/stock-photos";
 
 function buildPrompt(name: string, description?: string | null) {
   return `A photorealistic professional product photograph of "${name}"${
@@ -16,53 +16,12 @@ Tight close-up framing: the dish or product fills most of the frame and is the u
 Captured on a DSLR camera with a macro lens, soft natural lighting, shallow depth of field with the subject in sharp focus and any background softly blurred, realistic specular highlights, true-to-life textures and colors. This must look like an actual camera photograph, not digital art — do not render it as an illustration, cartoon, anime, 3D render, CGI, painting, sketch, or plastic-looking/artificial image. No watermark, no hands.`;
 }
 
-async function getStockSearchQuery(name: string, description: string | null, city: string | null): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return name;
-
-  try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 40,
-      messages: [
-        {
-          role: "user",
-          content: `This is a menu item from a restaurant${city ? ` in ${city}, Nepal` : ""}. Item: "${name}"${description ? ` — ${description}` : ""}.
-Return ONLY a short English search phrase (3-6 words, no punctuation) describing the actual dish or product (main ingredient/type + how it's prepared) for finding a matching photo on a general stock photography site. Translate local-language dish names into their real English description rather than transliterating them. If you are not confident what this item actually is, return exactly the single word "unknown" instead of guessing.`,
-        },
-      ],
-    });
-
-    const block = response.content.find((b) => b.type === "text");
-    const text = block && "text" in block ? block.text.trim() : "";
-    if (!text || text.toLowerCase() === "unknown") return null;
-    return text;
-  } catch {
-    return name;
-  }
-}
-
 async function searchStockPhoto(name: string, description: string | null, city: string | null): Promise<Buffer | null> {
-  const apiKey = process.env.PEXELS_API_KEY;
-  if (!apiKey) return null;
-
   const query = await getStockSearchQuery(name, description, city);
   if (!query) return null; // Claude wasn't confident what this item is — go straight to AI
 
-  // Bias toward tight, food-focused shots rather than wide table/restaurant
-  // scenes — Pexels has no composition filter, so this has to ride the query.
-  const searchQuery = `${query} close up`;
-
-  const res = await fetch(
-    `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=8&orientation=square`,
-    { headers: { Authorization: apiKey } }
-  );
-  if (!res.ok) return null;
-
-  const data = await res.json();
-  const photos: { alt?: string; src?: { large?: string } }[] = data.photos || [];
-  if (photos.length === 0) return null;
+  const candidates = await searchPexelsPhotos(query, 8);
+  if (candidates.length === 0) return null;
 
   // Pexels returns its "closest" match even when nothing is actually relevant
   // (e.g. searching "Buff Tass" once returned an unrelated portrait). Only
@@ -72,20 +31,19 @@ async function searchStockPhoto(name: string, description: string | null, city: 
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 2);
 
-  const relevantPhotos = photos.filter((p) => {
-    const alt = (p.alt || "").toLowerCase();
+  const relevantPhotos = candidates.filter((p) => {
+    const alt = p.alt.toLowerCase();
     return queryWords.some((w) => alt.includes(w));
   });
 
   // Among relevant matches, prefer one explicitly described as a close-up —
   // otherwise take whichever relevant match ranked highest.
   const relevantPhoto =
-    relevantPhotos.find((p) => /close[\s-]?up/i.test(p.alt || "")) ?? relevantPhotos[0];
+    relevantPhotos.find((p) => /close[\s-]?up/i.test(p.alt)) ?? relevantPhotos[0];
 
-  const photoUrl = relevantPhoto?.src?.large;
-  if (!photoUrl) return null;
+  if (!relevantPhoto) return null;
 
-  const imgRes = await fetch(photoUrl);
+  const imgRes = await fetch(relevantPhoto.url);
   if (!imgRes.ok) return null;
 
   return Buffer.from(await imgRes.arrayBuffer());

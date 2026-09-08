@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import PhotoPicker from "@/components/dashboard/PhotoPicker";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { UtensilsCrossed, Search, ClipboardList, Pencil, ArrowLeftRight, Trash2, Plus, Sparkles } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -123,13 +124,11 @@ export default function MenuManagePage() {
   const [addingItem, setAddingItem] = useState<string | null>(null);
   const [savingItem, setSavingItem] = useState(false);
   const [itemForm, setItemForm] = useState({ name: "", description: "", price: "", tags: "", image: "" });
-  const [generatingItemImage, setGeneratingItemImage] = useState(false);
 
   // Item edit
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [editForm, setEditForm] = useState({ name: "", description: "", price: "", tags: "", image: "" });
   const [savingEdit, setSavingEdit] = useState(false);
-  const [generatingEditImage, setGeneratingEditImage] = useState(false);
 
   // Move item between categories
   const [movingItem, setMovingItem] = useState<{ item: MenuItem; fromCatId: string } | null>(null);
@@ -361,48 +360,16 @@ export default function MenuManagePage() {
     if (url) setEditForm((p) => ({ ...p, image: url }));
   }
 
-  async function generateImage(name: string, description: string): Promise<string | null> {
-    try {
-      const res = await fetch(`/api/restaurants/${id}/generate-image`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, source: "stock" }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast(data.error || "Image generation failed", "error");
-        return null;
-      }
-      return data.url || null;
-    } catch {
-      toast("Image generation failed", "error");
-      return null;
-    }
-  }
-
-  async function handleGenerateItemImage() {
-    if (!itemForm.name.trim()) return;
-    setGeneratingItemImage(true);
-    const url = await generateImage(itemForm.name, itemForm.description);
-    if (url) setItemForm((p) => ({ ...p, image: url }));
-    setGeneratingItemImage(false);
-  }
-
-  async function handleGenerateEditImage() {
-    if (!editForm.name.trim() || !editingItem) return;
-    setGeneratingEditImage(true);
-    const url = await generateImage(editForm.name, editForm.description);
-    if (url) {
-      setEditForm((p) => ({ ...p, image: url }));
-      await fetch(`/api/restaurants/${id}/items/${editingItem.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: url }),
-      });
-      toast("Image generated and saved");
-      fetchRestaurant();
-    }
-    setGeneratingEditImage(false);
+  async function handleSelectEditImage(url: string) {
+    if (!editingItem) return;
+    setEditForm((p) => ({ ...p, image: url }));
+    await fetch(`/api/restaurants/${id}/items/${editingItem.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: url }),
+    });
+    toast("Photo saved");
+    fetchRestaurant();
   }
 
   async function handleRemoveEditImage() {
@@ -1126,12 +1093,12 @@ export default function MenuManagePage() {
                     <input type="file" accept="image/*" onChange={handleItemImageUpload}
                       className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
                     />
-                    <button type="button" onClick={handleGenerateItemImage}
-                      disabled={!itemForm.name.trim() || generatingItemImage}
-                      className="text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 whitespace-nowrap"
-                    >
-                      {generatingItemImage ? "Finding photo..." : "Find Photo"}
-                    </button>
+                    <PhotoPicker
+                      restaurantId={id}
+                      name={itemForm.name}
+                      description={itemForm.description}
+                      onSelect={(url) => setItemForm((p) => ({ ...p, image: url }))}
+                    />
                     {itemForm.image && (
                       <>
                         <span className="text-green-600 text-xs flex items-center gap-1">
@@ -1284,12 +1251,12 @@ export default function MenuManagePage() {
                   <input type="file" accept="image/*" onChange={handleEditImageUpload}
                     className="text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
                   />
-                  <button type="button" onClick={handleGenerateEditImage}
-                    disabled={!editForm.name.trim() || generatingEditImage}
-                    className="text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg px-4 py-2 whitespace-nowrap"
-                  >
-                    {generatingEditImage ? "Finding photo..." : "Find Photo"}
-                  </button>
+                  <PhotoPicker
+                    restaurantId={id}
+                    name={editForm.name}
+                    description={editForm.description}
+                    onSelect={handleSelectEditImage}
+                  />
                   {editForm.image && (
                     <button type="button" onClick={handleRemoveEditImage}
                       className="text-sm font-medium text-red-500 hover:text-red-600 rounded-lg px-2 py-2 whitespace-nowrap"

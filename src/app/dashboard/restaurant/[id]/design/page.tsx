@@ -93,17 +93,23 @@ export default function DesignPage() {
 
   async function saveDesign() {
     setSaving(true);
-    await fetch(`/api/restaurants/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        brandTheme: { mode, primary, accent, bg, text, fontFamily },
-        cardStyle,
-        layoutTemplate,
-      }),
-    });
-    setSaving(false);
-    toast("Design saved");
+    try {
+      const res = await fetch(`/api/restaurants/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          brandTheme: { mode, primary, accent, bg, text, fontFamily },
+          cardStyle,
+          layoutTemplate,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast("Design saved");
+    } catch {
+      toast("Couldn't save design", "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function uploadLogo(file: File) {
@@ -128,6 +134,7 @@ export default function DesignPage() {
   function moveCategory(index: number, direction: -1 | 1) {
     const target = index + direction;
     if (target < 0 || target >= categories.length) return;
+    const previous = categories;
     const next = [...categories];
     [next[index], next[target]] = [next[target], next[index]];
     setCategories(next);
@@ -135,13 +142,21 @@ export default function DesignPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: next.map((c, i) => ({ id: c.id, order: i })) }),
-    });
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+      })
+      .catch(() => {
+        setCategories(previous);
+        toast("Couldn't save the new order — reverted", "error");
+      });
   }
 
   function moveItem(catIndex: number, itemIndex: number, direction: -1 | 1) {
     const items = categories[catIndex].items;
     const target = itemIndex + direction;
     if (target < 0 || target >= items.length) return;
+    const previous = categories;
     const nextItems = [...items];
     [nextItems[itemIndex], nextItems[target]] = [nextItems[target], nextItems[itemIndex]];
     const next = [...categories];
@@ -151,7 +166,14 @@ export default function DesignPage() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order: nextItems.map((it, i) => ({ id: it.id, order: i })) }),
-    });
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error();
+      })
+      .catch(() => {
+        setCategories(previous);
+        toast("Couldn't save the new order — reverted", "error");
+      });
   }
 
   if (loading) {

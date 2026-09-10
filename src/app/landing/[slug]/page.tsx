@@ -101,6 +101,9 @@ export default async function LandingPage({ params }: Props) {
     .filter((item): item is { name: string; image: string } => !!item.image)
     .slice(0, 6);
 
+  const sameAs = [content?.instagram, content?.facebook].filter((v): v is string => !!v);
+  const absoluteMenuHref = restaurant.customDomain ? menuHref : `${process.env.APP_BASE_URL || "https://menuor.com"}${menuHref}`;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
@@ -109,6 +112,11 @@ export default async function LandingPage({ params }: Props) {
     address: { "@type": "PostalAddress", addressLocality: restaurant.city, ...(content?.address ? { streetAddress: content.address } : {}), addressCountry: "NP" },
     ...(restaurant.logo ? { image: restaurant.logo } : {}),
     ...(content?.phone ? { telephone: content.phone } : {}),
+    ...(restaurant.latitude != null && restaurant.longitude != null
+      ? { geo: { "@type": "GeoCoordinates", latitude: restaurant.latitude, longitude: restaurant.longitude } }
+      : {}),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
+    hasMenu: absoluteMenuHref,
     url: restaurant.customDomain ? `https://${restaurant.customDomain}/` : `${process.env.APP_BASE_URL || "https://menuor.com"}/landing/${slug}`,
   };
 
@@ -168,12 +176,14 @@ export default async function LandingPage({ params }: Props) {
 
       {/* About */}
       <section className="max-w-2xl mx-auto px-6 py-16 text-center">
+        <h2 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4">About {restaurant.name}</h2>
         <p className="text-lg leading-relaxed opacity-90">{about}</p>
       </section>
 
       {/* Highlights */}
       {highlights.length > 0 && (
         <section className="max-w-4xl mx-auto px-6 pb-16">
+          <h2 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4 text-center">Why Visit</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {highlights.map((highlight, i) => (
               <div
@@ -191,6 +201,7 @@ export default async function LandingPage({ params }: Props) {
       {/* Gallery */}
       {gallery.length > 0 && (
         <section className="max-w-5xl mx-auto px-6 pb-16">
+          <h2 className="text-xs font-bold uppercase tracking-widest opacity-50 mb-4 text-center">From the Menu</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             {gallery.map((item, i) => (
               <div key={i} className="aspect-square rounded-2xl overflow-hidden">
@@ -207,6 +218,7 @@ export default async function LandingPage({ params }: Props) {
         style={{ backgroundColor: isDark ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)" }}
       >
         <div className="max-w-2xl mx-auto flex flex-col items-center gap-4 text-center">
+          <h2 className="text-xs font-bold uppercase tracking-widest opacity-50">Visit Us</h2>
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm opacity-80">
             <a href={mapHref} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 hover:opacity-100">
               <MapPin className="w-4 h-4" />

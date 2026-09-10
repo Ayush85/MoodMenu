@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { isPlatformHost } from "@/lib/site-host";
 
 export const config = {
   runtime: "nodejs",
@@ -7,24 +8,6 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|twitter-image|robots.txt|sitemap.xml|api/|uploads/).*)",
   ],
 };
-
-function getPlatformHostname(): string {
-  try {
-    return new URL(process.env.APP_BASE_URL || "https://menuor.com").hostname.toLowerCase();
-  } catch {
-    return "menuor.com";
-  }
-}
-
-function isPlatformHost(hostname: string): boolean {
-  const platformHost = getPlatformHostname();
-  return (
-    hostname === platformHost ||
-    hostname === `www.${platformHost}` ||
-    hostname === "localhost" ||
-    hostname === "127.0.0.1"
-  );
-}
 
 export async function middleware(request: NextRequest) {
   const hostHeader = request.headers.get("host") || "";

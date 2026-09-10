@@ -16,6 +16,15 @@ export default function Footer() {
           </Link>
         </div>
       </div>
+      <div className="border-t border-black/[0.04]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 text-xs text-gray-400">
+          <span>Ayush Shrestha</span>
+          <span className="hidden sm:inline">·</span>
+          <a href="tel:+9779844453285" className="hover:text-gray-600 transition">+977 9844453285</a>
+          <span className="hidden sm:inline">·</span>
+          <a href="mailto:ayushrestha8585@gmail.com" className="hover:text-gray-600 transition">ayushrestha8585@gmail.com</a>
+        </div>
+      </div>
     </footer>
   );
 }

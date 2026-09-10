@@ -50,34 +50,35 @@ model User {
 }
 
 model Restaurant {
-  id             String            @id @default(cuid())
-  slug           String            @unique
-  name           String
-  city           String
-  latitude       Float?
-  longitude      Float?
-  logo           String?
-  brandTheme     Json?
-  cardStyle      String            @default("list")
-  layoutTemplate String            @default("classic")
-  customDomain   String?           @unique
-  landingEnabled Boolean           @default(false)
-  landingPage    Json?
-  wifiSsid       String?
-  wifiPassword   String?
-  allowedIp      String?
-  ownerId        String
-  owner          User              @relation(fields: [ownerId], references: [id])
-  categories     Category[]
-  moodRules      MoodRule[]
-  tables         RestaurantTable[]
-  waiterCalls    WaiterCall[]
-  orders         OrderTicket[]
-  staffMembers   RestaurantStaff[]
-  sessions       TableSession[]
-  expenses       Expense[]
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id               String            @id @default(cuid())
+  slug             String            @unique
+  name             String
+  city             String
+  latitude         Float?
+  longitude        Float?
+  logo             String?
+  brandTheme       Json?
+  cardStyle        String            @default("list")
+  layoutTemplate   String            @default("classic")
+  customDomain     String?           @unique
+  domainVerifiedAt DateTime?
+  landingEnabled   Boolean           @default(false)
+  landingPage      Json?
+  wifiSsid         String?
+  wifiPassword     String?
+  allowedIp        String?
+  ownerId          String
+  owner            User              @relation(fields: [ownerId], references: [id])
+  categories       Category[]
+  moodRules        MoodRule[]
+  tables           RestaurantTable[]
+  waiterCalls      WaiterCall[]
+  orders           OrderTicket[]
+  staffMembers     RestaurantStaff[]
+  sessions         TableSession[]
+  expenses         Expense[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model RestaurantStaff {
@@ -107,15 +108,15 @@ model RestaurantTable {
 }
 
 model TableSession {
-  id             String         @id @default(cuid())
+  id             String          @id @default(cuid())
   restaurantId   String
-  restaurant     Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   tableId        String
   table          RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  status         SessionStatus  @default(ACTIVE)
-  totalAmount    Float          @default(0)
-  startedAt      DateTime       @default(now())
-  lastActivityAt DateTime       @default(now())
+  status         SessionStatus   @default(ACTIVE)
+  totalAmount    Float           @default(0)
+  startedAt      DateTime        @default(now())
+  lastActivityAt DateTime        @default(now())
   endedAt        DateTime?
   orders         OrderTicket[]
 
@@ -124,14 +125,14 @@ model TableSession {
 }
 
 model WaiterCall {
-  id             String       @id @default(cuid())
-  status         CallStatus   @default(PENDING)
+  id             String          @id @default(cuid())
+  status         CallStatus      @default(PENDING)
   message        String?
   tableId        String
   table          RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
   restaurantId   String
-  restaurant     Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
+  restaurant     Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
   acknowledgedAt DateTime?
   resolvedAt     DateTime?
   handledBy      String?
@@ -141,19 +142,19 @@ model WaiterCall {
 }
 
 model OrderTicket {
-  id            String         @id @default(cuid())
-  restaurantId  String
-  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
-  tableId       String
-  table         RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
-  sessionId     String?
-  session       TableSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  status        OrderStatus    @default(NEW)
-  note          String?
-  total         Float          @default(0)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  items         OrderLine[]
+  id           String          @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant      @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId      String
+  table        RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+  sessionId    String?
+  session      TableSession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  status       OrderStatus     @default(NEW)
+  note         String?
+  total        Float           @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  items        OrderLine[]
 
   @@index([tableId, createdAt])
   @@index([sessionId, status])

@@ -35,6 +35,7 @@ interface Restaurant {
   cardStyle: string;
   layoutTemplate: string;
   customDomain: string | null;
+  domainVerifiedAt: string | null;
   categories: CategoryRow[];
 }
 
@@ -131,6 +132,7 @@ export default function DesignPage() {
         return;
       }
       setDomain(data.customDomain || "");
+      setRestaurant((prev) => (prev ? { ...prev, customDomain: data.customDomain, domainVerifiedAt: data.domainVerifiedAt } : prev));
       toast(data.customDomain ? "Domain saved" : "Domain removed");
     } catch {
       toast("Couldn't save domain", "error");
@@ -433,11 +435,20 @@ export default function DesignPage() {
           </button>
         </div>
 
+        {restaurant.customDomain && (
+          <div className={`flex items-center gap-2 text-xs font-semibold mb-3 px-3 py-2 rounded-lg ${
+            restaurant.domainVerifiedAt ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${restaurant.domainVerifiedAt ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
+            {restaurant.domainVerifiedAt ? "Live — HTTPS is active" : "Pending — waiting on DNS, then HTTPS is issued automatically"}
+          </div>
+        )}
+
         <div className="bg-gray-50 rounded-xl p-4 text-xs text-gray-600 space-y-1.5">
           <p className="font-semibold text-gray-700">To connect your domain:</p>
           <p>1. At your domain registrar, add an <strong>A record</strong> pointing to <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">168.144.77.104</code></p>
           <p>2. Save the domain here once DNS is set</p>
-          <p>3. Let us know — HTTPS activation is a quick manual step on our end once your domain resolves</p>
+          <p>3. That&apos;s it — HTTPS is issued automatically once your domain resolves, usually within a few minutes. No need to contact us.</p>
         </div>
       </div>
 

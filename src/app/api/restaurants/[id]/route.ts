@@ -78,6 +78,11 @@ export async function PATCH(
     );
   }
 
+  // A changed or cleared domain needs to be re-verified and re-provisioned —
+  // the automated nginx/TLS script only sets this once it has issued a
+  // certificate for the domain currently on file.
+  const domainChanged = customDomain !== undefined && customDomain !== restaurant.customDomain;
+
   let updated;
   try {
     updated = await prisma.restaurant.update({
@@ -92,6 +97,7 @@ export async function PATCH(
         cardStyle: data.cardStyle,
         layoutTemplate: data.layoutTemplate,
         customDomain,
+        domainVerifiedAt: domainChanged ? null : undefined,
         landingEnabled: typeof data.landingEnabled === "boolean" ? data.landingEnabled : undefined,
         landingPage: data.landingPage,
       },

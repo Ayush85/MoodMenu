@@ -415,7 +415,7 @@ export default function DesignPage() {
       <div className="surface-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-1">Custom Domain</h3>
         <p className="text-xs text-gray-500 mb-4">
-          Use your own domain instead of menuor.com — your menu shows at the root, and <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/admin</code> and{" "}
+          Use your own domain instead of menuor.com — your menu (or landing page, if enabled) shows at the root, and <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/admin</code> and{" "}
           <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/staff</code> reach this dashboard and the staff view under it. Logins are tied to
           the domain you&apos;re on, so you&apos;ll need to sign in once on your new domain too — it won&apos;t reuse a menuor.com session.
         </p>

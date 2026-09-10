@@ -21,7 +21,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const qrDataUrl = await generateMenuQR(restaurant.slug, undefined, restaurant.customDomain);
+  const qrDataUrl = await generateMenuQR(restaurant.slug, undefined, restaurant.customDomain, restaurant.landingEnabled);
 
   return NextResponse.json({ qr: qrDataUrl, slug: restaurant.slug });
 }

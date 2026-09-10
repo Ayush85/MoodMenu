@@ -92,6 +92,8 @@ export async function PATCH(
         cardStyle: data.cardStyle,
         layoutTemplate: data.layoutTemplate,
         customDomain,
+        landingEnabled: typeof data.landingEnabled === "boolean" ? data.landingEnabled : undefined,
+        landingPage: data.landingPage,
       },
     });
   } catch (err) {

@@ -61,6 +61,8 @@ model Restaurant {
   cardStyle      String            @default("list")
   layoutTemplate String            @default("classic")
   customDomain   String?           @unique
+  landingEnabled Boolean           @default(false)
+  landingPage    Json?
   wifiSsid       String?
   wifiPassword   String?
   allowedIp      String?

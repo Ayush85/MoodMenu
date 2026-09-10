@@ -1,9 +1,9 @@
 import QRCode from "qrcode";
 
-export async function generateMenuQR(slug: string, tableNumber?: number, customDomain?: string | null): Promise<string> {
+export async function generateMenuQR(slug: string, tableNumber?: number, customDomain?: string | null, landingEnabled?: boolean): Promise<string> {
   let menuUrl: string;
   if (customDomain) {
-    menuUrl = `https://${customDomain}/`;
+    menuUrl = `https://${customDomain}/${landingEnabled ? "menu" : ""}`;
   } else {
     const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
     menuUrl = `${baseUrl}/menu/${slug}`;

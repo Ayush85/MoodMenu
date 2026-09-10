@@ -86,6 +86,16 @@ const RESTAURANT_NAV = [
     ),
   },
   {
+    key: "landing",
+    label: "Landing Page",
+    suffix: "/landing",
+    icon: (
+      <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 12l2-2m0 0l7-7 7 7m-9-7v-2m-9 9v8a1 1 0 001 1h4a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h4a1 1 0 001-1v-8m-9-7l7 7" />
+      </svg>
+    ),
+  },
+  {
     key: "qr",
     label: "QR Codes",
     suffix: "/qr",

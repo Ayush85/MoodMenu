@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { customDomain: hostname },
-    select: { id: true, slug: true },
+    select: { id: true, slug: true, landingEnabled: true },
   });
 
   if (!restaurant) {
@@ -47,6 +47,11 @@ export async function middleware(request: NextRequest) {
   const pathname = url.pathname;
 
   if (pathname === "/") {
+    url.pathname = restaurant.landingEnabled ? `/landing/${restaurant.slug}` : `/menu/${restaurant.slug}`;
+    return NextResponse.rewrite(url);
+  }
+
+  if (pathname === "/menu") {
     url.pathname = `/menu/${restaurant.slug}`;
     return NextResponse.rewrite(url);
   }

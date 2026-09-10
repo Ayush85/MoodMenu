@@ -19,6 +19,7 @@ interface RestaurantData {
   wifiSsid: string | null;
   wifiPassword: string | null;
   customDomain: string | null;
+  landingEnabled: boolean;
 }
 
 export default function QRCodePage() {
@@ -41,7 +42,7 @@ export default function QRCodePage() {
       setTables(tablesData);
 
       const menuUrl = restData.customDomain
-        ? `https://${restData.customDomain}/`
+        ? `https://${restData.customDomain}/${restData.landingEnabled ? "menu" : ""}`
         : `${window.location.origin}/menu/${restData.slug}`;
 
       const gQr = await QRCode.toDataURL(menuUrl, {

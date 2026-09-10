@@ -62,6 +62,20 @@ export function getFontOption(value?: string): FontOption | undefined {
   return FONT_OPTIONS.find((f) => f.value === value);
 }
 
+export interface LandingPageContent {
+  tagline: string;
+  about: string;
+  highlights: string[];
+  ctaText: string;
+  phone: string | null;
+  address: string | null;
+  hours: string | null;
+  instagram: string | null;
+  facebook: string | null;
+}
+
+export const DEFAULT_LANDING_CTA = "View Menu";
+
 export interface DesignTemplate {
   key: string;
   name: string;

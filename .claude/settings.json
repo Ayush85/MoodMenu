@@ -51,7 +51,10 @@
       "Bash(curl -s -X POST http://localhost:3030/api/menu/thaxaina/order -H 'Content-Type: application/json' -d '{\"tableNumber\": 1, \"items\": [{\"itemId\": \"cmqzb2w6l000301rwpbbpc575\", \"quantity\": 2}]}' -w '\\\\nHTTP %{http_code}\\\\n')",
       "Bash(curl -s \"http://localhost:3030/api/menu/thaxaina/session?table=1\" -w \"\\\\nHTTP %{http_code}\\\\n\")",
       "Bash(curl -s -X POST http://localhost:3030/api/menu/thaxaina/order -H 'Content-Type: application/json' -d '{\"tableNumber\": 1, \"items\": [{\"itemId\": \"cmqzb2w6l000301rwpbbpc575\", \"quantity\": 1}]}' -w '\\\\nHTTP %{http_code}\\\\n')",
-      "Bash(curl -s -o /dev/null -w \"final app health: %{http_code}\\\\n\" http://localhost:3030 --max-time 10)"
+      "Bash(curl -s -o /dev/null -w \"final app health: %{http_code}\\\\n\" http://localhost:3030 --max-time 10)",
+      "Bash(tee /tmp/tsc_full2.txt)",
+      "Bash(node smoke.mjs)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" \"http://localhost:3030/menu/thaxaina?table=1\" --max-time 10)"
     ],
     "additionalDirectories": [
       "/home/ayush/Developments/MoodMenu/src/app/uploads"

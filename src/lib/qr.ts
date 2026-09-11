@@ -1,13 +1,20 @@
 import QRCode from "qrcode";
+import { getRestaurantMenuUrl } from "@/lib/restaurant-site";
 
-export async function generateMenuQR(slug: string, tableNumber?: number, customDomain?: string | null, landingEnabled?: boolean): Promise<string> {
-  let menuUrl: string;
-  if (customDomain) {
-    menuUrl = `https://${customDomain}/${landingEnabled ? "menu" : ""}`;
-  } else {
-    const baseUrl = process.env.APP_BASE_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
-    menuUrl = `${baseUrl}/menu/${slug}`;
-  }
+export async function generateMenuQR(
+  slug: string,
+  tableNumber?: number,
+  customDomain?: string | null,
+  landingEnabled?: boolean,
+  domainVerifiedAt?: Date | string | null
+): Promise<string> {
+  let menuUrl = getRestaurantMenuUrl({
+    slug,
+    customDomain,
+    landingEnabled,
+    domainVerifiedAt,
+  });
+
   if (tableNumber) menuUrl += `?table=${tableNumber}`;
 
   return QRCode.toDataURL(menuUrl, {

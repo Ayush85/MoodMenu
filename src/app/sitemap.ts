@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import { hasVerifiedCustomDomain } from "@/lib/restaurant-site";
 import { isPlatformHost } from "@/lib/site-host";
 
 export const dynamic = "force-dynamic";
@@ -17,9 +18,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (hostname && !isPlatformHost(hostname)) {
     const restaurant = await prisma.restaurant.findUnique({
       where: { customDomain: hostname },
-      select: { landingEnabled: true, updatedAt: true },
+      select: { customDomain: true, domainVerifiedAt: true, landingEnabled: true, updatedAt: true },
     });
-    if (!restaurant) return [];
+    if (!restaurant || !hasVerifiedCustomDomain(restaurant)) return [];
 
     const origin = `https://${hostname}`;
     if (restaurant.landingEnabled) {
@@ -34,11 +35,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Restaurants on their own custom domain are excluded here — their
   // canonical URLs live on that domain now, not under /menu or /landing.
   const restaurants = await prisma.restaurant.findMany({
-    where: { customDomain: null },
-    select: { slug: true, updatedAt: true, landingEnabled: true },
+    select: { slug: true, customDomain: true, domainVerifiedAt: true, updatedAt: true, landingEnabled: true },
   });
 
   const restaurantPages: MetadataRoute.Sitemap = restaurants.flatMap((r) => {
+    if (hasVerifiedCustomDomain(r)) {
+      return [];
+    }
+
     const entries: MetadataRoute.Sitemap = [
       { url: `${base}/menu/${r.slug}`, lastModified: r.updatedAt, changeFrequency: "daily", priority: 0.9 },
     ];

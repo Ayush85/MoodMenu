@@ -16,7 +16,7 @@ interface Restaurant {
   landingPage: LandingPageContent | null;
 }
 
-export default function LandingPageSettings() {
+export function LandingPageSettings({ embedded = false }: { embedded?: boolean }) {
   const params = useParams();
   const id = params.id as string;
   const { toast } = useToast();
@@ -121,7 +121,7 @@ export default function LandingPageSettings() {
 
   if (loading) {
     return (
-      <div className="page-shell max-w-3xl">
+      <div className={embedded ? "max-w-3xl" : "page-shell max-w-3xl"}>
         <div className="mb-6"><SkeletonLine width="180px" height="32px" /></div>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => <SkeletonBlock key={i} height="h-24" />)}
@@ -133,7 +133,7 @@ export default function LandingPageSettings() {
   if (!restaurant) return <div>Not found</div>;
 
   return (
-    <div className="page-shell max-w-3xl animate-fade-in">
+    <div className={embedded ? "max-w-3xl animate-fade-in" : "page-shell max-w-3xl animate-fade-in"}>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="page-title">Landing Page</h1>
@@ -280,3 +280,5 @@ export default function LandingPageSettings() {
     </div>
   );
 }
+
+export default LandingPageSettings;

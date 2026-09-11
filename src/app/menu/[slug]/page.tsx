@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { getRestaurantMenuUrl } from "@/lib/restaurant-site";
 import { getWeather } from "@/lib/weather";
 import { evaluateMood } from "@/lib/mood-engine";
 import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS, getFontOption } from "@/types";
@@ -16,7 +17,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
-    select: { name: true, city: true, logo: true, customDomain: true, landingEnabled: true },
+    select: { name: true, city: true, logo: true, customDomain: true, domainVerifiedAt: true, landingEnabled: true },
   });
 
   if (!restaurant) {
@@ -25,9 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   const title = `${restaurant.name} Menu`;
   const description = `Browse the full menu at ${restaurant.name} in ${restaurant.city}. Order food and call your waiter directly from your phone.`;
-  const canonicalUrl = restaurant.customDomain
-    ? `https://${restaurant.customDomain}/${restaurant.landingEnabled ? "menu" : ""}`
-    : `${process.env.APP_BASE_URL || "https://menuor.com"}/menu/${slug}`;
+  const canonicalUrl = getRestaurantMenuUrl({ ...restaurant, slug });
 
   return {
     title,
@@ -126,10 +125,12 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     .slice(0, 6);
 
   const theme = mood.theme || DEFAULT_THEME;
-  const baseUrl = process.env.APP_BASE_URL || "https://menuor.com";
-  const canonicalMenuUrl = restaurant.customDomain
-    ? `https://${restaurant.customDomain}/${restaurant.landingEnabled ? "menu" : ""}`
-    : `${baseUrl}/menu/${restaurant.slug}`;
+  const canonicalMenuUrl = getRestaurantMenuUrl({
+    slug: restaurant.slug,
+    customDomain: restaurant.customDomain,
+    domainVerifiedAt: restaurant.domainVerifiedAt,
+    landingEnabled: restaurant.landingEnabled,
+  });
 
   const menuItems = restaurant.categories.flatMap((cat) =>
     cat.items.map((item) => ({

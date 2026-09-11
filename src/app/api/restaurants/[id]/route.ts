@@ -2,16 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { geocodeLocation } from "@/lib/weather";
+import { isValidDomain, normalizeDomain } from "@/lib/restaurant-site";
+import { isPlatformHost } from "@/lib/site-host";
 import { Prisma } from "@/generated/prisma/client";
-
-const HOSTNAME_REGEX = /^(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$/;
-
-function normalizeDomain(value: unknown): string | null | undefined {
-  if (value === null) return null;
-  if (typeof value !== "string") return undefined;
-  const trimmed = value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/+$/, "");
-  return trimmed || null;
-}
 
 export async function GET(
   _req: NextRequest,
@@ -71,9 +64,15 @@ export async function PATCH(
   }
 
   const customDomain = normalizeDomain(data.customDomain);
-  if (customDomain && !HOSTNAME_REGEX.test(customDomain)) {
+  if (customDomain && !isValidDomain(customDomain)) {
     return NextResponse.json(
       { error: "That doesn't look like a valid domain (e.g. yourrestaurant.com) — no paths, ports, or query strings" },
+      { status: 400 }
+    );
+  }
+  if (customDomain && isPlatformHost(customDomain)) {
+    return NextResponse.json(
+      { error: "The Menuor platform domain cannot be used as a restaurant domain" },
       { status: 400 }
     );
   }

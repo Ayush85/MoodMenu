@@ -1,6 +1,9 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Menuor
 
-## Getting Started
+Menuor is a multi-restaurant menu platform. Each restaurant can optionally attach
+its own domain from the restaurant dashboard.
+
+## Local Development
 
 First, run the development server:
 
@@ -15,6 +18,31 @@ bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Custom Domain Setup
+
+The app stores a restaurant domain as pending until the VPS confirms DNS and issues
+a Let's Encrypt certificate. Before verification, public links and QR codes continue
+using `APP_BASE_URL`.
+
+On the VPS:
+
+1. Point the restaurant's DNS `A` record to the VPS public IP.
+2. Keep the app container bound to `127.0.0.1:3030` so nginx is the public entrypoint.
+3. Install `nginx`, `certbot`, `python3-certbot-nginx`, `postgresql-client`, and `dnsutils`.
+4. Copy `scripts/provision-domains.sh` to the host, make it executable, and run it every five minutes with the production `DATABASE_URL`:
+
+```cron
+*/5 * * * * DATABASE_URL='postgresql://...' CERTBOT_EMAIL='ops@example.com' SERVER_IPS='203.0.113.10' /opt/menuor/scripts/provision-domains.sh >> /var/log/menuor-domain-provision.log 2>&1
+```
+
+The script creates the nginx reverse proxy, reloads nginx, requests the certificate,
+enables HTTP-to-HTTPS redirect, and marks `domainVerifiedAt` only after certificate
+issuance succeeds. It also removes managed nginx configs when an owner changes or
+removes a domain.
+
+For a verified custom domain, `/` shows the landing page when enabled; otherwise `/`
+shows the menu. `/menu` remains available when the landing page is enabled.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

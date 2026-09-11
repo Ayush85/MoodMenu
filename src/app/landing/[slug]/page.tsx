@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { getRestaurantLandingUrl, getRestaurantMenuUrl } from "@/lib/restaurant-site";
 import { DEFAULT_THEME, DEFAULT_LANDING_CTA, MoodTheme, LandingPageContent, getFontOption } from "@/types";
 import { MapPin, Phone, Clock, Globe, UtensilsCrossed } from "lucide-react";
 
@@ -18,6 +19,7 @@ async function getRestaurant(slug: string) {
       city: true,
       logo: true,
       customDomain: true,
+      domainVerifiedAt: true,
       brandTheme: true,
       landingEnabled: true,
       landingPage: true,
@@ -49,9 +51,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const content = restaurant.landingPage as unknown as LandingPageContent | null;
   const title = `${restaurant.name} — ${restaurant.city}`;
   const description = content?.about || content?.tagline || `Welcome to ${restaurant.name} in ${restaurant.city}.`;
-  const canonicalUrl = restaurant.customDomain
-    ? `https://${restaurant.customDomain}/`
-    : `${process.env.APP_BASE_URL || "https://menuor.com"}/landing/${slug}`;
+  const canonicalUrl = getRestaurantLandingUrl({ ...restaurant, slug });
 
   return {
     title,
@@ -90,7 +90,8 @@ export default async function LandingPage({ params }: Props) {
   const about = content?.about || `${restaurant.name} is located in ${restaurant.city}.`;
   const highlights = content?.highlights?.filter(Boolean) ?? [];
   const ctaText = content?.ctaText || DEFAULT_LANDING_CTA;
-  const menuHref = restaurant.customDomain ? `https://${restaurant.customDomain}/menu` : `/menu/${slug}`;
+  const canonicalUrl = getRestaurantLandingUrl({ ...restaurant, slug });
+  const menuHref = getRestaurantMenuUrl({ ...restaurant, slug });
   const mapHref =
     restaurant.latitude != null && restaurant.longitude != null
       ? `https://www.google.com/maps?q=${restaurant.latitude},${restaurant.longitude}`
@@ -102,7 +103,7 @@ export default async function LandingPage({ params }: Props) {
     .slice(0, 6);
 
   const sameAs = [content?.instagram, content?.facebook].filter((v): v is string => !!v);
-  const absoluteMenuHref = restaurant.customDomain ? menuHref : `${process.env.APP_BASE_URL || "https://menuor.com"}${menuHref}`;
+  const absoluteMenuHref = menuHref;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -117,7 +118,7 @@ export default async function LandingPage({ params }: Props) {
       : {}),
     ...(sameAs.length > 0 ? { sameAs } : {}),
     hasMenu: absoluteMenuHref,
-    url: restaurant.customDomain ? `https://${restaurant.customDomain}/` : `${process.env.APP_BASE_URL || "https://menuor.com"}/landing/${slug}`,
+    url: canonicalUrl,
   };
 
   return (

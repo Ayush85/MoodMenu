@@ -6,6 +6,7 @@ import Link from "next/link";
 import QRCode from "qrcode";
 import { Armchair } from "lucide-react";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
+import { getRestaurantMenuPath, hasVerifiedCustomDomain } from "@/lib/restaurant-site";
 
 interface Table {
   id: string;
@@ -19,6 +20,7 @@ interface RestaurantData {
   wifiSsid: string | null;
   wifiPassword: string | null;
   customDomain: string | null;
+  domainVerifiedAt: string | null;
   landingEnabled: boolean;
 }
 
@@ -41,9 +43,15 @@ export default function QRCodePage() {
       setRestaurant(restData);
       setTables(tablesData);
 
-      const menuUrl = restData.customDomain
-        ? `https://${restData.customDomain}/${restData.landingEnabled ? "menu" : ""}`
-        : `${window.location.origin}/menu/${restData.slug}`;
+      const menuPath = getRestaurantMenuPath({
+        slug: restData.slug,
+        customDomain: restData.customDomain,
+        domainVerifiedAt: restData.domainVerifiedAt,
+        landingEnabled: restData.landingEnabled,
+      });
+      const menuUrl = hasVerifiedCustomDomain(restData)
+        ? `https://${restData.customDomain}${menuPath}`
+        : `${window.location.origin}${menuPath}`;
 
       const gQr = await QRCode.toDataURL(menuUrl, {
         width: 400, margin: 2, color: { dark: "#1F2937", light: "#FFFFFF" },

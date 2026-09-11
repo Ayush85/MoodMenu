@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { Sun, Moon, LayoutGrid, List, ChevronUp, ChevronDown, Image as ImageIcon, Pencil } from "lucide-react";
 import { FONT_OPTIONS, DEFAULT_THEME, DESIGN_TEMPLATES, DesignTemplate } from "@/types";
+import { LandingPageSettings } from "../landing/page";
 
 interface MenuItemRow {
   id: string;
@@ -413,6 +414,16 @@ export default function DesignPage() {
         {saving ? "Saving…" : "Save Design"}
       </button>
 
+      <section className="mt-10 pt-10 border-t border-gray-200">
+        <div className="mb-6">
+          <h2 className="text-xl font-extrabold text-gray-900">Landing Page</h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Create your restaurant&apos;s public homepage with AI, then edit the copy and contact details here.
+          </p>
+        </div>
+        <LandingPageSettings embedded />
+      </section>
+
       {/* Custom domain */}
       <div className="surface-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-1">Custom Domain</h3>
@@ -440,7 +451,9 @@ export default function DesignPage() {
             restaurant.domainVerifiedAt ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
           }`}>
             <span className={`w-1.5 h-1.5 rounded-full ${restaurant.domainVerifiedAt ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`} />
-            {restaurant.domainVerifiedAt ? "Live — HTTPS is active" : "Pending — waiting on DNS, then HTTPS is issued automatically"}
+            {restaurant.domainVerifiedAt
+              ? "Live — HTTPS is active and public links now use this domain"
+              : "Pending — waiting on DNS, then HTTPS is issued automatically. Public links stay on menuor.com until it goes live."}
           </div>
         )}
 

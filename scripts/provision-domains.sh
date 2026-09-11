@@ -13,24 +13,25 @@ set -e
 # Requires on the host: psql, dig, nginx, certbot (with the nginx plugin —
 # the same tooling already used for the manual `certbot --nginx -d ...` step).
 #
-# For each restaurant with a customDomain but no domainVerifiedAt yet:
-#   1. Confirms DNS actually resolves to this server (skips otherwise —
-#      retried next run once the owner's DNS propagates)
-#   2. Writes an nginx server block proxying to the app
-#   3. Runs certbot to issue + install the certificate
-#   4. Marks the restaurant's domainVerifiedAt in the database on success
+# Keeps nginx in sync with the domains assigned in the database:
+#   1. Removes stale nginx configs for domains no longer assigned
+#   2. Confirms DNS actually resolves to this server
+#   3. Writes an nginx server block proxying to the app
+#   4. Runs certbot to issue + install the certificate for pending domains
+#   5. Marks the restaurant's domainVerifiedAt in the database on success
 #
 # A domain that fails certbot is skipped for an hour before retrying, to
 # stay well under Let's Encrypt's per-hostname failure rate limit.
 
-SERVER_IP="168.144.77.104"
+SERVER_IPS="${SERVER_IPS:-168.144.77.104}"
 UPSTREAM="http://127.0.0.1:3030"
-CERTBOT_EMAIL="ayushrestha8585@gmail.com"
+CERTBOT_EMAIL="${CERTBOT_EMAIL:-ayushrestha8585@gmail.com}"
 NGINX_SITES_AVAILABLE="/etc/nginx/sites-available"
 NGINX_SITES_ENABLED="/etc/nginx/sites-enabled"
 STATE_DIR="/var/lib/menuor/domain-provision"
 LOCKFILE="/var/lock/menuor-domain-provision.lock"
 FAILURE_COOLDOWN_SECONDS=3600
+MANAGED_MARKER="# Managed by Menuor custom-domain automation"
 
 log() {
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*"
@@ -42,6 +43,8 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 mkdir -p "$STATE_DIR"
+ACTIVE_DOMAINS_FILE=$(mktemp)
+trap 'rm -f "$ACTIVE_DOMAINS_FILE"' EXIT
 
 exec 9>"$LOCKFILE"
 if ! flock -n 9; then
@@ -49,10 +52,61 @@ if ! flock -n 9; then
   exit 0
 fi
 
-pending=$(psql "$DATABASE_URL" -tAc \
-  'SELECT "customDomain" FROM "Restaurant" WHERE "customDomain" IS NOT NULL AND "domainVerifiedAt" IS NULL;')
+psql "$DATABASE_URL" -tAc \
+  'SELECT "customDomain" FROM "Restaurant" WHERE "customDomain" IS NOT NULL;' > "$ACTIVE_DOMAINS_FILE"
 
-echo "$pending" | while IFS= read -r domain; do
+cleanup_changed=0
+for conf in "$NGINX_SITES_AVAILABLE"/*.conf; do
+  [ -e "$conf" ] || continue
+  if ! grep -qF "$MANAGED_MARKER" "$conf"; then
+    continue
+  fi
+
+  domain=$(basename "$conf" .conf)
+  if grep -Fxq "$domain" "$ACTIVE_DOMAINS_FILE"; then
+    continue
+  fi
+
+  log "CLEANUP $domain: no longer assigned, removing nginx config"
+  rm -f "$NGINX_SITES_ENABLED/$domain.conf" "$NGINX_SITES_AVAILABLE/$domain.conf" "$STATE_DIR/$domain.failed"
+  cleanup_changed=1
+done
+
+for fail_marker in "$STATE_DIR"/*.failed; do
+  [ -e "$fail_marker" ] || continue
+  domain=$(basename "$fail_marker" .failed)
+  if grep -Fxq "$domain" "$ACTIVE_DOMAINS_FILE"; then
+    continue
+  fi
+
+  rm -f "$fail_marker"
+done
+
+if [ "$cleanup_changed" -eq 1 ]; then
+  if nginx -t; then
+    nginx -s reload
+  else
+    log "FAIL cleanup: nginx config test failed after removing stale domains"
+    exit 1
+  fi
+fi
+
+matches_expected_ip() {
+  resolved_ips="$1"
+
+  for expected_ip in $(echo "$SERVER_IPS" | tr ',' ' '); do
+    if printf '%s\n' "$resolved_ips" | grep -Fxq "$expected_ip"; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+domains=$(psql "$DATABASE_URL" -F '|' -tAc \
+  'SELECT "customDomain", CASE WHEN "domainVerifiedAt" IS NULL THEN '\''pending'\'' ELSE '\''verified'\'' END FROM "Restaurant" WHERE "customDomain" IS NOT NULL;')
+
+echo "$domains" | while IFS='|' read -r domain status; do
   [ -z "$domain" ] && continue
 
   if ! echo "$domain" | grep -Eq '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$'; then
@@ -61,7 +115,7 @@ echo "$pending" | while IFS= read -r domain; do
   fi
 
   fail_marker="$STATE_DIR/$domain.failed"
-  if [ -f "$fail_marker" ]; then
+  if [ "$status" = "pending" ] && [ -f "$fail_marker" ]; then
     last_fail=$(stat -c %Y "$fail_marker" 2>/dev/null || echo 0)
     now=$(date +%s)
     if [ $((now - last_fail)) -lt "$FAILURE_COOLDOWN_SECONDS" ]; then
@@ -70,15 +124,22 @@ echo "$pending" | while IFS= read -r domain; do
     fi
   fi
 
-  resolved_ip=$(dig +short "$domain" A | tail -n1)
-  if [ "$resolved_ip" != "$SERVER_IP" ]; then
-    log "SKIP $domain: DNS not pointing here yet (got: ${resolved_ip:-none}, expected: $SERVER_IP)"
+  resolved_ips=$(dig +short "$domain" A | sed '/^$/d')
+  if ! matches_expected_ip "$resolved_ips"; then
+    resolved_display=$(printf '%s\n' "$resolved_ips" | paste -sd, -)
+    [ -n "$resolved_display" ] || resolved_display="none"
+    log "SKIP $domain: DNS not pointing here yet (got: $resolved_display, expected one of: $SERVER_IPS)"
     continue
   fi
 
-  log "PROVISION $domain: DNS OK, writing nginx config"
+  conf_path="$NGINX_SITES_AVAILABLE/$domain.conf"
+  link_path="$NGINX_SITES_ENABLED/$domain.conf"
 
-  cat > "$NGINX_SITES_AVAILABLE/$domain.conf" <<CONF
+  if [ "$status" = "pending" ] || [ ! -f "$conf_path" ]; then
+    log "PROVISION $domain: DNS OK, writing nginx config"
+
+    cat > "$conf_path" <<CONF
+$MANAGED_MARKER
 server {
     listen 80;
     server_name $domain;
@@ -93,15 +154,21 @@ server {
 }
 CONF
 
-  ln -sf "$NGINX_SITES_AVAILABLE/$domain.conf" "$NGINX_SITES_ENABLED/$domain.conf"
+    ln -sf "$conf_path" "$link_path"
 
-  if ! nginx -t; then
-    log "FAIL $domain: nginx config test failed, rolling back"
-    rm -f "$NGINX_SITES_ENABLED/$domain.conf" "$NGINX_SITES_AVAILABLE/$domain.conf"
-    touch "$fail_marker"
+    if ! nginx -t; then
+      log "FAIL $domain: nginx config test failed, rolling back"
+      rm -f "$link_path" "$conf_path"
+      touch "$fail_marker"
+      continue
+    fi
+    nginx -s reload
+  fi
+
+  if [ "$status" = "verified" ]; then
+    rm -f "$fail_marker"
     continue
   fi
-  nginx -s reload
 
   if certbot --nginx -d "$domain" --non-interactive --agree-tos -m "$CERTBOT_EMAIL" --redirect; then
     log "OK $domain: certificate issued"

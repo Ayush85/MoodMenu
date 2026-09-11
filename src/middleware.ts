@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { isPlatformHost } from "@/lib/site-host";
+import { hasVerifiedCustomDomain } from "@/lib/restaurant-site";
 
 export const config = {
   runtime: "nodejs",
@@ -19,10 +20,10 @@ export async function middleware(request: NextRequest) {
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { customDomain: hostname },
-    select: { id: true, slug: true, landingEnabled: true },
+    select: { id: true, slug: true, customDomain: true, domainVerifiedAt: true, landingEnabled: true },
   });
 
-  if (!restaurant) {
+  if (!restaurant || !hasVerifiedCustomDomain(restaurant)) {
     return NextResponse.next();
   }
 

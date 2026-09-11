@@ -41,6 +41,12 @@ enables HTTP-to-HTTPS redirect, and marks `domainVerifiedAt` only after certific
 issuance succeeds. It also removes managed nginx configs when an owner changes or
 removes a domain.
 
+For near-immediate provisioning after an owner saves a domain, run the included
+`scripts/domain-provisioner-server.js` as the host service
+`scripts/menuor-domain-provisioner.service`. Set the same
+`DOMAIN_PROVISIONER_SECRET` in the app environment and `/etc/menuor/domain-provisioner.env`.
+The app trigger is best-effort and the cron job remains the retry fallback.
+
 For a verified custom domain, `/` shows the landing page when enabled; otherwise `/`
 shows the menu. `/menu` remains available when the landing page is enabled.
 

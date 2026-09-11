@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { geocodeLocation } from "@/lib/weather";
 import { isValidDomain, normalizeDomain } from "@/lib/restaurant-site";
 import { isPlatformHost } from "@/lib/site-host";
+import { requestDomainProvisioning } from "@/lib/domain-provision";
 import { Prisma } from "@/generated/prisma/client";
 
 export async function GET(
@@ -81,6 +82,7 @@ export async function PATCH(
   // the automated nginx/TLS script only sets this once it has issued a
   // certificate for the domain currently on file.
   const domainChanged = customDomain !== undefined && customDomain !== restaurant.customDomain;
+  const shouldTriggerDomainProvisioning = domainChanged || Boolean(customDomain && !restaurant.domainVerifiedAt);
 
   let updated;
   try {
@@ -118,10 +120,12 @@ export async function PATCH(
           longitude: coordinates.longitude,
         },
       });
+      if (shouldTriggerDomainProvisioning) void requestDomainProvisioning();
       return NextResponse.json(withCoordinates);
     }
   }
 
+  if (shouldTriggerDomainProvisioning) void requestDomainProvisioning();
   return NextResponse.json(updated);
 }
 

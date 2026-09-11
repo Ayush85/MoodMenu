@@ -1,0 +1,14 @@
+[Unit]
+Description=Menuor custom domain provisioner trigger
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+EnvironmentFile=/etc/menuor/domain-provisioner.env
+ExecStart=/usr/bin/node /opt/menuor/domain-provisioner-server.js
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

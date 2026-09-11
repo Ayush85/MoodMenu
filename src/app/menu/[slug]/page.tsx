@@ -27,10 +27,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const title = `${restaurant.name} Menu`;
   const description = `Browse the full menu at ${restaurant.name} in ${restaurant.city}. Order food and call your waiter directly from your phone.`;
   const canonicalUrl = getRestaurantMenuUrl({ ...restaurant, slug });
+  const logoUrl = restaurant.logo ? new URL(restaurant.logo, canonicalUrl).toString() : undefined;
 
   return {
     title,
     description,
+    ...(logoUrl ? { icons: { icon: logoUrl, apple: logoUrl } } : {}),
     robots: { index: true, follow: true },
     alternates: { canonical: canonicalUrl },
     openGraph: {

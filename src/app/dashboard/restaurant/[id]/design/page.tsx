@@ -31,6 +31,7 @@ interface BrandTheme {
 interface Restaurant {
   id: string;
   name: string;
+  city: string;
   logo: string | null;
   brandTheme: BrandTheme | null;
   cardStyle: string;
@@ -48,6 +49,8 @@ export default function DesignPage() {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [restaurantName, setRestaurantName] = useState("");
+  const [city, setCity] = useState("");
 
   const [mode, setMode] = useState<"light" | "dark">("light");
   const [primary, setPrimary] = useState(DEFAULT_THEME.primary);
@@ -69,6 +72,8 @@ export default function DesignPage() {
       .then((res) => res.json())
       .then((data: Restaurant) => {
         setRestaurant(data);
+        setRestaurantName(data.name);
+        setCity(data.city);
         const brand = data.brandTheme || {};
         setMode(brand.mode === "dark" ? "dark" : "light");
         setPrimary(brand.primary || DEFAULT_THEME.primary);
@@ -105,6 +110,8 @@ export default function DesignPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          name: restaurantName.trim(),
+          city: city.trim(),
           brandTheme: { mode, primary, accent, bg, text, fontFamily },
           cardStyle,
           layoutTemplate,
@@ -226,6 +233,22 @@ export default function DesignPage() {
       <div className="mb-6">
         <h1 className="page-title">Design</h1>
         <p className="page-subtitle mt-1">Set your menu&apos;s brand look, layout, and item order</p>
+      </div>
+
+      {/* Restaurant profile */}
+      <div className="surface-card p-5 mb-6">
+        <h3 className="font-bold text-gray-900 mb-1">Restaurant Profile</h3>
+        <p className="text-xs text-gray-500 mb-4">These details appear on your menu, landing page, and AI-generated content.</p>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Restaurant name</label>
+            <input value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} className="control-input w-full" maxLength={80} />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">City</label>
+            <input value={city} onChange={(e) => setCity(e.target.value)} className="control-input w-full" maxLength={80} />
+          </div>
+        </div>
       </div>
 
       {/* Logo */}

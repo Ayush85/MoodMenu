@@ -66,6 +66,7 @@ export default function DesignPage() {
 
   const [domain, setDomain] = useState("");
   const [domainSaving, setDomainSaving] = useState(false);
+  const [domainVerifying, setDomainVerifying] = useState(false);
 
   function fetchData() {
     fetch(`/api/restaurants/${id}`)
@@ -146,6 +147,29 @@ export default function DesignPage() {
       toast("Couldn't save domain", "error");
     } finally {
       setDomainSaving(false);
+    }
+  }
+
+  async function verifyDomain() {
+    setDomainVerifying(true);
+    try {
+      const res = await fetch(`/api/restaurants/${id}/domain/verify`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || "Couldn't verify domain", "error");
+        return;
+      }
+
+      setRestaurant((prev) => (prev ? {
+        ...prev,
+        customDomain: data.customDomain || prev.customDomain,
+        domainVerifiedAt: data.domainVerifiedAt || null,
+      } : prev));
+      toast(data.message || "Domain verification checked", data.verified ? "success" : "info");
+    } catch {
+      toast("Couldn't reach the domain provisioner", "error");
+    } finally {
+      setDomainVerifying(false);
     }
   }
 
@@ -466,6 +490,13 @@ export default function DesignPage() {
           />
           <button onClick={saveDomain} disabled={domainSaving} className="btn-primary !w-auto px-6 disabled:opacity-50">
             {domainSaving ? "Saving…" : "Save"}
+          </button>
+          <button
+            onClick={verifyDomain}
+            disabled={domainVerifying || !restaurant.customDomain}
+            className="btn-soft !w-auto px-5 disabled:opacity-50"
+          >
+            {domainVerifying ? "Verifying…" : "Verify now"}
           </button>
         </div>
 

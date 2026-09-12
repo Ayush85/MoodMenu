@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type CSSProperties, type PointerEvent } from "react";
-import { ArrowUpRight, Clock3, Globe, MapPin, Phone, Sparkles, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, Clock3, Globe, MapPin, Phone, UtensilsCrossed } from "lucide-react";
 import type { LandingPageContent, MoodTheme } from "@/types";
 
 interface GalleryItem {
@@ -20,129 +20,109 @@ interface Props {
   gallery: GalleryItem[];
 }
 
-type LandingStyle = CSSProperties & {
-  "--landing-primary"?: string;
-  "--landing-accent"?: string;
-  "--landing-bg"?: string;
-  "--landing-text"?: string;
-  "--landing-rx"?: string;
-  "--landing-ry"?: string;
+type SiteStyle = CSSProperties & {
+  "--site-primary"?: string;
+  "--site-accent"?: string;
+  "--site-bg"?: string;
+  "--site-text"?: string;
+  "--site-tilt"?: string;
 };
 
 export default function InteractiveLanding({ name, city, logo, theme, content, menuHref, mapHref, gallery }: Props) {
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [tilt, setTilt] = useState(0);
+  const heroImage = gallery[0]?.image;
   const tagline = content?.tagline || `Welcome to ${name}`;
   const about = content?.about || `${name} is located in ${city}.`;
   const highlights = content?.highlights?.filter(Boolean) ?? [];
-  const ctaText = content?.ctaText || "View Menu";
+  const ctaText = content?.ctaText || "View our menu";
 
-  function handlePointerMove(event: PointerEvent<HTMLElement>) {
+  function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "touch") return;
     const bounds = event.currentTarget.getBoundingClientRect();
-    setTilt({
-      x: ((event.clientY - bounds.top) / bounds.height - 0.5) * -7,
-      y: ((event.clientX - bounds.left) / bounds.width - 0.5) * 7,
-    });
+    setTilt(((event.clientX - bounds.left) / bounds.width - 0.5) * 2.5);
   }
 
-  const style: LandingStyle = {
+  const style: SiteStyle = {
     backgroundColor: theme.bg,
     color: theme.text,
-    "--landing-primary": theme.primary,
-    "--landing-accent": theme.accent,
-    "--landing-bg": theme.bg,
-    "--landing-text": theme.text,
-    "--landing-rx": `${tilt.x}deg`,
-    "--landing-ry": `${tilt.y}deg`,
+    "--site-primary": theme.primary,
+    "--site-accent": theme.accent,
+    "--site-bg": theme.bg,
+    "--site-text": theme.text,
+    "--site-tilt": `${tilt}deg`,
   };
 
   return (
-    <main className="restaurant-landing" style={style}>
-      <div className="restaurant-landing__noise" aria-hidden="true" />
-      <div className="restaurant-landing__orb restaurant-landing__orb--one" aria-hidden="true" />
-      <div className="restaurant-landing__orb restaurant-landing__orb--two" aria-hidden="true" />
-
-      <nav className="restaurant-landing__nav landing-reveal">
-        <a href="#top" className="restaurant-landing__brand" aria-label={`${name} home`}>
-          {logo ? <img src={logo} alt="" className="restaurant-landing__brand-mark" /> : <span className="restaurant-landing__brand-dot" />}
-          <span>{name}</span>
-        </a>
-        <a href={menuHref} className="restaurant-landing__nav-cta">
-          Menu <ArrowUpRight className="h-4 w-4" />
-        </a>
-      </nav>
-
-      <section id="top" className="restaurant-landing__hero landing-reveal landing-reveal--one">
-        <div className="restaurant-landing__hero-copy">
-          <div className="restaurant-landing__eyebrow"><Sparkles className="h-3.5 w-3.5" /> Crafted for your next craving</div>
-          <h1>{name}</h1>
-          <p className="restaurant-landing__tagline">{tagline}</p>
-          <div className="restaurant-landing__location"><MapPin className="h-4 w-4" /> {city}</div>
-          <a href={menuHref} className="restaurant-landing__primary-cta">
-            <UtensilsCrossed className="h-5 w-5" /> {ctaText} <ArrowUpRight className="h-4 w-4" />
+    <main className="restaurant-site" style={style}>
+      <header className="restaurant-site__hero" style={heroImage ? { backgroundImage: `url(${heroImage})` } : undefined}>
+        <div className="restaurant-site__hero-overlay" />
+        <nav className="restaurant-site__nav">
+          <a href="#top" className="restaurant-site__brand" aria-label={`${name} home`}>
+            {logo ? <img src={logo} alt="" /> : <span className="restaurant-site__brand-placeholder"><UtensilsCrossed className="h-4 w-4" /></span>}
+            <span>{name}</span>
           </a>
-        </div>
-
-        <div className="restaurant-landing__stage" onPointerMove={handlePointerMove} onPointerLeave={() => setTilt({ x: 0, y: 0 })}>
-          <div className="restaurant-landing__stage-ring" aria-hidden="true" />
-          <div className="restaurant-landing__hero-card">
-            <div className="restaurant-landing__hero-card-top">
-              <span>LOCAL · {city.toUpperCase()}</span>
-              <span className="restaurant-landing__status"><i /> Made to order</span>
-            </div>
-            <div className="restaurant-landing__hero-card-content">
-              {gallery[0]?.image && <div className="restaurant-landing__hero-food" style={{ backgroundImage: `url(${gallery[0].image})` }} aria-hidden="true" />}
-              {logo ? <img src={logo} alt={name} className="restaurant-landing__hero-logo" /> : <div className="restaurant-landing__hero-logo restaurant-landing__hero-logo--empty"><UtensilsCrossed /></div>}
-              <span className="restaurant-landing__hero-card-label">Signature dining in {city}</span>
-              <strong>{name}</strong>
-            </div>
-            <div className="restaurant-landing__hero-card-bottom"><span>Explore the menu</span><ArrowUpRight className="h-4 w-4" /></div>
+          <div className="restaurant-site__nav-links">
+            <a href="#about">Our story</a>
+            {gallery.length > 0 && <a href="#gallery">Gallery</a>}
+            <a href={menuHref} className="restaurant-site__nav-button">Menu <ArrowRight className="h-3.5 w-3.5" /></a>
           </div>
-          <div className="restaurant-landing__floating-chip restaurant-landing__floating-chip--top"><span>01</span> Freshly made</div>
-          <div className="restaurant-landing__floating-chip restaurant-landing__floating-chip--bottom"><span>✦</span> Made with care</div>
+        </nav>
+
+        <div id="top" className="restaurant-site__hero-content">
+          <span className="restaurant-site__eyebrow">{city} · Restaurant &amp; Cafe</span>
+          {logo && <img src={logo} alt={name} className="restaurant-site__hero-logo" />}
+          <h1>{name}</h1>
+          <p>{tagline}</p>
+          <div className="restaurant-site__hero-actions">
+            <a href={menuHref} className="restaurant-site__button"><UtensilsCrossed className="h-4 w-4" /> {ctaText}</a>
+            <a href={mapHref} target="_blank" rel="noopener noreferrer" className="restaurant-site__text-button"><MapPin className="h-4 w-4" /> Find us</a>
+          </div>
         </div>
+        <a href="#about" className="restaurant-site__scroll-cue">Scroll to explore <ArrowRight className="h-3.5 w-3.5 rotate-90" /></a>
+      </header>
+
+      <section className="restaurant-site__info-bar">
+        <div><MapPin className="h-4 w-4" /><span>{content?.address || city}</span></div>
+        {content?.hours && <div><Clock3 className="h-4 w-4" /><span>{content.hours}</span></div>}
+        {content?.phone && <div><Phone className="h-4 w-4" /><span>{content.phone}</span></div>}
       </section>
 
-      <section className="restaurant-landing__intro landing-reveal landing-reveal--two">
-        <span className="restaurant-landing__section-kicker">The story behind the table</span>
-        <h2>Come hungry.<br /><em>Leave inspired.</em></h2>
-        <p>{about}</p>
+      <section id="about" className="restaurant-site__story">
+        <div className="restaurant-site__section-label">Our story</div>
+        <div className="restaurant-site__story-copy">
+          <h2>Good food.<br /><em>Good company.</em></h2>
+          <div>
+            <p>{about}</p>
+            <a href={menuHref} className="restaurant-site__inline-link">Explore the menu <ArrowRight className="h-4 w-4" /></a>
+          </div>
+        </div>
       </section>
 
       {highlights.length > 0 && (
-        <section className="restaurant-landing__highlights landing-reveal landing-reveal--three">
-          {highlights.map((highlight, index) => (
-            <article key={`${highlight}-${index}`} className="restaurant-landing__highlight">
-              <span>0{index + 1}</span>
-              <p>{highlight}</p>
-            </article>
-          ))}
+        <section className="restaurant-site__highlights">
+          {highlights.map((highlight, index) => <article key={`${highlight}-${index}`}><span>0{index + 1}</span><p>{highlight}</p></article>)}
         </section>
       )}
 
       {gallery.length > 0 && (
-        <section className="restaurant-landing__gallery landing-reveal landing-reveal--three">
-          <div className="restaurant-landing__section-heading"><div><span className="restaurant-landing__section-kicker">A taste of what&apos;s ahead</span><h2>From our menu</h2></div><a href={menuHref}>Explore all <ArrowUpRight className="h-4 w-4" /></a></div>
-          <div className="restaurant-landing__gallery-grid">
-            {gallery.map((item, index) => <figure key={`${item.name}-${index}`} className={`restaurant-landing__gallery-item restaurant-landing__gallery-item--${index % 3}`}><img src={item.image} alt={item.name} /><figcaption>{item.name}</figcaption></figure>)}
+        <section id="gallery" className="restaurant-site__gallery">
+          <div className="restaurant-site__section-heading"><div><div className="restaurant-site__section-label">From the kitchen</div><h2>A taste of {name}</h2></div><a href={menuHref} className="restaurant-site__inline-link">View menu <ArrowRight className="h-4 w-4" /></a></div>
+          <div className="restaurant-site__gallery-grid" onPointerMove={handlePointerMove} onPointerLeave={() => setTilt(0)}>
+            {gallery.map((item, index) => <figure key={`${item.name}-${index}`} className={`restaurant-site__gallery-item restaurant-site__gallery-item--${index % 3}`}><img src={item.image} alt={item.name} /><figcaption>{item.name}</figcaption></figure>)}
           </div>
         </section>
       )}
 
-      <footer className="restaurant-landing__footer">
-        <div className="restaurant-landing__footer-main">
-          <span className="restaurant-landing__section-kicker">Find your way to us</span>
-          <h2>Make it a<br /><em>delicious day.</em></h2>
-          <a href={menuHref} className="restaurant-landing__primary-cta">{ctaText} <ArrowUpRight className="h-4 w-4" /></a>
-        </div>
-        <div className="restaurant-landing__contact">
-          <a href={mapHref}><MapPin className="h-4 w-4" /> {content?.address || city}</a>
+      <footer className="restaurant-site__footer">
+        <div className="restaurant-site__footer-main"><div className="restaurant-site__section-label">Make a reservation in your mind</div><h2>Come as you are.<br /><em>Leave well fed.</em></h2><a href={menuHref} className="restaurant-site__button">{ctaText} <ArrowRight className="h-4 w-4" /></a></div>
+        <div className="restaurant-site__footer-contact">
+          <strong>{name}</strong>
+          <a href={mapHref} target="_blank" rel="noopener noreferrer"><MapPin className="h-4 w-4" /> {content?.address || city}</a>
           {content?.phone && <a href={`tel:${content.phone}`}><Phone className="h-4 w-4" /> {content.phone}</a>}
-          {content?.hours && <span><Clock3 className="h-4 w-4" /> {content.hours}</span>}
           {content?.instagram && <a href={content.instagram} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" /> Instagram</a>}
           {content?.facebook && <a href={content.facebook} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" /> Facebook</a>}
         </div>
-        <div className="restaurant-landing__footer-line"><span>{name} · {city}</span><span>Powered by Menuor</span></div>
+        <div className="restaurant-site__footer-bottom"><span>{name} · {city}</span><span>Powered by Menuor</span></div>
       </footer>
     </main>
   );

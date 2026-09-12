@@ -301,6 +301,19 @@ export default function StaffPage() {
     }
   }
 
+  // Esc closes whichever modal is open — standard, expected affordance.
+  useEffect(() => {
+    if (!showComposer && !resetPasswordStaff && !confirmAction) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (confirmAction) setConfirmAction(null);
+      else if (resetPasswordStaff) setResetPasswordStaff(null);
+      else if (showComposer) setShowComposer(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showComposer, resetPasswordStaff, confirmAction]);
+
   useEffect(() => {
     if (!canManageStaff) {
       setStaff([]);
@@ -1078,16 +1091,76 @@ export default function StaffPage() {
 
       {canTakeOrders && showComposer && (
         <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
-          <button aria-label="Close order composer" onClick={() => setShowComposer(false)} className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" />
-          <section role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+          <button
+            aria-label="Close order composer"
+            onClick={() => setShowComposer(false)}
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+          />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-order-title"
+            className="relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+          >
             <header className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
-              <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-500">Staff order</p><h2 id="new-order-title" className="mt-1 text-xl font-extrabold text-gray-900">Create new order</h2><p className="mt-0.5 text-xs text-gray-500">Add items for a table and send them to the kitchen.</p></div>
-              <button onClick={() => setShowComposer(false)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500" aria-label="Close"><span className="text-xl">×</span></button>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-500">Staff order</p>
+                <h2 id="new-order-title" className="mt-1 text-xl font-extrabold text-gray-900">Create new order</h2>
+                <p className="mt-0.5 text-xs text-gray-500">Add items for a table and send them to the kitchen.</p>
+              </div>
+              <button
+                onClick={() => setShowComposer(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-gray-500"
+                aria-label="Close"
+              >
+                <span className="text-xl">×</span>
+              </button>
             </header>
+
             <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
               <div className="space-y-4">
-                <div><label className="field-label">Table</label><select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)} className="control-input w-full"><option value="">Select table</option>{tables.map((table) => <option key={table.id} value={table.id}>{table.label || `Table ${table.number}`}</option>)}</select></div>
-                <div><label className="field-label">Add menu items</label><input value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} placeholder="Search by item name" className="control-input mt-1 w-full" autoFocus /></div>
+                {/* Table picker — a tappable grid reads faster than scrolling a dropdown */}
+                <div>
+                  <label className="field-label">Table</label>
+                  <div className="mt-1.5 grid grid-cols-4 gap-2 sm:grid-cols-5">
+                    {tables.map((table) => {
+                      const active = table.id === selectedTableId;
+                      return (
+                        <button
+                          key={table.id}
+                          onClick={() => setSelectedTableId(active ? "" : table.id)}
+                          className={`flex min-h-14 flex-col items-center justify-center rounded-xl border px-1 py-1.5 text-center transition ${
+                            active
+                              ? "border-orange-500 bg-orange-500 text-white shadow-sm"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span className="text-sm font-extrabold leading-tight">{table.number}</span>
+                          {table.label && (
+                            <span className={`truncate w-full text-[10px] leading-tight ${active ? "text-white/80" : "text-gray-400"}`}>
+                              {table.label}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {tables.length === 0 && (
+                      <p className="col-span-full py-3 text-center text-xs text-gray-400">No tables configured yet</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="field-label">Add menu items</label>
+                  <input
+                    value={itemSearch}
+                    onChange={(e) => setItemSearch(e.target.value)}
+                    placeholder="Search by item name"
+                    className="control-input mt-1 w-full"
+                    autoFocus
+                  />
+                </div>
+
                 <div className="max-h-72 space-y-3 overflow-y-auto rounded-2xl border border-gray-200 p-2">
                   {groupedMenuItems.map((group) => (
                     <div key={group.categoryId}>
@@ -1095,12 +1168,37 @@ export default function StaffPage() {
                         {group.categoryName}
                       </p>
                       <div className="space-y-1">
-                        {group.items.map((item) => (
-                          <div key={item.id} className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-gray-50">
-                            <div className="min-w-0"><p className="truncate text-sm font-bold text-gray-900">{item.name}</p><p className="text-xs text-gray-500">Rs. {fmt(item.price)}</p></div>
-                            <div className="flex items-center gap-2"><button onClick={() => decrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-lg text-gray-700">−</button><span className="w-5 text-center text-sm font-extrabold">{selectedItems[item.id] || 0}</span><button onClick={() => incrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-lg text-white">+</button></div>
-                          </div>
-                        ))}
+                        {group.items.map((item) => {
+                          const qty = selectedItems[item.id] || 0;
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 py-2 transition ${
+                                qty > 0 ? "bg-orange-50 ring-1 ring-orange-200" : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-bold text-gray-900">{item.name}</p>
+                                <p className="text-xs text-gray-500">Rs. {fmt(item.price)}</p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  onClick={() => decrementItem(item.id)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-lg text-gray-700"
+                                >
+                                  −
+                                </button>
+                                <span className="w-5 text-center text-sm font-extrabold">{qty}</span>
+                                <button
+                                  onClick={() => incrementItem(item.id)}
+                                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-lg text-white"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -1109,11 +1207,71 @@ export default function StaffPage() {
                 {unavailableCount > 0 && (
                   <p className="text-[11px] text-gray-400">{unavailableCount} unavailable item{unavailableCount !== 1 ? "s" : ""} hidden</p>
                 )}
-                <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-orange-700">Order summary</p><p className="mt-0.5 text-xs text-gray-500">{selectedTable ? selectedTable.label || `Table ${selectedTable.number}` : "Select a table"}</p></div><p className="text-lg font-extrabold text-gray-900">Rs. {fmt(orderTotal)}</p></div><div className="mt-3 space-y-2 border-t border-orange-100 pt-3">{orderDraft.length === 0 ? <p className="text-xs text-gray-400">Your order is empty</p> : orderDraft.map((row) => <div key={row.itemId} className="flex items-center justify-between gap-3 text-sm"><span>{row.quantity} × {row.itemName}</span><div className="flex items-center gap-2"><span className="font-semibold">Rs. {fmt(row.lineTotal)}</span><button onClick={() => removeItem(row.itemId)} aria-label={`Remove ${row.itemName}`} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600">×</button></div></div>)}</div></div>
-                <div><label className="field-label">Kitchen note <span className="font-normal normal-case text-gray-400">(optional)</span></label><textarea value={orderNote} onChange={(e) => setOrderNote(e.target.value)} rows={2} className="control-input mt-1 w-full resize-none" placeholder="Less spicy, no onions…" /></div>
+
+                <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-orange-700">Order summary</p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {selectedTable ? selectedTable.label || `Table ${selectedTable.number}` : "Select a table"}
+                      </p>
+                    </div>
+                    <p className="text-lg font-extrabold text-gray-900">Rs. {fmt(orderTotal)}</p>
+                  </div>
+                  <div className="mt-3 space-y-2 border-t border-orange-100 pt-3">
+                    {orderDraft.length === 0 ? (
+                      <p className="text-xs text-gray-400">Your order is empty</p>
+                    ) : (
+                      orderDraft.map((row) => (
+                        <div key={row.itemId} className="flex items-center justify-between gap-3 text-sm">
+                          <span>{row.quantity} × {row.itemName}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">Rs. {fmt(row.lineTotal)}</span>
+                            <button
+                              onClick={() => removeItem(row.itemId)}
+                              aria-label={`Remove ${row.itemName}`}
+                              className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="field-label">Kitchen note <span className="font-normal normal-case text-gray-400">(optional)</span></label>
+                  <textarea
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                    rows={2}
+                    className="control-input mt-1 w-full resize-none"
+                    placeholder="Less spicy, no onions…"
+                  />
+                </div>
               </div>
             </div>
-            <footer className="flex shrink-0 gap-3 border-t border-gray-100 bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6"><button onClick={clearDraft} className="btn-soft flex-1">Clear</button><button onClick={submitOrder} disabled={savingOrder || !selectedTableId || orderDraft.length === 0} className="btn-primary flex-[1.5]">{savingOrder ? "Sending…" : "Send to kitchen"}</button></footer>
+
+            <footer className="flex shrink-0 flex-col gap-2.5 border-t border-gray-100 bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6">
+              {orderDraft.length > 0 && (
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>{orderDraft.reduce((sum, r) => sum + r.quantity, 0)} item{orderDraft.reduce((sum, r) => sum + r.quantity, 0) !== 1 ? "s" : ""}</span>
+                  <span className="font-bold text-gray-900">Rs. {fmt(orderTotal)}</span>
+                </div>
+              )}
+              <div className="flex gap-3">
+                <button onClick={clearDraft} className="btn-soft flex-1">Clear</button>
+                <button
+                  onClick={submitOrder}
+                  disabled={savingOrder || !selectedTableId || orderDraft.length === 0}
+                  className="btn-primary flex-[1.5]"
+                >
+                  {savingOrder ? "Sending…" : "Send to kitchen"}
+                </button>
+              </div>
+            </footer>
           </section>
         </div>
       )}

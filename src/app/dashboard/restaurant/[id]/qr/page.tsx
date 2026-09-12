@@ -12,6 +12,7 @@ interface Table {
   id: string;
   number: number;
   label: string | null;
+  qrToken: string;
 }
 
 interface RestaurantData {
@@ -67,9 +68,9 @@ export default function QRCodePage() {
       }
 
       const codes: Record<number, string> = {};
-      for (const table of tablesData) {
+      for (const table of tablesData as Table[]) {
         codes[table.number] = await QRCode.toDataURL(
-          `${menuUrl}?table=${table.number}`,
+          `${menuUrl}?table=${table.number}&t=${table.qrToken}`,
           { width: 300, margin: 2, color: { dark: "#1F2937", light: "#FFFFFF" } }
         );
       }

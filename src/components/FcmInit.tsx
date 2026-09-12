@@ -147,7 +147,7 @@ export default function FcmInit() {
     >
       <div style={{ fontSize: "22px", flexShrink: 0 }}>🔔</div>
       <p style={{ fontSize: "13px", lineHeight: 1.4, flex: 1, margin: 0 }}>
-        Enable notifications to get alerted when customers call for a waiter.
+        Enable notifications to get alerted about waiter calls and new orders — even when this tab isn&apos;t open.
       </p>
       <button
         onClick={handleEnable}

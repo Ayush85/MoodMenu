@@ -49,6 +49,7 @@ interface Props {
   ruleName: string;
   greeting: string;
   tableNumber: number | null;
+  tableToken: string | null;
   autoOpenWifiPrompt?: boolean;
   previewMode?: boolean;
   cardStyle?: "list" | "grid";
@@ -73,6 +74,7 @@ export default function MenuClient({
   ruleName,
   greeting,
   tableNumber,
+  tableToken,
   autoOpenWifiPrompt = false,
   previewMode = false,
   cardStyle = "list",
@@ -146,7 +148,7 @@ export default function MenuClient({
       const res = await fetch(`/api/menu/${restaurant.slug}/call-waiter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableNumber, message: "__wifi_check__" }),
+        body: JSON.stringify({ tableNumber, tableToken, message: "__wifi_check__" }),
       });
 
       if (res.status === 403) {
@@ -169,7 +171,7 @@ export default function MenuClient({
       const res = await fetch(`/api/menu/${restaurant.slug}/call-waiter`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tableNumber, message: callMessage || undefined }),
+        body: JSON.stringify({ tableNumber, tableToken, message: callMessage || undefined }),
       });
 
       if (res.ok || res.status === 429) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPush } from "@/lib/push";
 import { withApiLogging } from "@/lib/api-handler";
+import { isValidTableToken } from "@/lib/table-token";
 
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -40,6 +41,18 @@ export const POST = withApiLogging(async function POST(
 
   if (!restaurant) {
     return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
+  }
+
+  // The table number must carry the signed token this restaurant's own QR
+  // code embeds — otherwise it was edited by hand in the URL/request body,
+  // and a customer could claim to be at any table. See src/lib/table-token.ts.
+  if (!isValidTableToken(restaurant.id, tableNumber, body.tableToken)) {
+    // A distinct status from the WiFi-gate 403 below, so the client can
+    // tell "bad/edited table link" apart from "not on restaurant WiFi".
+    return NextResponse.json(
+      { error: "This link doesn't match a table at this restaurant. Please scan the QR code at your table." },
+      { status: 400 }
+    );
   }
 
   // Verify customer is on restaurant WiFi (IP check)
@@ -101,7 +114,7 @@ export const POST = withApiLogging(async function POST(
     title: `🔔 ${label} is calling!`,
     body: message || "A customer needs assistance.",
     userIds: recipientIds,
-    url: `/dashboard/restaurant/${restaurant.id}/live`,
+    url: `/dashboard/restaurant/${restaurant.id}/staff`,
     data: {
       type: "waiter_call",
       callId: call.id,

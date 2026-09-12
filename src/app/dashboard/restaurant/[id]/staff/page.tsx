@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/Toast";
 
@@ -11,8 +10,43 @@ interface WaiterCall {
   tableNumber: number;
   tableLabel: string | null;
   message: string | null;
-  status: string;
+  status: "PENDING" | "ACKNOWLEDGED" | "RESOLVED";
   createdAt: string;
+}
+
+function timeAgoShort(date: string) {
+  const s = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ago`;
+}
+
+// Two-tone chime for a new waiter call, single soft tone for a new order —
+// distinguishable by ear without looking at the screen.
+function playChime(tones: number[]) {
+  try {
+    const ctx = new AudioContext();
+    tones.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.18);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.18 + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + i * 0.18 + 0.3);
+      osc.start(ctx.currentTime + i * 0.18);
+      osc.stop(ctx.currentTime + i * 0.18 + 0.35);
+    });
+  } catch { /* audio unavailable */ }
+}
+
+function showBrowserNotification(title: string, body: string, tag: string) {
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+  new Notification(title, { body, icon: "/logo.svg", tag, ...({ renotify: true } as object) } as NotificationOptions);
 }
 
 interface RawWaiterCall {
@@ -72,6 +106,12 @@ export default function StaffPage() {
   const { toast } = useToast();
   const id = params.id as string;
   const [pendingCalls, setPendingCalls] = useState<WaiterCall[]>([]);
+  const [callHistory, setCallHistory] = useState<RawWaiterCall[]>([]);
+  const [showCallHistory, setShowCallHistory] = useState(false);
+  const [updatingCallId, setUpdatingCallId] = useState<string | null>(null);
+  const [notifGranted, setNotifGranted] = useState(false);
+  const prevPendingCallIds = useRef<Set<string>>(new Set());
+  const prevNewOrderIds = useRef<Set<string> | null>(null);
   const [tables, setTables] = useState<RestaurantTableData[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [orders, setOrders] = useState<OrderTicket[]>([]);
@@ -138,43 +178,109 @@ export default function StaffPage() {
       });
   }, [id]);
 
-  // Poll orders every 8 seconds; fold in a lightweight pending-call count
-  // (the /live board is the canonical place to actually act on calls)
   useEffect(() => {
-    function fetchOrders() {
-      fetch(`/api/restaurants/${id}/orders`)
-        .then((r) => r.json())
-        .then((data) => setOrders(Array.isArray(data) ? data : []))
-        .catch(() => {});
-    }
+    if ("Notification" in window) setNotifGranted(Notification.permission === "granted");
+  }, []);
 
-    function fetchCallCount() {
-      if (!canUseCalls) return;
-      fetch(`/api/restaurants/${id}/waiter-calls`)
-        .then((r) => r.json())
-        .then((data: RawWaiterCall[]) => {
-          const active = Array.isArray(data)
-            ? data.filter((c) => c.status === "PENDING" || c.status === "ACKNOWLEDGED")
-            : [];
-          setPendingCalls(
-            active.map((c) => ({
-              id: c.id,
-              tableNumber: c.table.number,
-              tableLabel: c.table.label,
-              message: c.message,
-              status: c.status,
-              createdAt: c.createdAt,
-            }))
-          );
-        })
-        .catch(() => {});
-    }
+  async function requestNotifPermission() {
+    if (!("Notification" in window)) return;
+    const result = await Notification.requestPermission();
+    setNotifGranted(result === "granted");
+  }
 
+  // Orders: poll every 8s. A new NEW-status order gets a soft chime — useful
+  // for kitchen staff who aren't staring at the screen. Background/closed-app
+  // alerts are covered separately by push (see /api/restaurants/[id]/orders).
+  const fetchOrders = useCallback(() => {
+    fetch(`/api/restaurants/${id}/orders`)
+      .then((r) => r.json())
+      .then((data) => {
+        const list: OrderTicket[] = Array.isArray(data) ? data : [];
+        const currentNewIds = new Set(list.filter((o) => o.status === "NEW").map((o) => o.id));
+        if (prevNewOrderIds.current) {
+          const hasNew = [...currentNewIds].some((oid) => !prevNewOrderIds.current!.has(oid));
+          if (hasNew) playChime([660]);
+        }
+        prevNewOrderIds.current = currentNewIds;
+        setOrders(list);
+      })
+      .catch(() => {});
+  }, [id]);
+
+  useEffect(() => {
     fetchOrders();
-    fetchCallCount();
-    const interval = setInterval(() => { fetchOrders(); fetchCallCount(); }, 8000);
+    const interval = setInterval(fetchOrders, 8000);
     return () => clearInterval(interval);
-  }, [id, orderPollKey, canUseCalls]);
+  }, [fetchOrders, orderPollKey]);
+
+  // Calls: poll every 3s (faster than orders — a call is someone waiting on
+  // the spot) and fold in a chime + browser notification for new PENDING
+  // calls, matching what the old standalone Live board did.
+  const fetchCalls = useCallback(() => {
+    if (!canUseCalls) return;
+    fetch(`/api/restaurants/${id}/waiter-calls`)
+      .then((r) => r.json())
+      .then((data: RawWaiterCall[]) => {
+        const raw = Array.isArray(data) ? data : [];
+        setCallHistory(raw);
+
+        const active = raw
+          .filter((c) => c.status === "PENDING" || c.status === "ACKNOWLEDGED")
+          .map((c) => ({
+            id: c.id,
+            tableNumber: c.table.number,
+            tableLabel: c.table.label,
+            message: c.message,
+            status: c.status as WaiterCall["status"],
+            createdAt: c.createdAt,
+          }))
+          .sort((a, b) => {
+            if (a.status !== b.status) return a.status === "PENDING" ? -1 : 1;
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          });
+
+        const newPendingIds = new Set(active.filter((c) => c.status === "PENDING").map((c) => c.id));
+        const newlyArrived = active.filter((c) => c.status === "PENDING" && !prevPendingCallIds.current.has(c.id));
+        if (newlyArrived.length > 0) {
+          playChime([880, 1100, 1320]);
+          newlyArrived.forEach((c) =>
+            showBrowserNotification(
+              `${c.tableLabel || `Table ${c.tableNumber}`} needs help`,
+              c.message || "Customer requesting assistance",
+              c.id
+            )
+          );
+        }
+        prevPendingCallIds.current = newPendingIds;
+        setPendingCalls(active);
+      })
+      .catch(() => {});
+  }, [id, canUseCalls]);
+
+  useEffect(() => {
+    fetchCalls();
+    const interval = setInterval(fetchCalls, 3000);
+    return () => clearInterval(interval);
+  }, [fetchCalls]);
+
+  async function updateCallStatus(callId: string, status: "ACKNOWLEDGED" | "RESOLVED") {
+    setUpdatingCallId(callId);
+    try {
+      const res = await fetch(`/api/restaurants/${id}/waiter-calls`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callId, status }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast((data as { error?: string }).error || "Could not update call", "error");
+        return;
+      }
+      await fetchCalls();
+    } finally {
+      setUpdatingCallId(null);
+    }
+  }
 
   useEffect(() => {
     if (!canManageStaff) {
@@ -287,6 +393,10 @@ export default function StaffPage() {
   const readyToCloseCount = useMemo(() => {
     return orders.filter((o) => o.status === "SERVED").length;
   }, [orders]);
+
+  const focusCall = pendingCalls[0] || null;
+  const callQueue = pendingCalls.slice(1);
+  const resolvedCallCount = callHistory.filter((c) => c.status === "RESOLVED").length;
 
   useEffect(() => {
     setVisibleOrders(6);
@@ -516,25 +626,20 @@ export default function StaffPage() {
               {actorType === "USER" ? "Admin" : (staffRole || "Staff")}
             </span>
             <div className="flex items-center gap-2">
-              {canUseCalls && (
-                <Link
-                  href={`/dashboard/restaurant/${id}/live`}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition relative overflow-hidden"
-                >
-                  {pendingCalls.length > 0 && (
-                    <span className="absolute inset-0 bg-red-400 animate-ping opacity-30 rounded-xl" />
-                  )}
-                  <svg className="w-3.5 h-3.5 relative" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                  </svg>
-                  <span className="relative">Live Board</span>
-                  {pendingCalls.length > 0 && (
-                    <span className="relative bg-white text-red-600 text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center leading-none">
-                      {pendingCalls.length}
-                    </span>
-                  )}
-                </Link>
-              )}
+              <button
+                onClick={requestNotifPermission}
+                title={notifGranted ? "Notifications enabled" : "Enable browser notifications for new calls and orders"}
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg border transition ${
+                  notifGranted
+                    ? "border-amber-200 bg-amber-50 text-amber-700"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill={notifGranted ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                {notifGranted ? "Alerts on" : "Enable alerts"}
+              </button>
               <button
                 onClick={() => setSimpleView((v) => !v)}
                 className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
@@ -599,35 +704,148 @@ export default function StaffPage() {
           </svg>
           Orders
         </button>
-        {canUseCalls && (
-          <Link
-            href={`/dashboard/restaurant/${id}/live`}
-            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800 transition whitespace-nowrap"
-          >
-            <span className={`w-2 h-2 rounded-full ${pendingCalls.length > 0 ? "bg-red-400 animate-pulse" : "bg-emerald-400"}`} />
-            Live
-          </Link>
-        )}
       </div>
 
       {activeTab === "calls" && canUseCalls && (
-        <section className="surface-card p-8 text-center max-w-md mx-auto">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${pendingCalls.length > 0 ? "bg-red-50" : "bg-emerald-50"}`}>
-            <svg className={`w-6 h-6 ${pendingCalls.length > 0 ? "text-red-500" : "text-emerald-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
+        <section className="max-w-lg mx-auto space-y-3">
+          {/* Focus: the call that needs attention right now */}
+          {focusCall ? (
+            <div className="surface-card overflow-hidden">
+              <div className={`flex items-center gap-2 px-5 py-2.5 ${focusCall.status === "PENDING" ? "bg-red-500" : "bg-amber-500"}`}>
+                <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                <span className="text-[11px] font-extrabold uppercase tracking-widest text-white/90">
+                  {focusCall.status === "PENDING" ? "Needs Attention" : "On the Way"}
+                </span>
+                <span className="ml-auto text-[11px] text-white/80">{timeAgoShort(focusCall.createdAt)}</span>
+              </div>
+              <div className="p-5">
+                <p className="text-[11px] text-gray-400 font-semibold uppercase tracking-wide mb-1">Table</p>
+                <h2 className="text-4xl font-black text-gray-900 leading-none truncate mb-1">
+                  {focusCall.tableLabel || focusCall.tableNumber}
+                </h2>
+                {focusCall.message && (
+                  <p className="mt-2 text-sm text-gray-500 leading-relaxed italic">&ldquo;{focusCall.message}&rdquo;</p>
+                )}
+                <div className={`mt-4 grid gap-2.5 ${focusCall.status === "PENDING" ? "grid-cols-2" : "grid-cols-1"}`}>
+                  {focusCall.status === "PENDING" && (
+                    <button
+                      onClick={() => updateCallStatus(focusCall.id, "ACKNOWLEDGED")}
+                      disabled={updatingCallId === focusCall.id}
+                      className="btn-soft py-3.5"
+                    >
+                      On My Way
+                    </button>
+                  )}
+                  <button
+                    onClick={() => updateCallStatus(focusCall.id, "RESOLVED")}
+                    disabled={updatingCallId === focusCall.id}
+                    className="btn-primary py-3.5"
+                  >
+                    {updatingCallId === focusCall.id ? "Saving…" : "Mark Resolved"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="surface-card p-8 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-extrabold text-gray-900 mb-1">All Clear</h2>
+              <p className="text-sm text-gray-500">No active calls right now</p>
+              {resolvedCallCount > 0 && (
+                <p className="mt-2 text-xs text-emerald-600 font-semibold">{resolvedCallCount} resolved today</p>
+              )}
+            </div>
+          )}
+
+          {/* Queue: everything else waiting */}
+          {callQueue.length > 0 && (
+            <div className="surface-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Queue</h3>
+                <span className="text-xs text-gray-400">{callQueue.length} waiting</span>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {callQueue.map((call) => (
+                  <div key={call.id} className="px-4 py-3.5 flex items-center gap-3">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${call.status === "PENDING" ? "bg-red-400 animate-pulse" : "bg-amber-400"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-gray-900 truncate">{call.tableLabel || `Table ${call.tableNumber}`}</p>
+                      {call.message && <p className="text-xs text-gray-400 truncate mt-0.5">{call.message}</p>}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[11px] text-gray-400">{timeAgoShort(call.createdAt)}</span>
+                      {call.status === "PENDING" && (
+                        <button
+                          onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
+                          disabled={updatingCallId === call.id}
+                          className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-600 hover:bg-amber-100 transition font-semibold disabled:opacity-50"
+                        >
+                          ACK
+                        </button>
+                      )}
+                      <button
+                        onClick={() => updateCallStatus(call.id, "RESOLVED")}
+                        disabled={updatingCallId === call.id}
+                        className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition font-semibold disabled:opacity-50"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* History */}
+          <div className="surface-card overflow-hidden">
+            <button
+              onClick={() => setShowCallHistory((v) => !v)}
+              className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-50 transition"
+            >
+              <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Call History</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-400">{callHistory.length} total</span>
+                <svg className={`w-4 h-4 text-gray-400 transition-transform ${showCallHistory ? "rotate-180" : ""}`}
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {showCallHistory && (
+              <div className="border-t border-gray-100 max-h-64 overflow-y-auto divide-y divide-gray-100">
+                {callHistory.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-sm text-gray-400">No calls yet</p>
+                ) : (
+                  callHistory.slice(0, 30).map((call) => (
+                    <div key={call.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-700 truncate">
+                          {call.table?.label || `Table ${call.table?.number}`}
+                        </p>
+                        {call.message && <p className="text-xs text-gray-400 truncate">{call.message}</p>}
+                      </div>
+                      <div className="text-right shrink-0 space-y-1">
+                        <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${
+                          call.status === "PENDING"      ? "bg-red-100 text-red-600" :
+                          call.status === "ACKNOWLEDGED" ? "bg-amber-100 text-amber-600" :
+                                                           "bg-emerald-100 text-emerald-600"
+                        }`}>
+                          {call.status === "ACKNOWLEDGED" ? "ACK" : call.status}
+                        </div>
+                        <p className="text-[10px] text-gray-400">{timeAgoShort(call.createdAt)}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
-          <p className="text-3xl font-extrabold text-gray-900">{pendingCalls.length}</p>
-          <p className="text-sm text-gray-500 mb-5">
-            {pendingCalls.length === 0
-              ? "No active waiter calls"
-              : pendingCalls.length === 1
-                ? "waiter call waiting"
-                : "waiter calls waiting"}
-          </p>
-          <Link href={`/dashboard/restaurant/${id}/live`} className="btn-primary inline-flex">
-            Open Live Board
-          </Link>
         </section>
       )}
 

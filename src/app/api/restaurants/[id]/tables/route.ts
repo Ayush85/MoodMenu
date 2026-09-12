@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
+import { signTableToken } from "@/lib/table-token";
 
 async function verifyAccess(restaurantId: string, userId: string, actorType?: string) {
   if (actorType === "STAFF") {
@@ -35,7 +36,14 @@ export const GET = withApiLogging(async function GET(
     orderBy: { number: "asc" },
   });
 
-  return NextResponse.json(tables);
+  // Each table's QR code embeds this token so the public menu can prove the
+  // table number wasn't hand-edited in the URL — see src/lib/table-token.ts.
+  const withTokens = tables.map((table) => ({
+    ...table,
+    qrToken: signTableToken(id, table.number),
+  }));
+
+  return NextResponse.json(withTokens);
 });
 
 export const POST = withApiLogging(async function POST(

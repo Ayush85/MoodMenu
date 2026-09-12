@@ -394,7 +394,6 @@ export default function Sidebar() {
           (isStaff
             ? [
                 { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
-                { label: "Live", href: `/dashboard/restaurant/${currentRestaurantId}/live`, active: pathname.includes("/live"), icon: MoreHorizontal },
               ]
             : [
                 { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: ClipboardList },

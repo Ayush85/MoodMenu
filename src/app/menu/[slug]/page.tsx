@@ -6,12 +6,13 @@ import { evaluateMood } from "@/lib/mood-engine";
 import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS, getFontOption } from "@/types";
 import MenuClient from "@/components/menu/MenuClient";
 import { isOfferCurrentlyValid } from "@/lib/offers";
+import { isValidTableToken } from "@/lib/table-token";
 
 export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ table?: string; wifi?: string; preview?: string }>;
+  searchParams: Promise<{ table?: string; t?: string; wifi?: string; preview?: string }>;
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
@@ -70,7 +71,7 @@ function getRestaurantHour(): number {
 
 export default async function PublicMenuPage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const { table: tableParam, wifi: wifiParam, preview: previewParam } = await searchParams;
+  const { table: tableParam, t: tableTokenParam, wifi: wifiParam, preview: previewParam } = await searchParams;
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
@@ -90,6 +91,19 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   });
 
   if (!restaurant) notFound();
+
+  // A table number is only trusted when it carries a valid signed token —
+  // otherwise it was hand-typed/edited in the URL bar, not scanned off this
+  // restaurant's own printed QR code. An untrusted table drops to "no
+  // table" (browse-only; no Call Waiter), matching a customer who opened
+  // the menu without a table QR at all. See src/lib/table-token.ts.
+  const rawTableNumber = tableParam ? parseInt(tableParam) : null;
+  const tableIsValid =
+    rawTableNumber !== null &&
+    Number.isFinite(rawTableNumber) &&
+    isValidTableToken(restaurant.id, rawTableNumber, tableTokenParam);
+  const tableNumber = tableIsValid ? rawTableNumber : null;
+  const tableToken = tableIsValid ? (tableTokenParam as string) : null;
 
   // Fetch weather & evaluate mood
   const weather = await getWeather({
@@ -252,7 +266,8 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       weather={mood.weather}
       ruleName={mood.ruleName}
       greeting={greeting}
-      tableNumber={tableParam ? parseInt(tableParam) : null}
+      tableNumber={tableNumber}
+      tableToken={tableToken}
       autoOpenWifiPrompt={wifiParam === "1"}
       previewMode={!!previewPreset}
     />

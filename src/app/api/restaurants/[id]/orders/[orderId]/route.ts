@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OrderStatus } from "@/generated/prisma/client";
 import { withApiLogging } from "@/lib/api-handler";
+import { sendPush } from "@/lib/push";
 
 const validStatuses = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const;
 
@@ -97,6 +98,42 @@ export const PATCH = withApiLogging(async function PATCH(
         where: { id: updated.sessionId },
         data: { status: "CLOSED", endedAt: new Date() },
       });
+    }
+  }
+
+  // Kitchen marking an order SERVED is the signal a waiter needs to go
+  // pick it up — that's the one status change worth interrupting someone
+  // for. (NEW/PREPARING are visible on the order board already; PAID/
+  // CANCELED are low-urgency wrap-up steps.)
+  if (status === "SERVED") {
+    const recipients = await prisma.restaurant.findFirst({
+      where: { id },
+      select: {
+        ownerId: true,
+        staffMembers: { where: { isActive: true, role: "WAITER" }, select: { id: true } },
+      },
+    });
+
+    if (recipients) {
+      const recipientIds = [recipients.ownerId, ...recipients.staffMembers.map((s) => s.id)]
+        .filter((rid) => rid !== session.user!.id);
+
+      if (recipientIds.length > 0) {
+        const tableLabel = updated.table.label || `Table ${updated.table.number}`;
+        sendPush({
+          title: `✅ Order ready — ${tableLabel}`,
+          body: `${updated.items.length} item${updated.items.length !== 1 ? "s" : ""} ready to serve`,
+          userIds: recipientIds,
+          url: `/dashboard/restaurant/${id}/staff`,
+          data: {
+            type: "order_status",
+            orderId: updated.id,
+            status: "SERVED",
+            tableNumber: String(updated.table.number),
+            restaurantId: id,
+          },
+        });
+      }
     }
   }
 

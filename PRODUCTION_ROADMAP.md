@@ -11,6 +11,14 @@ mood-adaptive theming by weather/time (`src/lib/mood-engine.ts`), table sessions
 waiter calls, orders, staff roles, offers, expenses, custom-domain provisioning,
 QR codes, push notifications, and AI-assisted menu import/image generation.
 
+**Infra fix (2026-09-12):** `docker-compose.yml` previously had no `db`
+service at all — `DATABASE_URL` pointed at `host.docker.internal:5432`,
+which happened to be won by a *different, unrelated project's* Postgres
+container on this dev machine. Added a proper compose-managed `db` service
+(named volume `menuor_pgdata`, healthcheck, `depends_on: condition:
+service_healthy`) and migrated the live data into it via `pg_dump`/
+`pg_restore`. `app` now also has a Docker healthcheck against `/api/health`.
+
 Gaps found in review that aren't reflected in the phases below yet:
 
 - Restaurant-access authorization is re-implemented per API route (e.g.
@@ -76,10 +84,13 @@ Gaps found in review that aren't reflected in the phases below yet:
 
 ## Phase 2: Operational Reliability
 
-- Add structured logging with request IDs.
-- Add health endpoints: liveness, readiness, DB readiness. (see "Now" item 5)
+- Add structured logging with request IDs. — done (`src/lib/logger.ts`,
+  `src/lib/api-handler.ts`, applied to every API route)
+- Add health endpoints: liveness, readiness, DB readiness. — done
+  (`/api/health`; wired into the `app` service's Docker healthcheck in
+  `docker-compose.yml`)
 - Add centralized API error shape and error codes.
-- Add retry/backoff for external weather API.
+- Add retry/backoff for external weather API. — done (`src/lib/weather.ts`)
 - Add background cleanup for stale pending calls/orders.
 
 ## Phase 3: Core Real-World Restaurant Flows
@@ -103,7 +114,11 @@ Gaps found in review that aren't reflected in the phases below yet:
 - Audit log for sensitive actions (status change, user role, staff disable).
 - Data retention policy for calls/orders/logs.
 - PII minimization and export/delete workflows.
-- Backups and restore drills for PostgreSQL.
+- Backups and restore drills for PostgreSQL. — backup script done
+  (`scripts/backup-db.sh`, run manually or via cron; see its header for the
+  restore command). Restore path has been exercised for real (a full
+  migration off a port-5432 collision, see below) but not yet drilled as a
+  routine.
 
 ## Phase 6: Scale and Performance
 

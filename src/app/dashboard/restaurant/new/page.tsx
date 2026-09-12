@@ -113,7 +113,7 @@ export default function NewRestaurantPage() {
               type="text"
               name="slug"
               required
-              pattern="[a-z0-9-]+"
+              pattern="[a-z0-9\-]+"
               className="control-input flex-1 font-mono !py-3"
               placeholder="momo-house-manthali"
             />

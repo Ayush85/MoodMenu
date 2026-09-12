@@ -1,4 +1,23 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: menuor-db-managed
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-menuor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-menuor}
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-menuor} -d ${POSTGRES_DB:-menuor}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+    volumes:
+      - menuor_pgdata:/var/lib/postgresql/data
+
   app:
     build:
       context: .
@@ -6,6 +25,10 @@ services:
 
     container_name: menuor-app
     restart: unless-stopped
+
+    depends_on:
+      db:
+        condition: service_healthy
 
     ports:
       - "127.0.0.1:${APP_PORT:-3030}:3030"
@@ -21,6 +44,13 @@ services:
 
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3030/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
 
     volumes:
       - ./storage/uploads:/app/uploads
@@ -43,3 +73,7 @@ services:
 
     volumes:
       - ./storage/uploads:/home/menuor/uploads
+
+
+volumes:
+  menuor_pgdata:

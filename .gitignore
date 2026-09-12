@@ -61,3 +61,6 @@ volumes/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# local db backups (may contain secrets/password hashes)
+.dbbackup/

@@ -12,6 +12,30 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+const CACHE_NAME = "menuor-shell-v1";
+const SHELL_ASSETS = ["/", "/logo.svg", "/manifest.webmanifest"];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting()));
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim()));
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET" || !event.request.url.startsWith(self.location.origin)) return;
+  const path = new URL(event.request.url).pathname;
+  const privateRoute = path.startsWith("/dashboard") || path.startsWith("/admin") || path.startsWith("/api") || path.startsWith("/login") || path.startsWith("/register");
+  event.respondWith(fetch(event.request).then((response) => {
+    if (!privateRoute && response.ok && event.request.destination === "document") {
+      const copy = response.clone();
+      void caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+    }
+    return response;
+  }).catch(() => caches.match(event.request).then((cached) => cached || caches.match("/"))));
+});
+
 messaging.onBackgroundMessage((payload) => {
   const { title, body } = payload.notification || {};
   const data = payload.data || {};

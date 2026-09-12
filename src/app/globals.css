@@ -337,6 +337,20 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html { scroll-padding-top: 4rem; }
+body { overflow-x: hidden; }
+
+@media (max-width: 767px) {
+  .page-shell { width: 100%; }
+  .surface-card { border-radius: 1rem; }
+  .btn-primary, .btn-soft { min-height: 2.75rem; }
+  input, select, textarea { font-size: 16px; }
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}
+
 a, button, input, select, textarea, [role="button"] {
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;

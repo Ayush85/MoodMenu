@@ -217,7 +217,7 @@ export default function CartDrawer({
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => onUpdateQty(item.id, -1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base"
+                        className="min-h-10 min-w-10 w-10 rounded-xl flex items-center justify-center font-bold text-base"
                         style={{ backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)" }}
                       >
                         −
@@ -225,7 +225,7 @@ export default function CartDrawer({
                       <span className="w-5 text-center font-extrabold text-sm">{item.quantity}</span>
                       <button
                         onClick={() => onUpdateQty(item.id, +1)}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-base text-white"
+                        className="min-h-10 min-w-10 w-10 rounded-xl flex items-center justify-center font-bold text-base text-white"
                         style={{ backgroundColor: theme.primary }}
                       >
                         +
@@ -245,7 +245,7 @@ export default function CartDrawer({
             {/* Note + checkout */}
             {items.length > 0 && (
               <div
-                className="flex-shrink-0 px-5 pb-8 pt-3 space-y-3"
+                className="flex-shrink-0 px-5 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-3 space-y-3"
                 style={{ borderTop: `1px solid ${borderColor}` }}
               >
                 <textarea

@@ -465,14 +465,14 @@ export default function StaffPage() {
   }
 
   return (
-    <div className="page-shell space-y-4 sm:space-y-5">
+    <div className="staff-panel page-shell space-y-4 sm:space-y-5">
       <header className="surface-card p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="page-title">Staff Panel</h1>
             <p className="page-subtitle mt-1">Action-first view for calls and orders</p>
           </div>
-          <div className="flex flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-col sm:items-end">
             <span className="text-xs px-2.5 py-1 rounded-full bg-gray-900 text-white font-semibold">
               {actorType === "USER" ? "Admin" : (staffRole || "Staff")}
             </span>
@@ -526,7 +526,7 @@ export default function StaffPage() {
         </div>
       </header>
 
-      <div className="surface-card p-1.5 flex gap-1.5">
+      <div className="surface-card sticky top-[4.5rem] z-20 flex gap-1.5 p-1.5 sm:static">
         {canUseCalls && (
           <button
             onClick={() => setActiveTab("calls")}
@@ -596,14 +596,14 @@ export default function StaffPage() {
         <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
           <div className="xl:col-span-8 space-y-4 order-2 xl:order-1">
             <div className="surface-card p-4 sm:p-5 space-y-3">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                 {(["ALL", "NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const).map((status) => {
                   const count = status === "ALL" ? orders.length : orderCounts[status];
                   return (
                     <button
                       key={status}
                       onClick={() => setOrderStatusFilter(status)}
-                      className={`text-xs px-3 py-1.5 rounded-full border transition flex items-center gap-1.5 ${orderStatusFilter === status ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
+                      className={`min-h-10 shrink-0 text-xs px-3 rounded-xl border transition flex items-center gap-1.5 ${orderStatusFilter === status ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
                     >
                       {status}
                       {count > 0 && (
@@ -686,7 +686,7 @@ export default function StaffPage() {
                           {suggestedStatus && canUpdateStatus(suggestedStatus) && (
                             <button
                               onClick={() => updateOrderStatus(order.id, suggestedStatus)}
-                              className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold transition"
+                              className="flex min-h-10 items-center gap-1 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white transition hover:bg-orange-600"
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -700,13 +700,13 @@ export default function StaffPage() {
                               <button
                                 key={status}
                                 onClick={() => updateOrderStatus(order.id, status)}
-                                className={`text-xs px-3 py-1.5 rounded-full border font-medium transition ${
+                              className={`min-h-10 text-xs px-3 rounded-xl border font-medium transition ${
                                   status === "CANCELED"
                                     ? "border-red-200 text-red-500 bg-red-50 hover:bg-red-100"
                                     : "border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
                                 }`}
                               >
-                                {status}
+                                {STATUS_META[status].label}
                               </button>
                             ))}
                         </div>
@@ -752,7 +752,7 @@ export default function StaffPage() {
               <>
                 {!showComposer && (
                   <button onClick={() => setShowComposer(true)} className="btn-primary w-full xl:hidden">
-                    Open Order Composer
+                    Create staff order
                   </button>
                 )}
 
@@ -824,7 +824,7 @@ export default function StaffPage() {
                       <div className="flex gap-2 mt-3">
                         <button onClick={clearDraft} className="btn-soft flex-1">Clear</button>
                         <button onClick={submitOrder} disabled={savingOrder || !selectedTableId || orderDraft.length === 0} className="btn-primary flex-1">
-                          {savingOrder ? "Saving..." : "Save"}
+                          {savingOrder ? "Sending..." : "Send order"}
                         </button>
                       </div>
                     </div>
@@ -895,14 +895,14 @@ export default function StaffPage() {
                         </select>
                         <button
                           onClick={() => updateStaffMember(member.id, { isActive: !member.isActive })}
-                          className={`text-xs px-3 py-1 rounded-full ${member.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}
+                          className={`min-h-10 text-xs px-3 rounded-xl ${member.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}
                         >
                           {member.isActive ? "Active" : "Inactive"}
                         </button>
-                        <button onClick={() => deleteStaffMember(member.id)} className="text-xs px-3 py-1 rounded-full bg-red-100 text-red-700">
+                        <button onClick={() => deleteStaffMember(member.id)} className="min-h-10 text-xs px-3 rounded-xl bg-red-100 text-red-700">
                           Remove
                         </button>
-                        <button onClick={() => resetStaffPassword(member.id)} className="text-xs px-3 py-1 rounded-full bg-indigo-100 text-indigo-700">
+                        <button onClick={() => resetStaffPassword(member.id)} className="min-h-10 text-xs px-3 rounded-xl bg-indigo-100 text-indigo-700">
                           Reset Password
                         </button>
                       </div>

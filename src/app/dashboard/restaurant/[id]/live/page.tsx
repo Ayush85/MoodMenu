@@ -204,7 +204,7 @@ export default function LiveWaiterPage() {
 
   return (
     /* fixed inset-0 so it covers the sidebar & dashboard layout */
-    <div className="fixed inset-0 z-50 bg-[#080810] text-white flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#080810] text-white flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]">
 
       {/* ── Top bar ── */}
       <header className="shrink-0 flex items-center justify-between px-4 h-14 bg-black/30 border-b border-white/6 backdrop-blur-sm">

@@ -462,6 +462,11 @@ img, video, canvas, svg {
     outline: none;
   }
 
+  .field-label {
+    @apply mb-1.5 block text-[11px] font-bold uppercase tracking-wide;
+    color: var(--text-secondary);
+  }
+
   /* Buttons */
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white;
@@ -469,6 +474,7 @@ img, video, canvas, svg {
     background-size: 200% 200%;
     box-shadow: 0 2px 12px var(--brand-glow);
     transition: all 0.3s ease;
+    min-height: 2.75rem;
   }
 
   .btn-primary:hover {
@@ -492,6 +498,7 @@ img, video, canvas, svg {
     border: 1.5px solid rgba(0,0,0,0.08);
     color: var(--text-secondary);
     transition: all 0.2s ease;
+    min-height: 2.75rem;
   }
 
   .btn-soft:hover {

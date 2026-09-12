@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import Logo from "@/components/ui/Logo";
 import NavLink from "@/components/ui/NavLink";
-import { Home, Menu as MenuIcon, MoreHorizontal, Tags, Users } from "lucide-react";
+import { ClipboardList, MoreHorizontal, Tags, Users } from "lucide-react";
 
 interface RestaurantOption {
   id: string;
@@ -389,15 +389,15 @@ export default function Sidebar() {
       )}
 
       {/* Mobile quick navigation keeps the four daily actions one tap away. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gray-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        {insideRestaurant && currentRestaurantId ? (
+      {insideRestaurant && currentRestaurantId && <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gray-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
+        {(
           (isStaff
             ? [
                 { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
                 { label: "Live", href: `/dashboard/restaurant/${currentRestaurantId}/live`, active: pathname.includes("/live"), icon: MoreHorizontal },
               ]
             : [
-                { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: MenuIcon },
+                { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: ClipboardList },
                 { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
                 { label: "Offers", href: `/dashboard/restaurant/${currentRestaurantId}/offers`, active: pathname.includes("/offers"), icon: Tags },
               ]
@@ -407,11 +407,9 @@ export default function Sidebar() {
               {item.label}
             </Link>
           ))
-        ) : (
-          <Link href="/dashboard" onClick={close} className="flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold text-orange-600"><Home className="mb-0.5 h-4 w-4" />Home</Link>
         )}
         <button onClick={() => setMobileOpen(true)} className="flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold text-gray-500"><MoreHorizontal className="mb-0.5 h-4 w-4" />More</button>
-      </nav>
+      </nav>}
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex md:flex-col md:w-60 md:h-screen md:sticky md:top-0 md:shrink-0 bg-white border-r border-gray-100">

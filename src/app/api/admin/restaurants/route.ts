@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET() {
+export const GET = withApiLogging(async function GET() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -20,9 +21,9 @@ export async function GET() {
   });
 
   return NextResponse.json(restaurants);
-}
+});
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withApiLogging(async function DELETE(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -32,4 +33,4 @@ export async function DELETE(req: NextRequest) {
   await prisma.restaurant.delete({ where: { id: restaurantId } });
 
   return NextResponse.json({ success: true });
-}
+});

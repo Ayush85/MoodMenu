@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWeather } from "@/lib/weather";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET(req: NextRequest) {
+export const GET = withApiLogging(async function GET(req: NextRequest) {
   const city = req.nextUrl.searchParams.get("city");
   const latitude = req.nextUrl.searchParams.get("lat");
   const longitude = req.nextUrl.searchParams.get("lon");
@@ -30,4 +31,4 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(weather);
-}
+});

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getStockSearchQuery, searchPexelsPhotos } from "@/lib/stock-photos";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -39,4 +40,4 @@ export async function POST(
 
   const results = await searchPexelsPhotos(query, 8);
   return NextResponse.json({ suggestedQuery: suggestedQuery ?? query, results });
-}
+});

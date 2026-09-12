@@ -5,6 +5,8 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { withApiLogging } from "@/lib/api-handler";
+import { logger } from "@/lib/logger";
 
 const PROMPT = `You are a menu parser. Extract all menu items from this menu image.
 Return ONLY valid JSON with this exact structure, no markdown, no explanation:
@@ -177,7 +179,7 @@ async function parseWithClaude(base64: string, mimeType: string): Promise<string
   return JSON.stringify(response.parsed_output ?? {});
 }
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -238,7 +240,11 @@ export async function POST(
     return NextResponse.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to process image";
-    console.error("Menu import error:", err);
+    logger.error("restaurant.import_from_photo_failed", {
+      error: err,
+      restaurantId: id,
+      provider,
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

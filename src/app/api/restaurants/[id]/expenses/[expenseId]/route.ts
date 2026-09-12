@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 async function ownerOnly(restaurantId: string, userId: string) {
   return prisma.restaurant.findFirst({ where: { id: restaurantId, ownerId: userId }, select: { id: true } });
 }
 
-export async function DELETE(
+export const DELETE = withApiLogging(async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; expenseId: string }> }
 ) {
@@ -18,4 +19,4 @@ export async function DELETE(
 
   await prisma.expense.deleteMany({ where: { id: expenseId, restaurantId: id } });
   return NextResponse.json({ success: true });
-}
+});

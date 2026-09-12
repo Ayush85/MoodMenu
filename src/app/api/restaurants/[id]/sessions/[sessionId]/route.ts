@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 async function canAccess(restaurantId: string, userId: string, actorType?: string) {
   if (actorType === "STAFF") {
@@ -13,7 +14,7 @@ async function canAccess(restaurantId: string, userId: string, actorType?: strin
 
 // PATCH /api/restaurants/[id]/sessions/[sessionId]
 // Body: { action: "close" }  — closes the session and marks all orders PAID
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; sessionId: string }> }
 ) {
@@ -49,4 +50,4 @@ export async function PATCH(
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-}
+});

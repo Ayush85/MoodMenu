@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 async function canAccess(restaurantId: string, userId: string, actorType?: string) {
   if (actorType === "STAFF") {
@@ -11,7 +12,7 @@ async function canAccess(restaurantId: string, userId: string, actorType?: strin
   return prisma.restaurant.findFirst({ where: { id: restaurantId, ownerId: userId } });
 }
 
-export async function GET(
+export const GET = withApiLogging(async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -39,4 +40,4 @@ export async function GET(
   });
 
   return NextResponse.json(sessions);
-}
+});

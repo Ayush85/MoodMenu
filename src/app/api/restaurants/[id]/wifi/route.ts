@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -36,4 +37,4 @@ export async function PATCH(
     wifiPassword: updated.wifiPassword,
     allowedIp: updated.allowedIp,
   });
-}
+});

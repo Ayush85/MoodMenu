@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 interface CsvRow {
   category: string;
@@ -10,7 +11,7 @@ interface CsvRow {
   tags?: string[];
 }
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -118,4 +119,4 @@ export async function POST(
     categoriesCreated,
     items: createdItems,
   });
-}
+});

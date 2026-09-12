@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { uploadImage } from "@/lib/storage";
+import { withApiLogging } from "@/lib/api-handler";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -41,4 +42,4 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
-}
+});

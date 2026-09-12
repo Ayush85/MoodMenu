@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { geocodeLocation } from "@/lib/weather";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET() {
+export const GET = withApiLogging(async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -33,9 +34,9 @@ export async function GET() {
   });
 
   return NextResponse.json(restaurants);
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -96,4 +97,4 @@ export async function POST(req: NextRequest) {
       : restaurant,
     { status: 201 }
   );
-}
+});

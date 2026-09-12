@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
@@ -65,9 +66,9 @@ export async function PATCH(
   });
 
   return NextResponse.json(updated);
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiLogging(async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; itemId: string }> }
 ) {
@@ -98,4 +99,4 @@ export async function DELETE(
   await prisma.menuItem.delete({ where: { id: itemId } });
 
   return NextResponse.json({ success: true });
-}
+});

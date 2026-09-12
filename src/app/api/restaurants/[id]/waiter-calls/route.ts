@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import type { CallStatus } from "@/generated/prisma/client";
+import { withApiLogging } from "@/lib/api-handler";
 
 const VALID_TRANSITIONS: Record<CallStatus, CallStatus[]> = {
   PENDING: ["ACKNOWLEDGED", "RESOLVED"],
@@ -31,7 +32,7 @@ async function getRestaurantAccess(restaurantId: string, sessionUser: { id: stri
   return { kind: "OWNER" };
 }
 
-export async function GET(
+export const GET = withApiLogging(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -62,9 +63,9 @@ export async function GET(
   });
 
   return NextResponse.json(calls);
-}
+});
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -118,4 +119,4 @@ export async function PATCH(
   });
 
   return NextResponse.json(call);
-}
+});

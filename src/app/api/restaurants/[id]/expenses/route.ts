@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 const VALID_CATEGORIES = ["INGREDIENTS","UTILITIES","STAFF","RENT","MAINTENANCE","MARKETING","EQUIPMENT","OTHER"] as const;
 
@@ -9,7 +10,7 @@ async function ownerOnly(restaurantId: string, userId: string) {
 }
 
 // GET /api/restaurants/[id]/expenses?from=YYYY-MM-DD&to=YYYY-MM-DD
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withApiLogging(async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -37,10 +38,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   return NextResponse.json(expenses);
-}
+});
 
 // POST /api/restaurants/[id]/expenses
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withApiLogging(async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -63,4 +64,4 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   return NextResponse.json(expense, { status: 201 });
-}
+});

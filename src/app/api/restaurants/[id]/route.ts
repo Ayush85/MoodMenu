@@ -6,8 +6,9 @@ import { isValidDomain, normalizeDomain } from "@/lib/restaurant-site";
 import { isPlatformHost } from "@/lib/site-host";
 import { requestDomainProvisioning } from "@/lib/domain-provision";
 import { Prisma } from "@/generated/prisma/client";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET(
+export const GET = withApiLogging(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -39,9 +40,9 @@ export async function GET(
   }
 
   return NextResponse.json(restaurant);
-}
+});
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -127,9 +128,9 @@ export async function PATCH(
 
   if (shouldTriggerDomainProvisioning) void requestDomainProvisioning();
   return NextResponse.json(updated);
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiLogging(async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -153,4 +154,4 @@ export async function DELETE(
   await prisma.restaurant.delete({ where: { id } });
 
   return NextResponse.json({ success: true });
-}
+});

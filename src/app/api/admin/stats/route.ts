@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET() {
+export const GET = withApiLogging(async function GET() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -36,4 +37,4 @@ export async function GET() {
     recentUsers,
     recentRestaurants,
   });
-}
+});

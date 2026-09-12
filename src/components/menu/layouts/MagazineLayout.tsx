@@ -11,8 +11,6 @@ export default function MagazineLayout({
   activeCategory,
   onCategoryChange,
   onTapItem,
-  getCartQty,
-  onQuickAdd,
   hideContent,
 }: MenuLayoutProps) {
   const isDark = theme.mode === "dark";
@@ -45,8 +43,6 @@ export default function MagazineLayout({
                 theme={theme}
                 layout={cardStyle}
                 onTap={onTapItem}
-                cartQty={getCartQty(item.id)}
-                onQuickAdd={onQuickAdd}
               />
             ))}
           </div>
@@ -76,8 +72,6 @@ export default function MagazineLayout({
                 theme={theme}
                 layout={cardStyle}
                 onTap={onTapItem}
-                cartQty={getCartQty(item.id)}
-                onQuickAdd={onQuickAdd}
               />
             ))}
 

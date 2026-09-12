@@ -6,6 +6,7 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import { prisma } from "./db";
+import { logger } from "./logger";
 
 interface PushPayload {
   title: string;
@@ -63,7 +64,7 @@ export async function sendPush({ title, body, userIds, url, data }: PushPayload)
 
     return res.successCount > 0;
   } catch (err) {
-    console.error("[Push] FCM error:", err);
+    logger.error("push.fcm_send_failed", { error: err });
     return false;
   }
 }

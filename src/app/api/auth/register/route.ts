@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { isValidEmail, normalizeEmail, validatePassword } from "@/lib/password-policy";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function POST(req: NextRequest) {
+export const POST = withApiLogging(async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const email = normalizeEmail(String(body?.email || ""));
@@ -50,4 +51,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

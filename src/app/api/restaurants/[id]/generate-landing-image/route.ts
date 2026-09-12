@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
+import { withApiLogging } from "@/lib/api-handler";
+import { logger } from "@/lib/logger";
 
 function buildPrompt(restaurantName: string, text: string, customPrompt: string | undefined, theme: { primary?: string; accent?: string; bg?: string } | null) {
   const palette = [theme?.primary, theme?.accent, theme?.bg].filter(Boolean).join(", ");
@@ -30,7 +32,7 @@ async function generateGemini(prompt: string) {
   return Buffer.from(response.data, "base64");
 }
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withApiLogging(async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
@@ -51,7 +53,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     return NextResponse.json({ url: await uploadImage(buffer, "image/png") });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to generate highlight image";
-    console.error("Landing highlight image generation error:", error);
+    logger.error("restaurant.generate_landing_image_failed", {
+      error,
+      restaurantId: id,
+      provider: process.env.AI_IMAGE_PROVIDER?.toLowerCase(),
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

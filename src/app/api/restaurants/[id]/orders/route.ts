@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendPush } from "@/lib/push";
+import { withApiLogging } from "@/lib/api-handler";
 
 interface CreateOrderItem {
   itemName: string;
@@ -31,7 +32,7 @@ async function getRestaurantAccess(restaurantId: string, sessionUser: { id: stri
   return { kind: "OWNER" };
 }
 
-export async function GET(
+export const GET = withApiLogging(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -62,9 +63,9 @@ export async function GET(
   });
 
   return NextResponse.json(orders);
-}
+});
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -179,4 +180,4 @@ export async function POST(
   }
 
   return NextResponse.json(order, { status: 201 });
-}
+});

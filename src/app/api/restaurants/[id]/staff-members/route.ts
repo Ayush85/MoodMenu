@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { isValidEmail, normalizeEmail, validatePassword } from "@/lib/password-policy";
+import { withApiLogging } from "@/lib/api-handler";
 
 const allowedRoles = ["WAITER", "COOK", "CHEF"] as const;
 
@@ -36,7 +37,7 @@ function toPublicStaff(staff: {
   };
 }
 
-export async function GET(
+export const GET = withApiLogging(async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -58,9 +59,9 @@ export async function GET(
   });
 
   return NextResponse.json(staff.map(toPublicStaff));
-}
+});
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -115,9 +116,9 @@ export async function POST(
   });
 
   return NextResponse.json(toPublicStaff(created), { status: 201 });
-}
+});
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -180,9 +181,9 @@ export async function PATCH(
   });
 
   return NextResponse.json(toPublicStaff(updated));
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiLogging(async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -210,4 +211,4 @@ export async function DELETE(
   });
 
   return NextResponse.json({ success: true });
-}
+});

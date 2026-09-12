@@ -12,25 +12,9 @@ import type { ActiveOffer } from "@/lib/offers";
 import BottomBar from "./BottomBar";
 import CallWaiterModal from "./CallWaiterModal";
 import ItemDetailModal from "./ItemDetailModal";
-import CartDrawer, { CartItem } from "./CartDrawer";
-import { useToast } from "@/components/Toast";
 import ClassicLayout from "./layouts/ClassicLayout";
 import TabbedLayout from "./layouts/TabbedLayout";
 import MagazineLayout from "./layouts/MagazineLayout";
-
-function statusColor(status: string, fallback: string) {
-  if (status === "PAID") return "#10b981";
-  if (status === "SERVED") return "#8b5cf6";
-  if (status === "PREPARING" || status === "PENDING") return "#f59e0b";
-  return fallback;
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: "Order received",
-  PREPARING: "Preparing your order",
-  SERVED: "Served — enjoy!",
-  PAID: "Paid",
-};
 
 interface MenuItemData {
   id: string;
@@ -98,10 +82,6 @@ export default function MenuClient({
   const LayoutComponent = LAYOUT_COMPONENTS[layoutTemplate] ?? ClassicLayout;
   const isDark = theme.mode === "dark";
   const totalItems = categories.reduce((acc, c) => acc + c.items.length, 0);
-  const canOrder = tableNumber !== null;
-  const { toast } = useToast();
-  const cartStorageKey = `menuor:cart:${restaurant.slug}`;
-  const [lostTableBanner, setLostTableBanner] = useState<number | null>(null);
 
   // Waiter call state
   const [callStatus, setCallStatus] = useState<"idle" | "calling" | "sent" | "error">("idle");
@@ -114,87 +94,19 @@ export default function MenuClient({
   const [showWifiModal, setShowWifiModal] = useState(false);
   const [wifiQR, setWifiQR] = useState<string | null>(null);
 
-  // Item detail + cart
+  // Item detail
   const [selectedItem, setSelectedItem] = useState<MenuItemData | null>(null);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-  const [showCart, setShowCart] = useState(false);
 
   // Item search
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-
-  // Session
-  interface SessionOrder {
-    id: string;
-    status: string;
-    total: number;
-    createdAt: string;
-    items: { itemName: string; quantity: number; unitPrice: number }[];
-  }
-  interface ActiveSession {
-    id: string;
-    totalAmount: number;
-    startedAt: string;
-    orders: SessionOrder[];
-  }
-  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
-  const [showSessionHistory, setShowSessionHistory] = useState(false);
-
-  async function refreshSession() {
-    if (!tableNumber) return;
-    try {
-      const res = await fetch(`/api/menu/${restaurant.slug}/session?table=${tableNumber}`);
-      if (res.ok) {
-        const data = await res.json();
-        setActiveSession(data.session || null);
-      }
-    } catch { /* silent */ }
-  }
-
-  useEffect(() => {
-    refreshSession();
-    if (!tableNumber) return;
-    // Poll for order status changes (Pending → Preparing → Served) without requiring the diner to reopen the sheet
-    const interval = setInterval(refreshSession, 15000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tableNumber]);
 
   // Filtered items for search
   const allMenuItems = useMemo(
     () => categories.flatMap((cat) => cat.items.map((item) => ({ ...item, categoryName: cat.name }))),
     [categories]
   );
-
-  // Rehydrate cart from localStorage (namespaced per restaurant), re-validating against the live menu
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(cartStorageKey);
-      if (!raw) return;
-      const saved: { table: number | null; items: CartItem[] } = JSON.parse(raw);
-
-      if (tableNumber !== null && saved.table === tableNumber && saved.items?.length) {
-        const validIds = new Set(allMenuItems.map((i) => i.id));
-        const valid = saved.items.filter((i) => validIds.has(i.id));
-        if (valid.length < saved.items.length) {
-          toast("Some saved cart items are no longer available and were removed", "info");
-        }
-        if (valid.length > 0) setCartItems(valid);
-      } else if (tableNumber === null && saved.table !== null && saved.items?.length) {
-        setLostTableBanner(saved.table);
-      }
-    } catch { /* corrupt/unavailable storage — ignore */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Persist cart + table so a refresh or backgrounded browser doesn't silently lose the order
-  useEffect(() => {
-    if (tableNumber === null) return;
-    try {
-      localStorage.setItem(cartStorageKey, JSON.stringify({ table: tableNumber, items: cartItems }));
-    } catch { /* storage unavailable — non-critical */ }
-  }, [cartItems, tableNumber, cartStorageKey]);
 
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -207,42 +119,6 @@ export default function MenuClient({
         item.categoryName.toLowerCase().includes(q)
     );
   }, [searchQuery, allMenuItems]);
-
-  const cartCount = useMemo(
-    () => cartItems.reduce((sum, i) => sum + i.quantity, 0),
-    [cartItems]
-  );
-
-  function addToCart(item: MenuItemData, qty: number) {
-    setCartItems((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
-      if (existing) {
-        return prev.map((i) =>
-          i.id === item.id
-            ? { ...i, quantity: Math.min(99, i.quantity + qty) }
-            : i
-        );
-      }
-      return [...prev, { id: item.id, name: item.name, price: item.price, quantity: qty, image: item.image }];
-    });
-  }
-
-  function updateCartQty(id: string, delta: number) {
-    setCartItems((prev) => {
-      const next = prev.map((i) =>
-        i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i
-      ).filter((i) => i.quantity > 0);
-      return next;
-    });
-  }
-
-  function clearCart() {
-    setCartItems([]);
-  }
-
-  function getCartQty(itemId: string) {
-    return cartItems.find((i) => i.id === itemId)?.quantity ?? 0;
-  }
 
   // Generate WiFi QR code
   useEffect(() => {
@@ -353,70 +229,6 @@ export default function MenuClient({
 
       <div className="max-w-lg mx-auto px-4">
 
-        {/* ── Lost table-context banner ── */}
-        {lostTableBanner !== null && !tableNumber && (
-          <div
-            className="mb-4 rounded-2xl p-3.5 flex items-center justify-between gap-3"
-            style={{ backgroundColor: theme.primary + "12", border: `1px solid ${theme.primary}30` }}
-          >
-            <p className="text-xs leading-relaxed" style={{ color: theme.text }}>
-              You have a saved cart for <strong>Table {lostTableBanner}</strong>. Reopen that table&apos;s menu link to keep ordering.
-            </p>
-            <button
-              onClick={() => setLostTableBanner(null)}
-              className="text-[11px] font-bold shrink-0 opacity-50"
-            >
-              Dismiss
-            </button>
-          </div>
-        )}
-
-        {/* ── Active Session Banner ── */}
-        {activeSession && tableNumber && (
-          <div
-            className="mb-4 rounded-2xl p-3.5 flex items-center justify-between gap-3"
-            style={{ backgroundColor: theme.primary + "15", border: `1px solid ${theme.primary}30` }}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ backgroundColor: theme.primary + "25" }}
-              >
-                <svg className="w-4 h-4" fill="none" stroke={theme.primary} strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-bold" style={{ color: theme.primary }}>
-                  Table {tableNumber} · Active Session
-                </p>
-                <p className="text-[11px] opacity-60" style={{ color: theme.text }}>
-                  {activeSession.orders.length} order{activeSession.orders.length !== 1 ? "s" : ""} · Rs. {activeSession.totalAmount.toLocaleString("en-IN")} total
-                </p>
-                {activeSession.orders.length > 0 && (
-                  <p
-                    className="text-[10px] font-bold mt-1 inline-flex items-center gap-1"
-                    style={{ color: statusColor(activeSession.orders[activeSession.orders.length - 1].status, theme.primary) }}
-                  >
-                    <span
-                      className="w-1.5 h-1.5 rounded-full animate-pulse"
-                      style={{ backgroundColor: statusColor(activeSession.orders[activeSession.orders.length - 1].status, theme.primary) }}
-                    />
-                    {STATUS_LABEL[activeSession.orders[activeSession.orders.length - 1].status] || activeSession.orders[activeSession.orders.length - 1].status}
-                  </p>
-                )}
-              </div>
-            </div>
-            <button
-              onClick={() => setShowSessionHistory(true)}
-              className="text-[11px] font-bold px-3 py-1.5 rounded-xl shrink-0"
-              style={{ backgroundColor: theme.primary, color: "#fff" }}
-            >
-              View
-            </button>
-          </div>
-        )}
-
         {/* ── Item Search Bar ── */}
         <div className="mb-4 relative">
           {showSearch ? (
@@ -478,8 +290,6 @@ export default function MenuClient({
                       theme={theme}
                       layout={cardStyle}
                       onTap={setSelectedItem}
-                      cartQty={getCartQty(item.id)}
-                      onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
                     />
                   ))}
                 </div>
@@ -497,83 +307,9 @@ export default function MenuClient({
           activeCategory={activeCategory}
           onCategoryChange={handleCategoryChange}
           onTapItem={setSelectedItem}
-          getCartQty={getCartQty}
-          onQuickAdd={canOrder ? (i) => addToCart(i, 1) : undefined}
           hideContent={showSearch && !!searchQuery}
         />
       </div>
-
-      {/* Session History Modal */}
-      {showSessionHistory && activeSession && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
-          <div
-            className="absolute inset-0"
-            style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
-            onClick={() => setShowSessionHistory(false)}
-          />
-          <div
-            className="relative w-full max-w-lg rounded-t-3xl animate-slide-up overflow-hidden"
-            style={{ backgroundColor: isDark ? "#1a1a1f" : "#ffffff", color: theme.text, maxHeight: "85vh" }}
-          >
-            <div className="p-5 overflow-y-auto" style={{ maxHeight: "85vh" }}>
-              <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)" }} />
-
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-base font-bold">Your Session</h3>
-                  <p className="text-[11px] opacity-40">Table {tableNumber} · {activeSession.orders.length} order{activeSession.orders.length !== 1 ? "s" : ""}</p>
-                </div>
-                <div
-                  className="text-sm font-extrabold px-3 py-1.5 rounded-xl"
-                  style={{ backgroundColor: theme.primary + "15", color: theme.primary }}
-                >
-                  Rs. {activeSession.totalAmount.toLocaleString("en-IN")}
-                </div>
-              </div>
-
-              <div className="space-y-3 pb-6">
-                {activeSession.orders.map((order, i) => (
-                  <div
-                    key={order.id}
-                    className="rounded-2xl p-3.5"
-                    style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold opacity-60">Order #{i + 1}</span>
-                      <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
-                        style={{
-                          backgroundColor:
-                            order.status === "PAID" ? "#10b981" + "20" :
-                              order.status === "SERVED" ? "#8b5cf6" + "20" :
-                                order.status === "PREPARING" ? "#f59e0b" + "20" : theme.primary + "20",
-                          color:
-                            order.status === "PAID" ? "#10b981" :
-                              order.status === "SERVED" ? "#8b5cf6" :
-                                order.status === "PREPARING" ? "#f59e0b" : theme.primary,
-                        }}
-                      >
-                        {order.status}
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      {order.items.map((line, j) => (
-                        <div key={j} className="flex items-center justify-between text-xs">
-                          <span className="opacity-70">{line.quantity}× {line.itemName}</span>
-                          <span className="font-semibold opacity-80">Rs. {(line.quantity * line.unitPrice).toLocaleString("en-IN")}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-2 pt-2 flex justify-end" style={{ borderTop: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}` }}>
-                      <span className="text-xs font-bold" style={{ color: theme.primary }}>Rs. {order.total.toLocaleString("en-IN")}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* WiFi Modal */}
       {showWifiModal && restaurant.wifiSsid && (
@@ -653,25 +389,10 @@ export default function MenuClient({
         tableNumber={tableNumber}
         hasWifi={!!restaurant.wifiSsid}
         callStatus={callStatus}
-        cartCount={cartCount}
         onCallWaiter={handleCallWaiterTap}
         onToggleWifi={() => setShowWifiModal((v) => !v)}
-        onOpenCart={() => setShowCart(true)}
         theme={theme}
       />
-
-      {/* Cart Drawer */}
-      {showCart && tableNumber && (
-        <CartDrawer
-          items={cartItems}
-          slug={restaurant.slug}
-          tableNumber={tableNumber}
-          theme={theme}
-          onClose={() => { setShowCart(false); refreshSession(); }}
-          onUpdateQty={updateCartQty}
-          onClear={clearCart}
-        />
-      )}
 
       {/* Call Waiter Modal */}
       {showCallModal && tableNumber && (
@@ -692,11 +413,6 @@ export default function MenuClient({
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           theme={theme}
-          canOrder={canOrder}
-          cartQty={getCartQty(selectedItem.id)}
-          onAddToCart={(item, qty) => {
-            addToCart(item, qty);
-          }}
         />
       )}
 

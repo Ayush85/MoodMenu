@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OrderStatus } from "@/generated/prisma/client";
+import { withApiLogging } from "@/lib/api-handler";
 
 const validStatuses = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const;
 
@@ -27,7 +28,7 @@ async function getRestaurantAccess(restaurantId: string, sessionUser: { id: stri
   return { kind: "OWNER" };
 }
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; orderId: string }> }
 ) {
@@ -100,4 +101,4 @@ export async function PATCH(
   }
 
   return NextResponse.json(updated);
-}
+});

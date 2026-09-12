@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { requestDomainProvisioning } from "@/lib/domain-provision";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -49,4 +50,4 @@ export async function POST(
       ? "Domain verified and HTTPS is active"
       : "Provisioning ran, but DNS or HTTPS is not ready yet",
   });
-}
+});

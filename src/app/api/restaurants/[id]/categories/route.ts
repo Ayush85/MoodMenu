@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -39,9 +40,9 @@ export async function POST(
   });
 
   return NextResponse.json(category, { status: 201 });
-}
+});
 
-export async function PATCH(
+export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -80,9 +81,9 @@ export async function PATCH(
   }
 
   return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiLogging(async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -105,4 +106,4 @@ export async function DELETE(
   await prisma.category.delete({ where: { id: categoryId } });
 
   return NextResponse.json({ success: true });
-}
+});

@@ -6,6 +6,8 @@ import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { withApiLogging } from "@/lib/api-handler";
+import { logger } from "@/lib/logger";
 
 const LandingSchema = z.object({
   tagline: z.string(),
@@ -79,7 +81,7 @@ async function generateWithClaude(prompt: string): Promise<LandingCopy | null> {
   return response.parsed_output ?? null;
 }
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -135,7 +137,11 @@ export async function POST(
     return NextResponse.json(parsed);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to generate landing page copy";
-    console.error("Landing page copy generation error:", err);
+    logger.error("restaurant.generate_landing_copy_failed", {
+      error: err,
+      restaurantId: id,
+      provider,
+    });
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
+});

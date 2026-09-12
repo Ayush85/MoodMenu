@@ -1,4 +1,9 @@
 import { WeatherData } from "@/types";
+import { logger } from "@/lib/logger";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 interface WeatherLocation {
   city?: string | null;
@@ -24,11 +29,18 @@ export async function getWeather(location: WeatherLocation): Promise<WeatherData
       ? `q=${encodeURIComponent(location.city)}`
       : `q=${encodeURIComponent(DEFAULT_CITY)}`;
 
+  const url = `https://api.openweathermap.org/data/2.5/weather?${query}&appid=${apiKey}&units=metric`;
+
   try {
-    const res = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?${query}&appid=${apiKey}&units=metric`,
-      { next: { revalidate: 1800 } } // Cache for 30 minutes (works on Vercel + self-hosted)
-    );
+    let res: Response;
+    try {
+      // Cache for 30 minutes (works on Vercel + self-hosted)
+      res = await fetch(url, { next: { revalidate: 1800 } });
+    } catch {
+      // Transient network failure — one short retry with backoff before giving up.
+      await sleep(300);
+      res = await fetch(url, { next: { revalidate: 1800 } });
+    }
 
     if (!res.ok) return null;
 
@@ -42,7 +54,8 @@ export async function getWeather(location: WeatherLocation): Promise<WeatherData
     };
 
     return data;
-  } catch {
+  } catch (error) {
+    logger.warn("weather.fetch_failed", { error, query });
     return null;
   }
 }
@@ -66,7 +79,8 @@ export async function geocodeLocation(city: string): Promise<{ latitude: number;
     if (typeof match?.lat !== "number" || typeof match?.lon !== "number") return null;
 
     return { latitude: match.lat, longitude: match.lon };
-  } catch {
+  } catch (error) {
+    logger.warn("weather.geocode_failed", { error, city });
     return null;
   }
 }

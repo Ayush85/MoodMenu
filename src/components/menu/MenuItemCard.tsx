@@ -1,4 +1,3 @@
-import { Plus } from "lucide-react";
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
 
@@ -15,12 +14,10 @@ interface Props {
   item: MenuItemData;
   theme: MoodTheme;
   onTap: (item: MenuItemData) => void;
-  cartQty?: number;
-  onQuickAdd?: (item: MenuItemData) => void;
   layout?: "list" | "grid";
 }
 
-export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickAdd, layout = "list" }: Props) {
+export default function MenuItemCard({ item, theme, onTap, layout = "list" }: Props) {
   const isDark = theme.mode === "dark";
   const initial = item.name.charAt(0).toUpperCase();
 
@@ -52,30 +49,6 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
     </div>
   );
 
-  const cartBadge = cartQty > 0 && (
-    <div
-      className="absolute top-1 right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-white font-extrabold text-[10px] px-1"
-      style={{ backgroundColor: theme.primary }}
-    >
-      {cartQty}
-    </div>
-  );
-
-  const addButton = onQuickAdd && (
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onQuickAdd(item);
-      }}
-      onKeyDown={(e) => e.stopPropagation()}
-      className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
-      style={{ backgroundColor: theme.primary, touchAction: "manipulation" }}
-      aria-label={`Add ${item.name} to order`}
-    >
-      <Plus className="w-5 h-5 text-white" strokeWidth={2.5} />
-    </button>
-  );
-
   if (layout === "grid") {
     return (
       <div
@@ -88,7 +61,6 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
       >
         <div className="relative w-full aspect-square rounded-xl overflow-hidden">
           {image}
-          {cartBadge}
         </div>
         <div className="pt-2 flex-1 min-w-0">
           <h3 className="font-bold text-sm leading-snug line-clamp-2">{item.name}</h3>
@@ -96,12 +68,9 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
             <p className="text-xs opacity-50 line-clamp-1 mt-0.5">{item.description}</p>
           )}
         </div>
-        <div className="flex items-center justify-between mt-1.5">
-          <span className="text-sm font-extrabold" style={{ color: theme.primary }}>
-            {formatPrice(item.price)}
-          </span>
-          {addButton}
-        </div>
+        <span className="block text-sm font-extrabold mt-1.5" style={{ color: theme.primary }}>
+          {formatPrice(item.price)}
+        </span>
       </div>
     );
   }
@@ -118,7 +87,6 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
       {/* Image */}
       <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
         {image}
-        {cartBadge}
       </div>
 
       {/* Info */}
@@ -131,9 +99,6 @@ export default function MenuItemCard({ item, theme, onTap, cartQty = 0, onQuickA
           {formatPrice(item.price)}
         </span>
       </div>
-
-      {/* Add-to-cart button — 44px tap target, separated from row's own tap zone */}
-      {addButton}
     </div>
   );
 }

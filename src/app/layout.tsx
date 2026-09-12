@@ -41,12 +41,6 @@ export const metadata: Metadata = {
   authors: [{ name: APP_NAME }],
   creator: APP_NAME,
   publisher: APP_NAME,
-  manifest: "/manifest.webmanifest",
-  appleWebApp: {
-    capable: true,
-    title: APP_NAME,
-    statusBarStyle: "default",
-  },
   robots: { index: true, follow: true },
   openGraph: {
     type: "website",

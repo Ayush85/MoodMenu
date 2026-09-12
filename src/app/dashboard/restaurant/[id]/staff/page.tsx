@@ -33,6 +33,9 @@ interface MenuItemOption {
   id: string;
   name: string;
   price: number;
+  isAvailable: boolean;
+  categoryId: string;
+  categoryName: string;
 }
 
 interface OrderLine {
@@ -110,9 +113,21 @@ export default function StaffPage() {
       .then((r) => r.json())
       .then((data) => {
         const tableData = (data?.tables || []) as RestaurantTableData[];
-        const itemData = ((data?.categories || []) as Array<{ items: MenuItemOption[] }>)
-          .flatMap((c) => c.items || [])
-          .map((item) => ({ id: item.id, name: item.name, price: item.price }));
+        const categoryData = (data?.categories || []) as Array<{
+          id: string;
+          name: string;
+          items: Array<{ id: string; name: string; price: number; isAvailable: boolean }>;
+        }>;
+        const itemData = categoryData.flatMap((category) =>
+          (category.items || []).map((item) => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            isAvailable: item.isAvailable,
+            categoryId: category.id,
+            categoryName: category.name,
+          }))
+        );
 
         setTables(tableData.sort((a, b) => a.number - b.number));
         setMenuItems(itemData);
@@ -186,6 +201,14 @@ export default function StaffPage() {
     });
   }
 
+  function removeItem(itemId: string) {
+    setSelectedItems((prev) => {
+      const next = { ...prev };
+      delete next[itemId];
+      return next;
+    });
+  }
+
   const orderDraft = useMemo(() => {
     return menuItems
       .filter((item) => (selectedItems[item.id] || 0) > 0)
@@ -205,11 +228,27 @@ export default function StaffPage() {
 
   const selectedTable = tables.find((t) => t.id === selectedTableId) || null;
 
+  const availableMenuItems = useMemo(() => menuItems.filter((item) => item.isAvailable), [menuItems]);
+  const unavailableCount = menuItems.length - availableMenuItems.length;
+
   const filteredMenuItems = useMemo(() => {
     const search = itemSearch.trim().toLowerCase();
-    if (!search) return menuItems;
-    return menuItems.filter((item) => item.name.toLowerCase().includes(search));
-  }, [menuItems, itemSearch]);
+    if (!search) return availableMenuItems;
+    return availableMenuItems.filter((item) => item.name.toLowerCase().includes(search));
+  }, [availableMenuItems, itemSearch]);
+
+  // Grouped by category, preserving the menu's own category/item order
+  // (the API already returns items ordered that way) so the picker reads
+  // top-to-bottom the same way the printed/public menu does.
+  const groupedMenuItems = useMemo(() => {
+    const groups = new Map<string, { categoryId: string; categoryName: string; items: MenuItemOption[] }>();
+    for (const item of filteredMenuItems) {
+      const group = groups.get(item.categoryId);
+      if (group) group.items.push(item);
+      else groups.set(item.categoryId, { categoryId: item.categoryId, categoryName: item.categoryName, items: [item] });
+    }
+    return Array.from(groups.values());
+  }, [filteredMenuItems]);
 
   const orderCounts = useMemo(() => {
     return {
@@ -769,11 +808,28 @@ export default function StaffPage() {
               <div className="space-y-4">
                 <div><label className="field-label">Table</label><select value={selectedTableId} onChange={(e) => setSelectedTableId(e.target.value)} className="control-input w-full"><option value="">Select table</option>{tables.map((table) => <option key={table.id} value={table.id}>{table.label || `Table ${table.number}`}</option>)}</select></div>
                 <div><label className="field-label">Add menu items</label><input value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} placeholder="Search by item name" className="control-input mt-1 w-full" autoFocus /></div>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-2xl border border-gray-200 p-2">
-                  {filteredMenuItems.map((item) => <div key={item.id} className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-gray-50"><div className="min-w-0"><p className="truncate text-sm font-bold text-gray-900">{item.name}</p><p className="text-xs text-gray-500">Rs. {fmt(item.price)}</p></div><div className="flex items-center gap-2"><button onClick={() => decrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-lg text-gray-700">−</button><span className="w-5 text-center text-sm font-extrabold">{selectedItems[item.id] || 0}</span><button onClick={() => incrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-lg text-white">+</button></div></div>)}
+                <div className="max-h-72 space-y-3 overflow-y-auto rounded-2xl border border-gray-200 p-2">
+                  {groupedMenuItems.map((group) => (
+                    <div key={group.categoryId}>
+                      <p className="sticky top-0 z-10 -mx-2 bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-gray-400 backdrop-blur">
+                        {group.categoryName}
+                      </p>
+                      <div className="space-y-1">
+                        {group.items.map((item) => (
+                          <div key={item.id} className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-gray-50">
+                            <div className="min-w-0"><p className="truncate text-sm font-bold text-gray-900">{item.name}</p><p className="text-xs text-gray-500">Rs. {fmt(item.price)}</p></div>
+                            <div className="flex items-center gap-2"><button onClick={() => decrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 text-lg text-gray-700">−</button><span className="w-5 text-center text-sm font-extrabold">{selectedItems[item.id] || 0}</span><button onClick={() => incrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-lg text-white">+</button></div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
                   {filteredMenuItems.length === 0 && <p className="py-8 text-center text-sm text-gray-400">No matching menu items</p>}
                 </div>
-                <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-orange-700">Order summary</p><p className="mt-0.5 text-xs text-gray-500">{selectedTable ? selectedTable.label || `Table ${selectedTable.number}` : "Select a table"}</p></div><p className="text-lg font-extrabold text-gray-900">Rs. {fmt(orderTotal)}</p></div><div className="mt-3 space-y-2 border-t border-orange-100 pt-3">{orderDraft.length === 0 ? <p className="text-xs text-gray-400">Your order is empty</p> : orderDraft.map((row) => <div key={row.itemId} className="flex justify-between gap-3 text-sm"><span>{row.quantity} × {row.itemName}</span><span className="font-semibold">Rs. {fmt(row.lineTotal)}</span></div>)}</div></div>
+                {unavailableCount > 0 && (
+                  <p className="text-[11px] text-gray-400">{unavailableCount} unavailable item{unavailableCount !== 1 ? "s" : ""} hidden</p>
+                )}
+                <div className="rounded-2xl border border-orange-100 bg-orange-50/60 p-4"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wide text-orange-700">Order summary</p><p className="mt-0.5 text-xs text-gray-500">{selectedTable ? selectedTable.label || `Table ${selectedTable.number}` : "Select a table"}</p></div><p className="text-lg font-extrabold text-gray-900">Rs. {fmt(orderTotal)}</p></div><div className="mt-3 space-y-2 border-t border-orange-100 pt-3">{orderDraft.length === 0 ? <p className="text-xs text-gray-400">Your order is empty</p> : orderDraft.map((row) => <div key={row.itemId} className="flex items-center justify-between gap-3 text-sm"><span>{row.quantity} × {row.itemName}</span><div className="flex items-center gap-2"><span className="font-semibold">Rs. {fmt(row.lineTotal)}</span><button onClick={() => removeItem(row.itemId)} aria-label={`Remove ${row.itemName}`} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600">×</button></div></div>)}</div></div>
                 <div><label className="field-label">Kitchen note <span className="font-normal normal-case text-gray-400">(optional)</span></label><textarea value={orderNote} onChange={(e) => setOrderNote(e.target.value)} rows={2} className="control-input mt-1 w-full resize-none" placeholder="Less spicy, no onions…" /></div>
               </div>
             </div>

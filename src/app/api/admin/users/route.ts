@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
+import { withApiLogging } from "@/lib/api-handler";
 
-export async function GET() {
+export const GET = withApiLogging(async function GET() {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -23,9 +24,9 @@ export async function GET() {
   });
 
   return NextResponse.json(users);
-}
+});
 
-export async function PATCH(req: NextRequest) {
+export const PATCH = withApiLogging(async function PATCH(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -50,4 +51,4 @@ export async function PATCH(req: NextRequest) {
   });
 
   return NextResponse.json(updated);
-}
+});

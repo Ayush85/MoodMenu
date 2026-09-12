@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 const OFFER_TYPES = new Set(["BUY_ONE_GET_ONE", "PERCENTAGE", "FIXED_AMOUNT", "HAPPY_HOUR", "CUSTOM"]);
 
@@ -48,18 +49,18 @@ function parseOffer(body: Record<string, unknown>) {
   };
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const GET = withApiLogging(async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await ownedRestaurant(id);
   if (result.error) return result.error;
   return NextResponse.json(await prisma.offer.findMany({ where: { restaurantId: id }, orderBy: [{ isActive: "desc" }, { createdAt: "desc" }] }));
-}
+});
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export const POST = withApiLogging(async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const result = await ownedRestaurant(id);
   if (result.error) return result.error;
   const parsed = parseOffer(await req.json().catch(() => ({})));
   if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
   return NextResponse.json(await prisma.offer.create({ data: { ...parsed.data, restaurantId: id } }), { status: 201 });
-}
+});

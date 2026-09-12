@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { logger } from "@/lib/logger";
 
 export async function getStockSearchQuery(
   name: string,
@@ -26,7 +27,8 @@ Return ONLY a short English search phrase (3-6 words, no punctuation) describing
     const text = block && "text" in block ? block.text.trim() : "";
     if (!text || text.toLowerCase() === "unknown") return null;
     return text;
-  } catch {
+  } catch (error) {
+    logger.warn("stock_photos.claude_query_failed", { error, itemName: name });
     return name;
   }
 }
@@ -48,7 +50,10 @@ export async function searchPexelsPhotos(query: string, perPage = 8): Promise<St
     `https://api.pexels.com/v1/search?query=${encodeURIComponent(searchQuery)}&per_page=${perPage}&orientation=square`,
     { headers: { Authorization: apiKey } }
   );
-  if (!res.ok) return [];
+  if (!res.ok) {
+    logger.warn("stock_photos.pexels_search_failed", { status: res.status, query: searchQuery });
+    return [];
+  }
 
   const data = await res.json();
   const photos: { alt?: string; src?: { large?: string; medium?: string } }[] = data.photos || [];

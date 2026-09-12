@@ -5,6 +5,8 @@ import { uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { getStockSearchQuery, searchPexelsPhotos } from "@/lib/stock-photos";
+import { withApiLogging } from "@/lib/api-handler";
+import { logger } from "@/lib/logger";
 
 function buildPrompt(name: string, description?: string | null) {
   return `A photorealistic professional product photograph of "${name}"${
@@ -85,7 +87,7 @@ async function generateWithGemini(prompt: string): Promise<Buffer> {
   return Buffer.from(data, "base64");
 }
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -137,7 +139,12 @@ export async function POST(
     return NextResponse.json({ url, source: usedSource });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to generate image";
-    console.error("AI image generation error:", err);
+    logger.error("restaurant.generate_image_failed", {
+      error: err,
+      restaurantId: id,
+      itemName: trimmedName,
+      source,
+    });
 
     // Account-level failures (billing/quota/auth) won't resolve by retrying
     // the next item — surface them distinctly so bulk callers can stop early
@@ -147,4 +154,4 @@ export async function POST(
 
     return NextResponse.json({ error: message }, { status: isAccountLevel ? 429 : 500 });
   }
-}
+});

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { withApiLogging } from "@/lib/api-handler";
 
 async function getOffer(id: string, offerId: string) {
   const session = await auth();
@@ -11,7 +12,7 @@ async function getOffer(id: string, offerId: string) {
   return { offer };
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; offerId: string }> }) {
+export const PATCH = withApiLogging(async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; offerId: string }> }) {
   const { id, offerId } = await params;
   const result = await getOffer(id, offerId);
   if (result.error) return result.error;
@@ -29,12 +30,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("value" in data) data.value = data.value === "" || data.value == null ? null : Number(data.value);
   const updated = await prisma.offer.update({ where: { id: offerId }, data: data as never });
   return NextResponse.json(updated);
-}
+});
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; offerId: string }> }) {
+export const DELETE = withApiLogging(async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string; offerId: string }> }) {
   const { id, offerId } = await params;
   const result = await getOffer(id, offerId);
   if (result.error) return result.error;
   await prisma.offer.delete({ where: { id: offerId } });
   return NextResponse.json({ success: true });
-}
+});

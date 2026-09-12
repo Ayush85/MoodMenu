@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { sendPush } from "@/lib/push";
+import { withApiLogging } from "@/lib/api-handler";
 
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");
@@ -10,7 +11,7 @@ function getClientIp(req: NextRequest): string {
   return "unknown";
 }
 
-export async function POST(
+export const POST = withApiLogging(async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
@@ -116,4 +117,4 @@ export async function POST(
     status: call.status,
     createdAt: call.createdAt,
   }, { status: 201 });
-}
+});

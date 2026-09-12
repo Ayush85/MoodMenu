@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
-import { Sun, Moon, LayoutGrid, List, ChevronUp, ChevronDown, Image as ImageIcon, Pencil } from "lucide-react";
+import { Sun, Moon, LayoutGrid, List, ChevronUp, ChevronDown, GripVertical, Image as ImageIcon, Pencil } from "lucide-react";
 import { FONT_OPTIONS, DEFAULT_THEME, DESIGN_TEMPLATES, DesignTemplate } from "@/types";
 import { LandingPageSettings } from "../landing/page";
 
@@ -63,6 +63,8 @@ export default function DesignPage() {
 
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{ categoryId: string; itemId: string } | null>(null);
 
   const [domain, setDomain] = useState("");
   const [domainSaving, setDomainSaving] = useState(false);
@@ -213,6 +215,29 @@ export default function DesignPage() {
       });
   }
 
+  function dropCategory(targetId: string) {
+    if (!draggedCategoryId || draggedCategoryId === targetId) return;
+    const fromIndex = categories.findIndex((category) => category.id === draggedCategoryId);
+    const targetIndex = categories.findIndex((category) => category.id === targetId);
+    if (fromIndex < 0 || targetIndex < 0) return;
+
+    const previous = categories;
+    const next = [...categories];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    setCategories(next);
+    fetch(`/api/restaurants/${id}/categories`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: next.map((category, index) => ({ id: category.id, order: index })) }),
+    }).then((res) => {
+      if (!res.ok) throw new Error();
+    }).catch(() => {
+      setCategories(previous);
+      toast("Couldn't save the category order — reverted", "error");
+    });
+  }
+
   function moveItem(catIndex: number, itemIndex: number, direction: -1 | 1) {
     const items = categories[catIndex].items;
     const target = itemIndex + direction;
@@ -237,6 +262,34 @@ export default function DesignPage() {
       });
   }
 
+  function dropItem(categoryId: string, targetItemId: string) {
+    if (!draggedItem || draggedItem.categoryId !== categoryId || draggedItem.itemId === targetItemId) return;
+    const categoryIndex = categories.findIndex((category) => category.id === categoryId);
+    if (categoryIndex < 0) return;
+    const items = categories[categoryIndex].items;
+    const fromIndex = items.findIndex((item) => item.id === draggedItem.itemId);
+    const targetIndex = items.findIndex((item) => item.id === targetItemId);
+    if (fromIndex < 0 || targetIndex < 0) return;
+
+    const previous = categories;
+    const nextItems = [...items];
+    const [moved] = nextItems.splice(fromIndex, 1);
+    nextItems.splice(targetIndex, 0, moved);
+    const next = [...categories];
+    next[categoryIndex] = { ...next[categoryIndex], items: nextItems };
+    setCategories(next);
+    fetch(`/api/restaurants/${id}/items`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order: nextItems.map((item, index) => ({ id: item.id, order: index })) }),
+    }).then((res) => {
+      if (!res.ok) throw new Error();
+    }).catch(() => {
+      setCategories(previous);
+      toast("Couldn't save the item order — reverted", "error");
+    });
+  }
+
   if (loading) {
     return (
       <div className="page-shell max-w-3xl">
@@ -254,13 +307,21 @@ export default function DesignPage() {
 
   return (
     <div className="page-shell max-w-3xl animate-fade-in">
-      <div className="mb-6">
+      <div className="design-page-header mb-6">
         <h1 className="page-title">Design</h1>
-        <p className="page-subtitle mt-1">Set your menu&apos;s brand look, layout, and item order</p>
+        <p className="page-subtitle mt-1">Shape your restaurant&apos;s public presence, menu, and customer experience.</p>
       </div>
 
+      <nav className="design-section-nav" aria-label="Design sections">
+        <a href="#profile">Profile</a>
+        <a href="#brand">Brand</a>
+        <a href="#landing">Landing page</a>
+        <a href="#domain">Domain</a>
+        <a href="#ordering">Ordering</a>
+      </nav>
+
       {/* Restaurant profile */}
-      <div className="surface-card p-5 mb-6">
+      <div id="profile" className="surface-card design-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-1">Restaurant Profile</h3>
         <p className="text-xs text-gray-500 mb-4">These details appear on your menu, landing page, and AI-generated content.</p>
         <div className="grid sm:grid-cols-2 gap-4">
@@ -276,7 +337,7 @@ export default function DesignPage() {
       </div>
 
       {/* Logo */}
-      <div className="surface-card p-5 mb-6 flex items-center gap-4">
+      <div className="surface-card design-card p-5 mb-6 flex items-center gap-4">
         <label className="relative group cursor-pointer shrink-0">
           {restaurant.logo ? (
             <img src={restaurant.logo} alt={restaurant.name} className="w-16 h-16 rounded-2xl object-cover ring-1 ring-gray-200" />
@@ -305,7 +366,7 @@ export default function DesignPage() {
       </div>
 
       {/* Look templates */}
-      <div className="surface-card p-5 mb-6">
+      <div id="brand" className="surface-card design-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-1">Look Templates</h3>
         <p className="text-xs text-gray-500 mb-4">Start from a preset, then fine-tune below</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -328,7 +389,7 @@ export default function DesignPage() {
       </div>
 
       {/* Brand colors */}
-      <div className="surface-card p-5 mb-6 space-y-4">
+      <div className="surface-card design-card p-5 mb-6 space-y-4">
         <h3 className="font-bold text-gray-900">Brand Colors</h3>
         <p className="text-xs text-gray-500 -mt-2">The default look for your menu when no mood rule is active</p>
 
@@ -379,7 +440,7 @@ export default function DesignPage() {
       </div>
 
       {/* Font */}
-      <div className="surface-card p-5 mb-6">
+      <div className="surface-card design-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-3">Font</h3>
         <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} className="control-input">
           {FONT_OPTIONS.map((f) => (
@@ -389,7 +450,7 @@ export default function DesignPage() {
       </div>
 
       {/* Layout style */}
-      <div className="surface-card p-5 mb-6">
+      <div className="surface-card design-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-3">Menu Layout</h3>
         <div className="flex gap-2">
           <button
@@ -461,7 +522,7 @@ export default function DesignPage() {
         {saving ? "Saving…" : "Save Design"}
       </button>
 
-      <section className="mt-10 pt-10 border-t border-gray-200">
+      <section id="landing" className="design-section mt-10 pt-10 border-t border-gray-200">
         <div className="mb-6">
           <h2 className="text-xl font-extrabold text-gray-900">Landing Page</h2>
           <p className="text-sm text-gray-500 mt-1">
@@ -472,7 +533,7 @@ export default function DesignPage() {
       </section>
 
       {/* Custom domain */}
-      <div className="surface-card p-5 mb-6">
+      <div id="domain" className="surface-card design-card p-5 mb-6">
         <h3 className="font-bold text-gray-900 mb-1">Custom Domain</h3>
         <p className="text-xs text-gray-500 mb-4">
           Use your own domain instead of menuor.com — your menu (or landing page, if enabled) shows at the root, and <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/admin</code> and{" "}
@@ -520,14 +581,23 @@ export default function DesignPage() {
       </div>
 
       {/* Reorder categories & items */}
-      <div className="surface-card p-5">
+      <div id="ordering" className="surface-card design-card p-5">
         <h3 className="font-bold text-gray-900 mb-1">Category &amp; Item Order</h3>
-        <p className="text-xs text-gray-500 mb-4">This controls the order customers see on your menu</p>
+        <p className="text-xs text-gray-500 mb-4">Drag categories and items into the order customers should see. Arrow controls are available as a keyboard-friendly alternative.</p>
 
         <div className="space-y-2">
           {categories.map((cat, catIndex) => (
-            <div key={cat.id} className="border border-gray-100 rounded-xl overflow-hidden">
+            <div
+              key={cat.id}
+              draggable
+              onDragStart={() => setDraggedCategoryId(cat.id)}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={() => { dropCategory(cat.id); setDraggedCategoryId(null); }}
+              onDragEnd={() => setDraggedCategoryId(null)}
+              className={`border rounded-xl overflow-hidden transition ${draggedCategoryId === cat.id ? "border-orange-400 bg-orange-50/50 opacity-60" : "border-gray-100"}`}
+            >
               <div className="flex items-center gap-2 p-3">
+                <GripVertical className="w-4 h-4 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" aria-hidden="true" />
                 <div className="flex flex-col shrink-0">
                   <button
                     type="button"
@@ -560,7 +630,16 @@ export default function DesignPage() {
               {expandedCat === cat.id && (
                 <div className="px-3 pb-3 space-y-1.5">
                   {cat.items.map((item, itemIndex) => (
-                    <div key={item.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
+                    <div
+                      key={item.id}
+                      draggable
+                      onDragStart={(event) => { event.stopPropagation(); setDraggedItem({ categoryId: cat.id, itemId: item.id }); }}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={(event) => { event.stopPropagation(); dropItem(cat.id, item.id); setDraggedItem(null); }}
+                      onDragEnd={() => setDraggedItem(null)}
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2 transition ${draggedItem?.itemId === item.id ? "bg-orange-100 opacity-60" : "bg-gray-50"}`}
+                    >
+                      <GripVertical className="w-3.5 h-3.5 shrink-0 text-gray-300 cursor-grab active:cursor-grabbing" aria-hidden="true" />
                       <div className="flex flex-col shrink-0">
                         <button
                           type="button"

@@ -87,15 +87,16 @@ export default function InteractiveLanding({ name, city, logo, theme, content, m
           <div className="restaurant-landing__stage-ring" aria-hidden="true" />
           <div className="restaurant-landing__hero-card">
             <div className="restaurant-landing__hero-card-top">
-              <span>EST. {city.toUpperCase()}</span>
-              <span className="restaurant-landing__status"><i /> Open for good taste</span>
+              <span>LOCAL · {city.toUpperCase()}</span>
+              <span className="restaurant-landing__status"><i /> Made to order</span>
             </div>
             <div className="restaurant-landing__hero-card-content">
+              {gallery[0]?.image && <div className="restaurant-landing__hero-food" style={{ backgroundImage: `url(${gallery[0].image})` }} aria-hidden="true" />}
               {logo ? <img src={logo} alt={name} className="restaurant-landing__hero-logo" /> : <div className="restaurant-landing__hero-logo restaurant-landing__hero-logo--empty"><UtensilsCrossed /></div>}
-              <span className="restaurant-landing__hero-card-label">A table worth remembering</span>
+              <span className="restaurant-landing__hero-card-label">Signature dining in {city}</span>
               <strong>{name}</strong>
             </div>
-            <div className="restaurant-landing__hero-card-bottom"><span>Swipe into flavour</span><ArrowUpRight className="h-4 w-4" /></div>
+            <div className="restaurant-landing__hero-card-bottom"><span>Explore the menu</span><ArrowUpRight className="h-4 w-4" /></div>
           </div>
           <div className="restaurant-landing__floating-chip restaurant-landing__floating-chip--top"><span>01</span> Freshly made</div>
           <div className="restaurant-landing__floating-chip restaurant-landing__floating-chip--bottom"><span>✦</span> Made with care</div>

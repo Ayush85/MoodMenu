@@ -170,6 +170,7 @@
 .restaurant-landing__status { display: inline-flex; align-items: center; gap: 0.35rem; letter-spacing: 0; text-transform: none; }
 .restaurant-landing__status i { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: #8df0bd; box-shadow: 0 0 12px #8df0bd; }
 .restaurant-landing__hero-card-content { display: flex; flex-direction: column; align-items: center; text-align: center; transform: translateZ(42px); }
+.restaurant-landing__hero-food { width: 100%; height: 5.5rem; margin-bottom: -2.4rem; border-radius: 1rem; background-position: center; background-size: cover; opacity: 0.48; filter: saturate(0.9); mask-image: linear-gradient(to bottom, black 35%, transparent 100%); }
 .restaurant-landing__hero-logo { width: 8rem; height: 8rem; margin-bottom: 1.6rem; border: 5px solid rgba(255,255,255,0.78); border-radius: 2.2rem; object-fit: cover; box-shadow: 0 20px 35px rgba(0,0,0,0.35); }
 .restaurant-landing__hero-logo--empty { display: grid; place-items: center; background: linear-gradient(135deg, var(--landing-primary), var(--landing-accent)); }
 .restaurant-landing__hero-card-label { font-size: 0.62rem; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.62; }
@@ -228,6 +229,20 @@
 
 @media (prefers-reduced-motion: reduce) {
   .restaurant-landing *, .restaurant-landing *::before, .restaurant-landing *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}
+
+/* Restaurant builder */
+.design-page-header { position: relative; padding: 1.75rem 1.75rem 1.5rem; border: 1px solid rgba(148,163,184,0.18); border-radius: 1.5rem; background: linear-gradient(135deg, rgba(255,255,255,0.96), rgba(255,247,237,0.82)); box-shadow: 0 12px 30px rgba(15,23,42,0.05); }
+.design-page-header::after { content: ""; position: absolute; top: 0; right: 0; width: 8rem; height: 100%; border-radius: 0 1.5rem 1.5rem 0; opacity: 0.35; background: radial-gradient(circle at right, #f97316, transparent 68%); pointer-events: none; }
+.design-section-nav { position: sticky; top: 1rem; z-index: 10; display: flex; gap: 0.35rem; overflow-x: auto; margin-bottom: 1.25rem; padding: 0.4rem; border: 1px solid rgba(148,163,184,0.18); border-radius: 1rem; background: rgba(255,255,255,0.82); box-shadow: 0 10px 24px rgba(15,23,42,0.08); backdrop-filter: blur(16px); }
+.design-section-nav a { flex: 0 0 auto; padding: 0.55rem 0.8rem; border-radius: 0.7rem; color: #64748b; font-size: 0.72rem; font-weight: 800; white-space: nowrap; transition: color 160ms ease, background 160ms ease; }
+.design-section-nav a:hover { color: #c2410c; background: #fff7ed; }
+.design-card { scroll-margin-top: 5.5rem; }
+.design-section { scroll-margin-top: 5.5rem; }
+
+@media (max-width: 640px) {
+  .design-page-header { padding: 1.25rem; }
+  .design-section-nav { top: 0.5rem; margin-inline: -0.25rem; }
 }
 
 /* ─── Base ─── */

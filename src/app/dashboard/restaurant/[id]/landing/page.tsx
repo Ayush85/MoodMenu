@@ -136,8 +136,8 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
     <div className={embedded ? "max-w-3xl animate-fade-in" : "page-shell max-w-3xl animate-fade-in"}>
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="page-title">Landing Page</h1>
-          <p className="page-subtitle mt-1">A marketing page shown at your domain&apos;s root, with the menu at /menu</p>
+          {!embedded && <h1 className="page-title">Landing Page</h1>}
+          {!embedded && <p className="page-subtitle mt-1">A marketing page shown at your domain&apos;s root, with the menu at /menu</p>}
         </div>
         {enabled && (
           <Link

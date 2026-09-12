@@ -56,6 +56,16 @@ const RESTAURANT_NAV = [
     ),
   },
   {
+    key: "offers",
+    label: "Offers",
+    suffix: "/offers",
+    icon: (
+      <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 12l-8 8-8-8 8-8 8 8zM12 8h.01M16 12h.01M12 16h.01" />
+      </svg>
+    ),
+  },
+  {
     key: "staff",
     label: "Staff",
     suffix: "/staff",

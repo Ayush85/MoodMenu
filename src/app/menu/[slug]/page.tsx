@@ -5,6 +5,7 @@ import { getWeather } from "@/lib/weather";
 import { evaluateMood } from "@/lib/mood-engine";
 import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS, getFontOption } from "@/types";
 import MenuClient from "@/components/menu/MenuClient";
+import { isOfferCurrentlyValid } from "@/lib/offers";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         },
       },
       moodRules: { orderBy: { priority: "desc" } },
+      offers: { where: { isActive: true }, orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -141,6 +143,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     : moodMatches;
 
   const theme = mood.theme || DEFAULT_THEME;
+  const activeOffers = restaurant.offers.filter((offer) => isOfferCurrentlyValid(offer));
   const canonicalMenuUrl = getRestaurantMenuUrl({
     slug: restaurant.slug,
     customDomain: restaurant.customDomain,
@@ -244,6 +247,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         image: item.image,
         tags: item.tags,
       }))}
+      offers={activeOffers}
       theme={theme}
       weather={mood.weather}
       ruleName={mood.ruleName}

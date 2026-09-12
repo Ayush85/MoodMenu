@@ -7,6 +7,8 @@ import QRCode from "qrcode";
 import MenuHero from "./MenuHero";
 import MenuItemCard from "./MenuItemCard";
 import FeaturedSection from "./FeaturedSection";
+import OffersSection from "./OffersSection";
+import type { ActiveOffer } from "@/lib/offers";
 import BottomBar from "./BottomBar";
 import CallWaiterModal from "./CallWaiterModal";
 import ItemDetailModal from "./ItemDetailModal";
@@ -57,6 +59,7 @@ interface Props {
   categories: CategoryData[];
   featuredItems: MenuItemData[];
   todaysSpecials: MenuItemData[];
+  offers: ActiveOffer[];
   theme: MoodTheme;
   weather: WeatherData | null;
   ruleName: string;
@@ -80,6 +83,7 @@ export default function MenuClient({
   categories,
   featuredItems,
   todaysSpecials,
+  offers,
   theme,
   weather,
   ruleName,
@@ -339,6 +343,8 @@ export default function MenuClient({
         ruleName={ruleName}
         theme={theme}
       />
+
+      <OffersSection offers={offers} theme={theme} />
 
       {/* Recommended-for-the-weather rail */}
       <div className="max-w-lg mx-auto">

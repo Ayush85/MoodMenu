@@ -14,6 +14,7 @@ interface Props {
   city: string;
   logo: string | null;
   theme: MoodTheme;
+  fontFamily?: string;
   content: LandingPageContent | null;
   menuHref: string;
   mapHref: string;
@@ -28,7 +29,7 @@ type SiteStyle = CSSProperties & {
   "--site-tilt"?: string;
 };
 
-export default function InteractiveLanding({ name, city, logo, theme, content, menuHref, mapHref, gallery }: Props) {
+export default function InteractiveLanding({ name, city, logo, theme, fontFamily, content, menuHref, mapHref, gallery }: Props) {
   const [tilt, setTilt] = useState(0);
   const heroImage = gallery[0]?.image;
   const tagline = content?.tagline || `Welcome to ${name}`;
@@ -45,6 +46,7 @@ export default function InteractiveLanding({ name, city, logo, theme, content, m
   const style: SiteStyle = {
     backgroundColor: theme.bg,
     color: theme.text,
+    fontFamily,
     "--site-primary": theme.primary,
     "--site-accent": theme.accent,
     "--site-bg": theme.bg,

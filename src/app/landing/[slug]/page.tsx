@@ -128,6 +128,7 @@ export default async function LandingPage({ params }: Props) {
         city={restaurant.city}
         logo={restaurant.logo}
         theme={theme}
+        fontFamily={fontOption?.cssFamily}
         content={content}
         menuHref={menuHref}
         mapHref={mapHref}

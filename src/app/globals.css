@@ -262,7 +262,7 @@
 .restaurant-site__eyebrow, .restaurant-site__section-label { color: var(--site-primary); font-size: 0.68rem; font-weight: 850; letter-spacing: 0.18em; text-transform: uppercase; }
 .restaurant-site__eyebrow { display: inline-block; padding: 0.55rem 0.8rem; border: 1px solid rgba(255,255,255,0.35); border-radius: 999px; color: #fff; background: rgba(0,0,0,0.14); }
 .restaurant-site__hero-logo { width: 5.5rem; height: 5.5rem; margin: 1.8rem auto 1rem; border: 4px solid rgba(255,255,255,0.88); border-radius: 1.35rem; object-fit: cover; box-shadow: 0 14px 36px rgba(0,0,0,0.28); transform: rotate(var(--site-tilt)); transition: transform 220ms ease-out; }
-.restaurant-site__hero h1 { margin: 0; font-size: clamp(3.5rem, 9vw, 7.6rem); font-weight: 900; line-height: 0.9; letter-spacing: -0.085em; text-wrap: balance; text-shadow: 0 3px 24px rgba(0,0,0,0.22); }
+.restaurant-site__hero h1 { margin: 0; font-size: clamp(3.5rem, 9vw, 7.6rem); font-weight: 850; line-height: 0.98; letter-spacing: -0.045em; text-wrap: balance; text-shadow: 0 3px 24px rgba(0,0,0,0.22); }
 .restaurant-site__hero-content > p { max-width: 34rem; margin: 1.2rem auto 0; font-size: clamp(1rem, 2vw, 1.3rem); line-height: 1.55; opacity: 0.88; }
 .restaurant-site__hero-actions { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 2rem; }
 .restaurant-site__button { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.9rem 1.25rem; border-radius: 999px; background: var(--site-primary); color: #fff; font-size: 0.8rem; font-weight: 850; box-shadow: 0 10px 28px color-mix(in srgb, var(--site-primary) 35%, transparent); transition: transform 180ms ease, box-shadow 180ms ease; }
@@ -275,7 +275,7 @@
 .restaurant-site__story, .restaurant-site__highlights, .restaurant-site__gallery, .restaurant-site__footer { width: min(1120px, calc(100% - 3rem)); margin: 0 auto; }
 .restaurant-site__story { padding: 8rem 0 6rem; }
 .restaurant-site__story-copy { display: grid; grid-template-columns: 1fr 0.85fr; gap: 5rem; align-items: end; margin-top: 1.2rem; }
-.restaurant-site h2 { margin: 0; font-size: clamp(2.5rem, 5vw, 5rem); line-height: 0.96; letter-spacing: -0.075em; font-weight: 900; }
+.restaurant-site h2 { margin: 0; font-size: clamp(2.5rem, 5vw, 5rem); line-height: 1.02; letter-spacing: -0.045em; font-weight: 850; }
 .restaurant-site em { color: var(--site-primary); font-style: normal; }
 .restaurant-site__story-copy p { margin: 0; max-width: 32rem; font-size: 1rem; line-height: 1.8; opacity: 0.72; }
 .restaurant-site__inline-link { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 1.5rem; color: var(--site-primary); font-size: 0.8rem; font-weight: 850; }

@@ -50,15 +50,7 @@ export async function middleware(request: NextRequest) {
     } else {
       url.pathname = pathname.replace(/^\/staff/, `/dashboard/restaurant/${restaurant.id}/staff`);
     }
-
-    // Signals to src/app/dashboard/restaurant/[id]/layout.tsx that this
-    // dashboard render is being served as this restaurant's own tenant PWA
-    // (installed from its custom domain), so it should use the
-    // restaurant's own logo/name in the manifest instead of the generic
-    // Menuor one used when an owner browses /dashboard on the main app.
-    const tenantHeaders = new Headers(request.headers);
-    tenantHeaders.set("x-menuor-tenant-id", restaurant.id);
-    return NextResponse.rewrite(url, { request: { headers: tenantHeaders } });
+    return NextResponse.rewrite(url);
   }
 
   return NextResponse.next();

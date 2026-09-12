@@ -113,7 +113,7 @@ export default function StaffPage() {
   const [showCallHistory, setShowCallHistory] = useState(false);
   const [updatingCallId, setUpdatingCallId] = useState<string | null>(null);
   const [notifGranted, setNotifGranted] = useState(false);
-  const prevPendingCallIds = useRef<Set<string>>(new Set());
+  const prevPendingCallIds = useRef<Set<string> | null>(null);
   const prevNewOrderIds = useRef<Set<string> | null>(null);
   const [tables, setTables] = useState<RestaurantTableData[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
@@ -152,7 +152,6 @@ export default function StaffPage() {
   const canTakeOrders = actorType === "USER" || staffRole === "WAITER";
   const [showStaffSection, setShowStaffSection] = useState(false);
   const [visibleOrders, setVisibleOrders] = useState(6);
-  const [simpleView, setSimpleView] = useState(true);
   const [orderPollKey, setOrderPollKey] = useState(0);
 
   useEffect(() => {
@@ -254,16 +253,22 @@ export default function StaffPage() {
           });
 
         const newPendingIds = new Set(active.filter((c) => c.status === "PENDING").map((c) => c.id));
-        const newlyArrived = active.filter((c) => c.status === "PENDING" && !prevPendingCallIds.current.has(c.id));
-        if (newlyArrived.length > 0) {
-          playChime([880, 1100, 1320]);
-          newlyArrived.forEach((c) =>
-            showBrowserNotification(
-              `${c.tableLabel || `Table ${c.tableNumber}`} needs help`,
-              c.message || "Customer requesting assistance",
-              c.id
-            )
-          );
+        // Skip the very first fetch after mount/reload — otherwise every
+        // already-pending call (from before this page was even opened)
+        // looks "new" against an empty starting set, and reloading the
+        // page re-chimes for calls that were already sitting there.
+        if (prevPendingCallIds.current) {
+          const newlyArrived = active.filter((c) => c.status === "PENDING" && !prevPendingCallIds.current!.has(c.id));
+          if (newlyArrived.length > 0) {
+            playChime([880, 1100, 1320]);
+            newlyArrived.forEach((c) =>
+              showBrowserNotification(
+                `${c.tableLabel || `Table ${c.tableNumber}`} needs help`,
+                c.message || "Customer requesting assistance",
+                c.id
+              )
+            );
+          }
         }
         prevPendingCallIds.current = newPendingIds;
         setPendingCalls(active);
@@ -697,12 +702,6 @@ export default function StaffPage() {
                 </svg>
                 {notifGranted ? "Alerts on" : "Enable alerts"}
               </button>
-              <button
-                onClick={() => setSimpleView((v) => !v)}
-                className="text-xs px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition"
-              >
-                {simpleView ? "Detailed" : "Simple"}
-              </button>
             </div>
           </div>
         </div>
@@ -951,15 +950,27 @@ export default function StaffPage() {
                     const suggestedStatus = getNextSuggestedStatus(order);
                     const meta = STATUS_META[order.status];
 
+                    const isStale = (order.status === "NEW" || order.status === "PREPARING") &&
+                      Date.now() - new Date(order.createdAt).getTime() > 10 * 60 * 1000;
+                    const borderColor = {
+                      NEW: "border-l-blue-400",
+                      PREPARING: "border-l-amber-400",
+                      SERVED: "border-l-emerald-400",
+                      PAID: "border-l-violet-400",
+                      CANCELED: "border-l-red-300",
+                    }[order.status];
+
                     return (
-                      <div key={order.id} className="px-4 sm:px-5 py-4 space-y-3">
+                      <div key={order.id} className={`px-4 sm:px-5 py-4 space-y-3 border-l-4 ${borderColor}`}>
                         {/* Card header */}
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className="font-bold text-gray-900 text-base leading-tight">
                               {order.table.label || `Table ${order.table.number}`}
                             </p>
-                            <p className="text-[11px] text-gray-400 mt-0.5">{timeAgo(order.createdAt)}</p>
+                            <p className={`text-[11px] mt-0.5 ${isStale ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+                              {isStale && "⚠ "}{timeAgo(order.createdAt)}
+                            </p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.badge}`}>
@@ -971,29 +982,23 @@ export default function StaffPage() {
                           </div>
                         </div>
 
-                        {/* Items */}
-                        {!simpleView && (
-                          <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
-                            {order.items.map((line) => (
-                              <div key={line.id} className="flex items-center justify-between text-sm text-gray-700">
-                                <span className="font-medium">{line.quantity} × {line.itemName}</span>
-                                <span className="text-gray-500 font-medium">Rs. {fmt(line.lineTotal)}</span>
-                              </div>
-                            ))}
-                            {order.note && (
-                              <p className="text-xs text-gray-500 italic pt-1 border-t border-gray-200 mt-1">
-                                &ldquo;{order.note}&rdquo;
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {simpleView && (
-                          <p className="text-xs text-gray-500">
-                            {order.items.length} item{order.items.length !== 1 ? "s" : ""}
-                            {order.note && <span className="italic ml-1">· Note attached</span>}
-                          </p>
-                        )}
+                        {/* Items — shown up front, not hidden behind a toggle */}
+                        <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
+                          {order.items.map((line) => (
+                            <div key={line.id} className="flex items-center justify-between text-sm text-gray-700">
+                              <span className="font-medium">
+                                <span className="inline-flex min-w-5 justify-center rounded-md bg-gray-200 px-1 text-xs font-bold text-gray-600 mr-1.5">{line.quantity}</span>
+                                {line.itemName}
+                              </span>
+                              <span className="text-gray-500 font-medium shrink-0">Rs. {fmt(line.lineTotal)}</span>
+                            </div>
+                          ))}
+                          {order.note && (
+                            <p className="text-xs text-gray-500 italic pt-1.5 border-t border-gray-200 mt-1.5">
+                              &ldquo;{order.note}&rdquo;
+                            </p>
+                          )}
+                        </div>
 
                         {/* Actions */}
                         <div className="flex flex-wrap gap-2">

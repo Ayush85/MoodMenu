@@ -123,7 +123,6 @@ export default function StaffPage() {
   const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
   const [orderNote, setOrderNote] = useState("");
   const [itemSearch, setItemSearch] = useState("");
-  const [orderStatusFilter, setOrderStatusFilter] = useState<"ALL" | OrderTicket["status"]>("ALL");
   const [orderTableFilter, setOrderTableFilter] = useState("");
   const [savingOrder, setSavingOrder] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
@@ -151,7 +150,6 @@ export default function StaffPage() {
   const canUseCalls = actorType === "USER" || staffRole === "WAITER";
   const canTakeOrders = actorType === "USER" || staffRole === "WAITER";
   const [showStaffSection, setShowStaffSection] = useState(false);
-  const [visibleOrders, setVisibleOrders] = useState(6);
   const [orderPollKey, setOrderPollKey] = useState(0);
 
   useEffect(() => {
@@ -388,19 +386,8 @@ export default function StaffPage() {
     return Array.from(groups.values());
   }, [filteredMenuItems]);
 
-  const orderCounts = useMemo(() => {
-    return {
-      NEW: orders.filter((o) => o.status === "NEW").length,
-      PREPARING: orders.filter((o) => o.status === "PREPARING").length,
-      SERVED: orders.filter((o) => o.status === "SERVED").length,
-      PAID: orders.filter((o) => o.status === "PAID").length,
-      CANCELED: orders.filter((o) => o.status === "CANCELED").length,
-    };
-  }, [orders]);
-
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      if (orderStatusFilter !== "ALL" && order.status !== orderStatusFilter) return false;
       if (orderTableFilter.trim()) {
         const token = orderTableFilter.trim().toLowerCase();
         const tableName = (order.table.label || `table ${order.table.number}`).toLowerCase();
@@ -408,9 +395,7 @@ export default function StaffPage() {
       }
       return true;
     });
-  }, [orders, orderStatusFilter, orderTableFilter]);
-
-  const visibleFilteredOrders = filteredOrders.slice(0, visibleOrders);
+  }, [orders, orderTableFilter]);
 
   const paidRevenue = useMemo(() => {
     return orders
@@ -430,9 +415,6 @@ export default function StaffPage() {
   const callQueue = pendingCalls.slice(1);
   const resolvedCallCount = callHistory.filter((c) => c.status === "RESOLVED").length;
 
-  useEffect(() => {
-    setVisibleOrders(6);
-  }, [orderStatusFilter, orderTableFilter, orders]);
 
   async function submitOrder() {
     if (!selectedTableId) { toast("Please select a table", "error"); return; }
@@ -688,6 +670,89 @@ export default function StaffPage() {
     return Math.round(n).toLocaleString("en-IN");
   }
 
+  // Kanban lanes — the order pipeline, in the order it actually flows.
+  // CANCELED is deliberately excluded from the board: it's a terminal
+  // dead-end, not something anyone acts on further, so keeping it out
+  // reduces clutter on the view staff actually work from all shift.
+  const ORDER_COLUMNS: { status: OrderTicket["status"]; label: string; dot: string; header: string }[] = [
+    { status: "NEW", label: "New", dot: "bg-blue-400", header: "border-t-blue-400" },
+    { status: "PREPARING", label: "Preparing", dot: "bg-amber-400", header: "border-t-amber-400" },
+    { status: "SERVED", label: "Served", dot: "bg-emerald-400", header: "border-t-emerald-400" },
+    { status: "PAID", label: "Paid", dot: "bg-violet-400", header: "border-t-violet-400" },
+  ];
+
+  function renderOrderCard(order: OrderTicket) {
+    const actionStatuses = getOrderActionStatuses(order.status);
+    const suggestedStatus = getNextSuggestedStatus(order);
+    const isStale = (order.status === "NEW" || order.status === "PREPARING") &&
+      Date.now() - new Date(order.createdAt).getTime() > 10 * 60 * 1000;
+
+    return (
+      <div key={order.id} className="rounded-xl border border-gray-200 bg-white p-3.5 space-y-2.5 shadow-sm">
+        {/* Card header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-bold text-gray-900 text-sm leading-tight">
+              {order.table.label || `Table ${order.table.number}`}
+            </p>
+            <p className={`text-[11px] mt-0.5 ${isStale ? "text-red-500 font-semibold" : "text-gray-400"}`}>
+              {isStale && "⚠ "}{timeAgo(order.createdAt)}
+            </p>
+          </div>
+          <span className="text-sm font-extrabold text-gray-900 shrink-0">Rs. {fmt(order.total)}</span>
+        </div>
+
+        {/* Items — shown up front, not hidden behind a toggle */}
+        <div className="bg-gray-50 rounded-lg px-2.5 py-2 space-y-1.5">
+          {order.items.map((line) => (
+            <div key={line.id} className="flex items-center justify-between text-xs text-gray-700">
+              <span className="font-medium min-w-0 truncate">
+                <span className="inline-flex min-w-4 justify-center rounded-md bg-gray-200 px-1 text-[10px] font-bold text-gray-600 mr-1.5">{line.quantity}</span>
+                {line.itemName}
+              </span>
+              <span className="text-gray-500 font-medium shrink-0 ml-2">Rs. {fmt(line.lineTotal)}</span>
+            </div>
+          ))}
+          {order.note && (
+            <p className="text-[11px] text-gray-500 italic pt-1.5 border-t border-gray-200 mt-1.5">
+              &ldquo;{order.note}&rdquo;
+            </p>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-1.5">
+          {suggestedStatus && canUpdateStatus(suggestedStatus) && (
+            <button
+              onClick={() => handleOrderStatusClick(order, suggestedStatus)}
+              className="flex min-h-9 items-center gap-1 rounded-lg bg-orange-500 px-3 text-[11px] font-bold text-white transition hover:bg-orange-600"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              {STATUS_META[suggestedStatus].label}
+            </button>
+          )}
+          {actionStatuses
+            .filter((s) => s !== suggestedStatus)
+            .map((status) => (
+              <button
+                key={status}
+                onClick={() => handleOrderStatusClick(order, status)}
+                className={`min-h-9 text-[11px] px-2.5 rounded-lg border font-medium transition ${
+                  status === "CANCELED"
+                    ? "border-red-200 text-red-500 bg-red-50 hover:bg-red-100"
+                    : "border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
+                }`}
+              >
+                {STATUS_META[status].label}
+              </button>
+            ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="staff-panel page-shell space-y-4 sm:space-y-5">
       <header className="surface-card p-4 sm:p-5">
@@ -919,173 +984,51 @@ export default function StaffPage() {
       )}
 
       {activeTab === "orders" && (
-        <section className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-          <div className="xl:col-span-8 space-y-4 order-2 xl:order-1">
-            <div className="surface-card p-4 sm:p-5 space-y-3">
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                {(["ALL", "NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const).map((status) => {
-                  const count = status === "ALL" ? orders.length : orderCounts[status];
-                  return (
-                    <button
-                      key={status}
-                      onClick={() => setOrderStatusFilter(status)}
-                      className={`min-h-10 shrink-0 text-xs px-3 rounded-xl border transition flex items-center gap-1.5 ${orderStatusFilter === status ? "bg-orange-500 text-white border-orange-500" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50"}`}
-                    >
-                      {status}
-                      {count > 0 && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${orderStatusFilter === status ? "bg-white/25" : "bg-gray-100"}`}>
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                value={orderTableFilter}
-                onChange={(e) => setOrderTableFilter(e.target.value)}
-                placeholder="Filter by table name or number"
-                className="control-input"
-              />
-            </div>
-
-            <div className="surface-card overflow-hidden">
-              <div className="px-4 sm:px-5 py-3 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-base font-bold text-gray-900">Active Order Board</h2>
-                <span className="text-xs text-gray-500">{filteredOrders.length} results</span>
-              </div>
-              <div className="divide-y divide-gray-100">
-                {filteredOrders.length === 0 ? (
-                  <div className="px-4 sm:px-5 py-8 text-center text-sm text-gray-400">No orders found</div>
-                ) : (
-                  visibleFilteredOrders.map((order) => {
-                    const actionStatuses = getOrderActionStatuses(order.status);
-                    const suggestedStatus = getNextSuggestedStatus(order);
-                    const meta = STATUS_META[order.status];
-
-                    const isStale = (order.status === "NEW" || order.status === "PREPARING") &&
-                      Date.now() - new Date(order.createdAt).getTime() > 10 * 60 * 1000;
-                    const borderColor = {
-                      NEW: "border-l-blue-400",
-                      PREPARING: "border-l-amber-400",
-                      SERVED: "border-l-emerald-400",
-                      PAID: "border-l-violet-400",
-                      CANCELED: "border-l-red-300",
-                    }[order.status];
-
-                    return (
-                      <div key={order.id} className={`px-4 sm:px-5 py-4 space-y-3 border-l-4 ${borderColor}`}>
-                        {/* Card header */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="font-bold text-gray-900 text-base leading-tight">
-                              {order.table.label || `Table ${order.table.number}`}
-                            </p>
-                            <p className={`text-[11px] mt-0.5 ${isStale ? "text-red-500 font-semibold" : "text-gray-400"}`}>
-                              {isStale && "⚠ "}{timeAgo(order.createdAt)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${meta.badge}`}>
-                              {meta.label}
-                            </span>
-                            <span className="text-sm font-extrabold text-gray-900">
-                              Rs. {fmt(order.total)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Items — shown up front, not hidden behind a toggle */}
-                        <div className="bg-gray-50 rounded-xl px-3 py-2.5 space-y-1.5">
-                          {order.items.map((line) => (
-                            <div key={line.id} className="flex items-center justify-between text-sm text-gray-700">
-                              <span className="font-medium">
-                                <span className="inline-flex min-w-5 justify-center rounded-md bg-gray-200 px-1 text-xs font-bold text-gray-600 mr-1.5">{line.quantity}</span>
-                                {line.itemName}
-                              </span>
-                              <span className="text-gray-500 font-medium shrink-0">Rs. {fmt(line.lineTotal)}</span>
-                            </div>
-                          ))}
-                          {order.note && (
-                            <p className="text-xs text-gray-500 italic pt-1.5 border-t border-gray-200 mt-1.5">
-                              &ldquo;{order.note}&rdquo;
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-wrap gap-2">
-                          {suggestedStatus && canUpdateStatus(suggestedStatus) && (
-                            <button
-                              onClick={() => handleOrderStatusClick(order, suggestedStatus)}
-                              className="flex min-h-10 items-center gap-1 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white transition hover:bg-orange-600"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                              </svg>
-                              {suggestedStatus}
-                            </button>
-                          )}
-                          {actionStatuses
-                            .filter((s) => s !== suggestedStatus)
-                            .map((status) => (
-                              <button
-                                key={status}
-                                onClick={() => handleOrderStatusClick(order, status)}
-                              className={`min-h-10 text-xs px-3 rounded-xl border font-medium transition ${
-                                  status === "CANCELED"
-                                    ? "border-red-200 text-red-500 bg-red-50 hover:bg-red-100"
-                                    : "border-gray-300 text-gray-600 bg-white hover:bg-gray-50"
-                                }`}
-                              >
-                                {STATUS_META[status].label}
-                              </button>
-                            ))}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-
-                {filteredOrders.length > visibleOrders && (
-                  <div className="p-3 border-t border-gray-100">
-                    <button onClick={() => setVisibleOrders((v) => v + 6)} className="btn-soft w-full">
-                      Show More Orders
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <aside className="xl:col-span-4 order-1 xl:order-2 space-y-3">
-            <div className="surface-card p-3 sm:p-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-2">
-                <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-center">
-                  <p className="text-[11px] font-semibold text-gray-500">NEW</p>
-                  <p className="text-lg font-extrabold text-gray-900">{orderCounts.NEW}</p>
-                </div>
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-center">
-                  <p className="text-[11px] font-semibold text-amber-600">PREP</p>
-                  <p className="text-lg font-extrabold text-amber-900">{orderCounts.PREPARING}</p>
-                </div>
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center">
-                  <p className="text-[11px] font-semibold text-emerald-600">SERVED</p>
-                  <p className="text-lg font-extrabold text-emerald-900">{orderCounts.SERVED}</p>
-                </div>
-                <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-center">
-                  <p className="text-[11px] font-semibold text-cyan-600">PAID</p>
-                  <p className="text-lg font-extrabold text-cyan-900">{orderCounts.PAID}</p>
-                </div>
-              </div>
-            </div>
-
+        <section className="space-y-4">
+          <div className="surface-card p-3 sm:p-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              value={orderTableFilter}
+              onChange={(e) => setOrderTableFilter(e.target.value)}
+              placeholder="Filter by table name or number"
+              className="control-input flex-1"
+            />
             {canTakeOrders && (
-              <button onClick={() => setShowComposer(true)} className="btn-primary w-full py-3.5">
-                Create new order
+              <button onClick={() => setShowComposer(true)} className="btn-primary shrink-0 py-3 sm:w-auto">
+                + Create new order
               </button>
             )}
-          </aside>
+          </div>
+
+          {/* Kanban board — the order pipeline as it actually flows, one
+              lane per status, instead of a single list behind a filter. */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {ORDER_COLUMNS.map((col) => {
+              const columnOrders = filteredOrders
+                .filter((o) => o.status === col.status)
+                .sort((a, b) =>
+                  col.status === "PAID"
+                    ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                    : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                );
+
+              return (
+                <div key={col.status} className={`surface-card overflow-hidden border-t-4 ${col.header}`}>
+                  <div className="px-3.5 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${col.dot}`} />
+                    <h2 className="text-sm font-bold text-gray-900">{col.label}</h2>
+                    <span className="ml-auto text-xs font-bold text-gray-400">{columnOrders.length}</span>
+                  </div>
+                  <div className="max-h-[70vh] overflow-y-auto p-2.5 space-y-2.5">
+                    {columnOrders.length === 0 ? (
+                      <p className="py-8 text-center text-xs text-gray-400">Nothing here</p>
+                    ) : (
+                      columnOrders.map(renderOrderCard)
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </section>
       )}
 

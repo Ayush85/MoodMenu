@@ -65,13 +65,19 @@ export function getFontOption(value?: string): FontOption | undefined {
 export interface LandingPageContent {
   tagline: string;
   about: string;
-  highlights: string[];
+  highlights: Array<string | LandingHighlight>;
   ctaText: string;
   phone: string | null;
   address: string | null;
   hours: string | null;
   instagram: string | null;
   facebook: string | null;
+}
+
+export interface LandingHighlight {
+  text: string;
+  image: string | null;
+  prompt: string;
 }
 
 export const DEFAULT_LANDING_CTA = "View Menu";

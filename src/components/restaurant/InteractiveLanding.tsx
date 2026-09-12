@@ -2,7 +2,7 @@
 
 import { useState, type CSSProperties, type PointerEvent } from "react";
 import { ArrowRight, Clock3, Globe, MapPin, Phone, UtensilsCrossed } from "lucide-react";
-import type { LandingPageContent, MoodTheme } from "@/types";
+import type { LandingHighlight, LandingPageContent, MoodTheme } from "@/types";
 
 interface GalleryItem {
   name: string;
@@ -21,6 +21,11 @@ interface Props {
   gallery: GalleryItem[];
 }
 
+function normalizeHighlight(value: string | LandingHighlight): LandingHighlight {
+  if (typeof value === "string") return { text: value, image: null, prompt: "" };
+  return { text: value.text || "", image: value.image || null, prompt: value.prompt || "" };
+}
+
 type SiteStyle = CSSProperties & {
   "--site-primary"?: string;
   "--site-accent"?: string;
@@ -34,7 +39,7 @@ export default function InteractiveLanding({ name, city, logo, theme, fontFamily
   const heroImage = gallery[0]?.image;
   const tagline = content?.tagline || `Welcome to ${name}`;
   const about = content?.about || `${name} is located in ${city}.`;
-  const highlights = content?.highlights?.filter(Boolean) ?? [];
+  const highlights = content?.highlights?.filter(Boolean).map(normalizeHighlight) ?? [];
   const ctaText = content?.ctaText || "View our menu";
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
@@ -102,7 +107,12 @@ export default function InteractiveLanding({ name, city, logo, theme, fontFamily
 
       {highlights.length > 0 && (
         <section className="restaurant-site__highlights">
-          {highlights.map((highlight, index) => <article key={`${highlight}-${index}`}><span>0{index + 1}</span><p>{highlight}</p></article>)}
+          {highlights.map((highlight, index) => (
+            <article key={`${highlight.text}-${index}`} className={highlight.image ? "has-image" : ""}>
+              {highlight.image && <img src={highlight.image} alt="" aria-hidden="true" />}
+              <div className="restaurant-site__highlight-content"><span>0{index + 1}</span><p>{highlight.text}</p></div>
+            </article>
+          ))}
         </section>
       )}
 

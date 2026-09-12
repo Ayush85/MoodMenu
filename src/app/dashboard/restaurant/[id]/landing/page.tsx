@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { Sparkles, Plus, X, ExternalLink } from "lucide-react";
-import { LandingPageContent, DEFAULT_LANDING_CTA } from "@/types";
+import { LandingHighlight, LandingPageContent, DEFAULT_LANDING_CTA } from "@/types";
 
 interface Restaurant {
   id: string;
@@ -14,6 +14,11 @@ interface Restaurant {
   name: string;
   landingEnabled: boolean;
   landingPage: LandingPageContent | null;
+}
+
+function normalizeHighlight(value: string | LandingHighlight): LandingHighlight {
+  if (typeof value === "string") return { text: value, image: null, prompt: "" };
+  return { text: value.text || "", image: value.image || null, prompt: value.prompt || "" };
 }
 
 export function LandingPageSettings({ embedded = false }: { embedded?: boolean }) {
@@ -29,7 +34,7 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
   const [enabled, setEnabled] = useState(false);
   const [tagline, setTagline] = useState("");
   const [about, setAbout] = useState("");
-  const [highlights, setHighlights] = useState<string[]>([]);
+  const [highlights, setHighlights] = useState<LandingHighlight[]>([]);
   const [ctaText, setCtaText] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
@@ -46,7 +51,7 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
         const content = data.landingPage;
         setTagline(content?.tagline || "");
         setAbout(content?.about || "");
-        setHighlights(content?.highlights?.length ? content.highlights : []);
+        setHighlights(content?.highlights?.length ? content.highlights.map(normalizeHighlight) : []);
         setCtaText(content?.ctaText || "");
         setPhone(content?.phone || "");
         setAddress(content?.address || "");
@@ -68,7 +73,7 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
       }
       setTagline(data.tagline || "");
       setAbout(data.about || "");
-      setHighlights(Array.isArray(data.highlights) ? data.highlights : []);
+      setHighlights(Array.isArray(data.highlights) ? data.highlights.map((text: string) => ({ text, image: null, prompt: "" })) : []);
       setCtaText(data.ctaText || "");
       toast("Draft generated — review and click Save to keep it");
     } catch {
@@ -84,7 +89,7 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
       const landingPage: LandingPageContent = {
         tagline: tagline.trim(),
         about: about.trim(),
-        highlights: highlights.map((h) => h.trim()).filter(Boolean),
+        highlights: highlights.map((h) => ({ ...h, text: h.text.trim(), prompt: h.prompt.trim() })).filter((h) => h.text),
         ctaText: ctaText.trim() || DEFAULT_LANDING_CTA,
         phone: phone.trim() || null,
         address: address.trim() || null,
@@ -108,7 +113,7 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
   }
 
   function updateHighlight(index: number, value: string) {
-    setHighlights((prev) => prev.map((h, i) => (i === index ? value : h)));
+    setHighlights((prev) => prev.map((h, i) => (i === index ? { ...h, text: value } : h)));
   }
 
   function removeHighlight(index: number) {
@@ -116,7 +121,31 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
   }
 
   function addHighlight() {
-    setHighlights((prev) => (prev.length >= 5 ? prev : [...prev, ""]));
+    setHighlights((prev) => (prev.length >= 5 ? prev : [...prev, { text: "", image: null, prompt: "" }]));
+  }
+
+  async function generateHighlightImage(index: number) {
+    const highlight = highlights[index];
+    if (!highlight?.text.trim()) {
+      toast("Add the highlight text first", "error");
+      return;
+    }
+
+    setHighlights((prev) => prev.map((item, i) => i === index ? { ...item, image: "generating" } : item));
+    try {
+      const res = await fetch(`/api/restaurants/${id}/generate-landing-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: highlight.text, prompt: highlight.prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't generate image");
+      setHighlights((prev) => prev.map((item, i) => i === index ? { ...item, image: data.url } : item));
+      toast("Highlight image generated — save the landing page to publish it");
+    } catch (error) {
+      setHighlights((prev) => prev.map((item, i) => i === index ? { ...item, image: null } : item));
+      toast(error instanceof Error ? error.message : "Couldn't generate image", "error");
+    }
   }
 
   if (loading) {
@@ -214,17 +243,16 @@ export function LandingPageSettings({ embedded = false }: { embedded?: boolean }
           <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Highlights</label>
           <div className="space-y-2">
             {highlights.map((highlight, i) => (
-              <div key={i} className="flex gap-2">
-                <input
-                  type="text"
-                  value={highlight}
-                  onChange={(e) => updateHighlight(i, e.target.value)}
-                  placeholder="e.g. Fresh, local ingredients"
-                  className="control-input flex-1"
-                />
-                <button onClick={() => removeHighlight(i)} className="btn-soft !w-auto px-3">
-                  <X className="w-4 h-4" />
-                </button>
+              <div key={i} className="rounded-xl border border-gray-100 bg-gray-50/70 p-3 space-y-2">
+                <div className="flex gap-2">
+                  <input type="text" value={highlight.text} onChange={(e) => updateHighlight(i, e.target.value)} placeholder="e.g. Fresh, local ingredients" className="control-input flex-1" />
+                  <button onClick={() => removeHighlight(i)} className="btn-soft !w-auto px-3"><X className="w-4 h-4" /></button>
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={highlight.prompt} onChange={(e) => setHighlights((prev) => prev.map((h, index) => index === i ? { ...h, prompt: e.target.value } : h))} placeholder="Image direction, e.g. warm Nepali thali on a stone table" className="control-input flex-1 text-sm" />
+                  <button onClick={() => generateHighlightImage(i)} disabled={highlight.image === "generating"} className="btn-soft !w-auto px-3 text-orange-600 disabled:opacity-50"><Sparkles className="w-4 h-4" /> {highlight.image === "generating" ? "Generating…" : "Generate image"}</button>
+                </div>
+                {highlight.image && highlight.image !== "generating" && <img src={highlight.image} alt="Generated highlight preview" className="h-24 w-full rounded-lg object-cover" />}
               </div>
             ))}
           </div>

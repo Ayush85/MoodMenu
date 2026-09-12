@@ -280,7 +280,11 @@
 .restaurant-site__story-copy p { margin: 0; max-width: 32rem; font-size: 1rem; line-height: 1.8; opacity: 0.72; }
 .restaurant-site__inline-link { display: inline-flex; align-items: center; gap: 0.45rem; margin-top: 1.5rem; color: var(--site-primary); font-size: 0.8rem; font-weight: 850; }
 .restaurant-site__highlights { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; padding-bottom: 7rem; }
-.restaurant-site__highlights article { min-height: 8.5rem; padding: 1.1rem; border-top: 1px solid color-mix(in srgb, var(--site-primary) 60%, transparent); background: color-mix(in srgb, var(--site-primary) 6%, transparent); transition: transform 180ms ease, background 180ms ease; }
+.restaurant-site__highlights article { position: relative; min-height: 8.5rem; overflow: hidden; padding: 1.1rem; border-top: 1px solid color-mix(in srgb, var(--site-primary) 60%, transparent); background: color-mix(in srgb, var(--site-primary) 6%, transparent); transition: transform 180ms ease, background 180ms ease; }
+.restaurant-site__highlights article img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.48; transition: transform 500ms ease, opacity 180ms ease; }
+.restaurant-site__highlights article.has-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(12, 10, 8, 0.18), rgba(12, 10, 8, 0.86)); }
+.restaurant-site__highlights article.has-image:hover img { transform: scale(1.08); opacity: 0.6; }
+.restaurant-site__highlight-content { position: relative; z-index: 1; display: flex; min-height: 6.3rem; flex-direction: column; justify-content: space-between; }
 .restaurant-site__highlights article:hover { transform: translateY(-5px); background: color-mix(in srgb, var(--site-primary) 12%, transparent); }
 .restaurant-site__highlights span { color: var(--site-primary); font-size: 0.7rem; font-weight: 850; }
 .restaurant-site__highlights p { margin: 2.5rem 0 0; font-size: 0.85rem; font-weight: 750; line-height: 1.3; }

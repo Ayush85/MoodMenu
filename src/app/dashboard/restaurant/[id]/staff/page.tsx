@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { KeyRound, Trash2, UserPlus, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import ConfirmModal from "@/components/ConfirmModal";
+import { validatePassword } from "@/lib/password-policy";
 
 interface WaiterCall {
   id: string;
@@ -131,6 +134,17 @@ export default function StaffPage() {
   const [newStaffPhone, setNewStaffPhone] = useState("");
   const [newStaffRole, setNewStaffRole] = useState<StaffMember["role"]>("WAITER");
   const [addingStaff, setAddingStaff] = useState(false);
+  const [showNewStaffPassword, setShowNewStaffPassword] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmLabel?: string;
+    variant?: "danger" | "primary";
+    onConfirm: () => void;
+  } | null>(null);
+  const [resetPasswordStaff, setResetPasswordStaff] = useState<StaffMember | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
   const actorType = session?.user?.actorType;
   const staffRole = session?.user?.role as "WAITER" | "COOK" | "CHEF" | undefined;
   const canManageStaff = actorType === "USER";
@@ -457,6 +471,23 @@ export default function StaffPage() {
     setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
   }
 
+  function handleOrderStatusClick(order: OrderTicket, status: OrderTicket["status"]) {
+    if (status === "CANCELED") {
+      setConfirmAction({
+        title: "Cancel this order?",
+        message: `${order.table.label || `Table ${order.table.number}`} · Rs. ${fmt(order.total)}. This can't be undone.`,
+        confirmLabel: "Cancel Order",
+        variant: "danger",
+        onConfirm: () => {
+          updateOrderStatus(order.id, status);
+          setConfirmAction(null);
+        },
+      });
+      return;
+    }
+    updateOrderStatus(order.id, status);
+  }
+
   function canUpdateStatus(status: OrderTicket["status"]) {
     if (actorType === "USER") return true;
     if (staffRole === "WAITER") {
@@ -564,30 +595,56 @@ export default function StaffPage() {
       body: JSON.stringify({ staffId }),
     });
 
-    if (!res.ok) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      toast((data as { error?: string }).error || "Could not remove staff member", "error");
+      return;
+    }
     setStaff((prev) => prev.filter((s) => s.id !== staffId));
+    toast("Staff member removed");
   }
 
-  async function resetStaffPassword(staffId: string) {
-    const password = window.prompt("Enter new password for this staff member");
-    if (!password) return;
-    if (password.length < 6) {
-      toast("Password must be at least 6 characters", "error");
-      return;
-    }
-
-    const res = await fetch(`/api/restaurants/${id}/staff-members`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ staffId, password }),
+  function confirmDeleteStaff(member: StaffMember) {
+    setConfirmAction({
+      title: "Remove staff member?",
+      message: `${member.name} will lose access immediately. You'll need to re-add them to restore it.`,
+      confirmLabel: "Remove",
+      variant: "danger",
+      onConfirm: () => {
+        deleteStaffMember(member.id);
+        setConfirmAction(null);
+      },
     });
+  }
 
-    if (!res.ok) {
-      toast("Could not reset password", "error");
+  async function submitPasswordReset() {
+    if (!resetPasswordStaff) return;
+    const passwordError = validatePassword(resetPasswordValue);
+    if (passwordError) {
+      toast(passwordError, "error");
       return;
     }
 
-    toast("Staff password updated");
+    setResettingPassword(true);
+    try {
+      const res = await fetch(`/api/restaurants/${id}/staff-members`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staffId: resetPasswordStaff.id, password: resetPasswordValue }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast((data as { error?: string }).error || "Could not reset password", "error");
+        return;
+      }
+
+      toast(`Password updated for ${resetPasswordStaff.name}`);
+      setResetPasswordStaff(null);
+      setResetPasswordValue("");
+    } finally {
+      setResettingPassword(false);
+    }
   }
 
   const activeWaiterCount = staff.filter((s) => s.isActive && s.role === "WAITER").length;
@@ -942,7 +999,7 @@ export default function StaffPage() {
                         <div className="flex flex-wrap gap-2">
                           {suggestedStatus && canUpdateStatus(suggestedStatus) && (
                             <button
-                              onClick={() => updateOrderStatus(order.id, suggestedStatus)}
+                              onClick={() => handleOrderStatusClick(order, suggestedStatus)}
                               className="flex min-h-10 items-center gap-1 rounded-xl bg-orange-500 px-4 text-xs font-bold text-white transition hover:bg-orange-600"
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -956,7 +1013,7 @@ export default function StaffPage() {
                             .map((status) => (
                               <button
                                 key={status}
-                                onClick={() => updateOrderStatus(order.id, status)}
+                                onClick={() => handleOrderStatusClick(order, status)}
                               className={`min-h-10 text-xs px-3 rounded-xl border font-medium transition ${
                                   status === "CANCELED"
                                     ? "border-red-200 text-red-500 bg-red-50 hover:bg-red-100"
@@ -1071,43 +1128,96 @@ export default function StaffPage() {
 
           {showStaffSection && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-2.5 mb-4">
-                <input value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Staff name" className="control-input" />
-                <input value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="Email" className="control-input" />
-                <input type="password" value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} placeholder="Password" className="control-input" />
-                <input value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="Phone" className="control-input" />
-                <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as StaffMember["role"])} className="control-input">
-                  <option value="WAITER">Waiter</option>
-                  <option value="COOK">Cook</option>
-                  <option value="CHEF">Chef</option>
-                </select>
-                <button
-                  onClick={addStaffMember}
-                  disabled={addingStaff || !newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()}
-                  className="btn-primary"
-                >
-                  {addingStaff ? "Adding..." : "Add Staff"}
-                </button>
+              <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 mb-4">
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-3">Add a staff member</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                  <div>
+                    <label className="field-label">Name</label>
+                    <input value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Full name" className="control-input mt-1 w-full" />
+                  </div>
+                  <div>
+                    <label className="field-label">Email</label>
+                    <input type="email" value={newStaffEmail} onChange={(e) => setNewStaffEmail(e.target.value)} placeholder="staff@restaurant.com" className="control-input mt-1 w-full" />
+                  </div>
+                  <div>
+                    <label className="field-label">Phone <span className="font-normal normal-case text-gray-400">(optional)</span></label>
+                    <input value={newStaffPhone} onChange={(e) => setNewStaffPhone(e.target.value)} placeholder="98XXXXXXXX" className="control-input mt-1 w-full" />
+                  </div>
+                  <div>
+                    <label className="field-label">Password</label>
+                    <div className="relative mt-1">
+                      <input
+                        type={showNewStaffPassword ? "text" : "password"}
+                        value={newStaffPassword}
+                        onChange={(e) => setNewStaffPassword(e.target.value)}
+                        placeholder="Min. 8 characters"
+                        className="control-input w-full pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewStaffPassword((v) => !v)}
+                        aria-label={showNewStaffPassword ? "Hide password" : "Show password"}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewStaffPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="field-label">Role</label>
+                    <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value as StaffMember["role"])} className="control-input mt-1 w-full">
+                      <option value="WAITER">Waiter</option>
+                      <option value="COOK">Cook</option>
+                      <option value="CHEF">Chef</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={addStaffMember}
+                      disabled={addingStaff || !newStaffName.trim() || !newStaffEmail.trim() || !newStaffPassword.trim()}
+                      className="btn-primary w-full flex items-center justify-center gap-1.5"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      {addingStaff ? "Adding…" : "Add Staff"}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
                 {staff.length === 0 ? (
-                  <p className="text-sm text-gray-400">No staff members added yet.</p>
+                  <p className="text-sm text-gray-400 text-center py-6">No staff members added yet.</p>
                 ) : (
                   staff.map((member) => (
-                    <div key={member.id} className="border border-gray-200 rounded-xl px-3 py-3 flex flex-col gap-2.5">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900">{member.name}</p>
-                          <p className="text-xs text-gray-500">{member.phone || "No phone"}</p>
+                    <div key={member.id} className="rounded-2xl border border-gray-200 px-3.5 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-sm ${
+                            member.isActive ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-400"
+                          }`}
+                        >
+                          {member.name.charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-xs text-gray-500 font-mono break-all">{member.email}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-gray-900 truncate">{member.name}</p>
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                                member.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              {member.isActive ? "Active" : "Inactive"}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 truncate">{member.email}</p>
+                          {member.phone && <p className="text-xs text-gray-400">{member.phone}</p>}
+                        </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <select
                           value={member.role}
                           onChange={(e) => updateStaffMember(member.id, { role: e.target.value as StaffMember["role"] })}
-                          className="text-sm border border-gray-300 rounded-lg px-2 py-1 bg-white"
+                          className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white"
                         >
                           <option value="WAITER">Waiter</option>
                           <option value="COOK">Cook</option>
@@ -1115,15 +1225,25 @@ export default function StaffPage() {
                         </select>
                         <button
                           onClick={() => updateStaffMember(member.id, { isActive: !member.isActive })}
-                          className={`min-h-10 text-xs px-3 rounded-xl ${member.isActive ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-600"}`}
+                          className={`min-h-9 text-xs px-3 rounded-lg font-semibold transition ${member.isActive ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}
                         >
-                          {member.isActive ? "Active" : "Inactive"}
+                          {member.isActive ? "Deactivate" : "Activate"}
                         </button>
-                        <button onClick={() => deleteStaffMember(member.id)} className="min-h-10 text-xs px-3 rounded-xl bg-red-100 text-red-700">
-                          Remove
+                        <button
+                          onClick={() => { setResetPasswordStaff(member); setResetPasswordValue(""); }}
+                          aria-label={`Reset password for ${member.name}`}
+                          title="Reset password"
+                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition"
+                        >
+                          <KeyRound className="w-4 h-4" />
                         </button>
-                        <button onClick={() => resetStaffPassword(member.id)} className="min-h-10 text-xs px-3 rounded-xl bg-indigo-100 text-indigo-700">
-                          Reset Password
+                        <button
+                          onClick={() => confirmDeleteStaff(member)}
+                          aria-label={`Remove ${member.name}`}
+                          title="Remove staff member"
+                          className="w-9 h-9 flex items-center justify-center rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1133,6 +1253,45 @@ export default function StaffPage() {
             </>
           )}
         </section>
+      )}
+
+      {/* Reset Password Modal */}
+      {resetPasswordStaff && (
+        <div className="fixed inset-0 z-90 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setResetPasswordStaff(null)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-6 animate-fade-in">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Reset password</h3>
+            <p className="text-sm text-gray-500 mb-4">Set a new password for {resetPasswordStaff.name}.</p>
+            <label className="field-label">New password</label>
+            <input
+              type="text"
+              autoFocus
+              value={resetPasswordValue}
+              onChange={(e) => setResetPasswordValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && submitPasswordReset()}
+              placeholder="Min. 8 characters, upper/lower/number/symbol"
+              className="control-input mt-1 w-full"
+            />
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setResetPasswordStaff(null)} className="btn-soft flex-1">Cancel</button>
+              <button onClick={submitPasswordReset} disabled={resettingPassword || !resetPasswordValue} className="btn-primary flex-1">
+                {resettingPassword ? "Saving…" : "Update Password"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmAction && (
+        <ConfirmModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          variant={confirmAction.variant}
+          onConfirm={confirmAction.onConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

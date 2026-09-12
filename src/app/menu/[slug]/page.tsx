@@ -58,6 +58,15 @@ function getTimeGreetingFromHour(hour: number): string {
   return "Late Night Menu";
 }
 
+function getRestaurantHour(): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kathmandu",
+    hour: "numeric",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  return Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+}
+
 export default async function PublicMenuPage({ params, searchParams }: Props) {
   const { slug } = await params;
   const { table: tableParam, wifi: wifiParam, preview: previewParam } = await searchParams;
@@ -108,12 +117,12 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     };
   }
 
-  const greeting = getTimeGreetingFromHour(new Date().getHours());
+  const greeting = getTimeGreetingFromHour(getRestaurantHour());
 
   // Identify featured items
   const allItems = restaurant.categories.flatMap((cat) => cat.items);
 
-  const featuredItems = allItems
+  const moodMatches = allItems
     .filter((item) =>
       mood.featuredTags.some((tag) =>
         item.tags.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
@@ -125,6 +134,11 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const todaysSpecials = allItems
     .filter((item) => item.isSpecial)
     .slice(0, 6);
+
+  // Keep mood recommendations useful even before the owner has tagged dishes.
+  const featuredItems = mood.ruleName !== "Default" && moodMatches.length === 0
+    ? [...todaysSpecials, ...allItems.filter((item) => !todaysSpecials.some((special) => special.id === item.id))].slice(0, 6)
+    : moodMatches;
 
   const theme = mood.theme || DEFAULT_THEME;
   const canonicalMenuUrl = getRestaurantMenuUrl({

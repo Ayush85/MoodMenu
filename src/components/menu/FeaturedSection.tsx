@@ -28,11 +28,11 @@ export default function FeaturedSection({ items, ruleName, theme, onTap }: Props
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4" style={{ color: theme.primary }} />
           <h2 className="text-sm font-extrabold" style={{ color: theme.primary }}>
-            Recommended right now
+            {ruleName === "Default" ? "Popular right now" : "Recommended right now"}
           </h2>
         </div>
         <p className="text-xs opacity-40 mt-0.5">
-          Picked for today&apos;s weather{ruleName !== "Default" ? ` — ${ruleName}` : ""}
+          {ruleName === "Default" ? "A few favourites to get you started" : `Picked for today&apos;s mood — ${ruleName}`}
         </p>
       </div>
 

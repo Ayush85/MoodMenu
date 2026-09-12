@@ -63,7 +63,14 @@ export default function FcmInit() {
       const messaging = await getFcmMessaging();
       if (!messaging) return;
 
-      const registration = await navigator.serviceWorker.ready;
+      // navigator.serviceWorker.ready never resolves if the worker's
+      // install step failed (e.g. a precached URL 404ing) — it just hangs
+      // forever with no error, which is exactly what silently broke push
+      // registration once before. Time it out instead of trusting it.
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("service worker not ready after 10s")), 10000)),
+      ]);
       const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: registration });
 
       if (userId && token) {
@@ -73,8 +80,11 @@ export default function FcmInit() {
         await unregisterToken(currentToken.current);
         currentToken.current = null;
       }
-    } catch {
-      // Ignore — user can still use the app without push
+    } catch (error) {
+      // Still don't block the app on push failing, but make it visible
+      // instead of silently doing nothing — this exact silence is what let
+      // push stay broken for a while without anyone being able to tell why.
+      console.error("[FcmInit] push token sync failed:", error);
     }
   }, [vapidKey, userId, status]);
 

@@ -12,11 +12,30 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-const CACHE_NAME = "menuor-shell-v1";
-const SHELL_ASSETS = ["/", "/logo.svg", "/manifest.webmanifest"];
+const CACHE_NAME = "menuor-shell-v2";
+// This worker is only ever registered from the dashboard (see
+// src/app/dashboard/layout.tsx) — /manifest.webmanifest was the
+// customer-facing root manifest and no longer exists (see
+// src/app/dashboard/manifest.webmanifest/route.ts for the current one).
+const SHELL_ASSETS = ["/logo.svg", "/dashboard/manifest.webmanifest"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS)).then(() => self.skipWaiting()));
+  // cache.addAll() is all-or-nothing — one failed fetch (a renamed asset, a
+  // route that no longer exists) rejects the whole install, the worker
+  // never activates, and navigator.serviceWorker.ready then hangs forever
+  // for every caller (this is exactly what silently broke push
+  // registration once before). Cache each asset independently instead, so
+  // one bad URL can't take the whole worker down.
+  event.waitUntil(
+    caches
+      .open(CACHE_NAME)
+      .then((cache) =>
+        Promise.all(
+          SHELL_ASSETS.map((url) => cache.add(url).catch((err) => console.warn("[SW] precache failed:", url, err)))
+        )
+      )
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {

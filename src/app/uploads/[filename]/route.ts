@@ -28,6 +28,8 @@ export async function GET(
     return new NextResponse(new Uint8Array(data), {
       headers: {
         "Content-Type": contentType,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Disposition": "inline",
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

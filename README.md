@@ -45,7 +45,10 @@ For near-immediate provisioning after an owner saves a domain, run the included
 `scripts/domain-provisioner-server.js` as the host service
 `scripts/menuor-domain-provisioner.service`. Set the same
 `DOMAIN_PROVISIONER_SECRET` in the app environment and `/etc/menuor/domain-provisioner.env`.
-The app trigger is best-effort and the cron job remains the retry fallback.
+The service binds to `127.0.0.1` by default. If the app runs in Docker and needs the
+immediate trigger, set `DOMAIN_PROVISIONER_BIND=0.0.0.0` in the host service environment
+and restrict TCP port 3031 to the Docker network with the host firewall. The app trigger
+is best-effort and the cron job remains the safe retry fallback.
 
 For a verified custom domain, `/` shows the landing page when enabled; otherwise `/`
 shows the menu. `/menu` remains available when the landing page is enabled.

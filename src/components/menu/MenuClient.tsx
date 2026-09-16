@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { MoodTheme, WeatherData } from "@/types";
 import QRCode from "qrcode";
@@ -12,6 +12,7 @@ import type { ActiveOffer } from "@/lib/offers";
 import BottomBar from "./BottomBar";
 import CallWaiterModal from "./CallWaiterModal";
 import ItemDetailModal from "./ItemDetailModal";
+import OrderPanel, { CartLine, CustomerOrder } from "./OrderPanel";
 import ClassicLayout from "./layouts/ClassicLayout";
 import TabbedLayout from "./layouts/TabbedLayout";
 import MagazineLayout from "./layouts/MagazineLayout";
@@ -104,6 +105,22 @@ export default function MenuClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
 
+  // Customer ordering state. A cart is scoped to the table QR link so it
+  // cannot accidentally carry items from another restaurant/table.
+  const [cart, setCart] = useState<CartLine[]>([]);
+  const [showOrderPanel, setShowOrderPanel] = useState(false);
+  const [activeOrder, setActiveOrder] = useState<CustomerOrder | null>(null);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const cartHydrated = useRef(false);
+  const pendingOrderRequestKey = useRef<string | null>(null);
+  const cartStorageKey = tableNumber ? `menuor-cart:${restaurant.slug}:${tableNumber}` : null;
+  const orderStorageKey = tableNumber ? `menuor-active-order:${restaurant.slug}:${tableNumber}` : null;
+
+  useEffect(() => {
+    pendingOrderRequestKey.current = null;
+  }, [tableNumber, tableToken]);
+
   // Filtered items for search
   const allMenuItems = useMemo(
     () => categories.flatMap((cat) => cat.items.map((item) => ({ ...item, categoryName: cat.name }))),
@@ -131,6 +148,60 @@ export default function MenuClient({
         .catch(() => { });
     }
   }, [restaurant.wifiSsid, restaurant.wifiPassword]);
+
+  // Restore an unfinished cart and the latest order when the guest returns to
+  // the menu. The server remains the source of truth for prices and status.
+  useEffect(() => {
+    cartHydrated.current = false;
+    if (!cartStorageKey) {
+      setCart([]);
+      cartHydrated.current = true;
+      return;
+    }
+
+    try {
+      const storedCart = JSON.parse(localStorage.getItem(cartStorageKey) || "[]") as CartLine[];
+      setCart(Array.isArray(storedCart) ? storedCart.filter((item) => item && item.itemId && item.quantity > 0) : []);
+    } catch {
+      setCart([]);
+    } finally {
+      cartHydrated.current = true;
+    }
+  }, [cartStorageKey]);
+
+  useEffect(() => {
+    if (!cartStorageKey || !cartHydrated.current) return;
+    if (cart.length === 0) localStorage.removeItem(cartStorageKey);
+    else localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+  }, [cart, cartStorageKey]);
+
+  useEffect(() => {
+    if (!orderStorageKey || !tableNumber || !tableToken) return;
+    const storedOrderId = localStorage.getItem(orderStorageKey);
+    if (!storedOrderId) return;
+    let cancelled = false;
+
+    fetch(`/api/menu/${restaurant.slug}/orders/${storedOrderId}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Order unavailable");
+        return res.json() as Promise<CustomerOrder>;
+      })
+      .then((order) => { if (!cancelled) setActiveOrder(order); })
+      .catch(() => localStorage.removeItem(orderStorageKey));
+
+    return () => { cancelled = true; };
+  }, [orderStorageKey, restaurant.slug, tableNumber, tableToken]);
+
+  useEffect(() => {
+    if (!activeOrder || !tableNumber || !tableToken || ["PAID", "CANCELED"].includes(activeOrder.status)) return;
+    const refresh = () => {
+      fetch(`/api/menu/${restaurant.slug}/orders/${activeOrder.id}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
+        .then((res) => res.ok ? res.json() as Promise<CustomerOrder> : null)
+        .then((order) => { if (order) setActiveOrder(order); });
+    };
+    const interval = setInterval(refresh, 8000);
+    return () => clearInterval(interval);
+  }, [activeOrder, restaurant.slug, tableNumber, tableToken]);
 
   const handleCategoryChange = useCallback((id: string) => {
     setActiveCategory(id);
@@ -194,6 +265,68 @@ export default function MenuClient({
   }
 
   const itemsWrapperClass = cardStyle === "grid" ? "grid grid-cols-2 gap-3" : "space-y-2";
+
+  function addToCart(item: MenuItemData, quantity = 1) {
+    if (!tableNumber) return;
+    setOrderError(null);
+    setCart((current) => {
+      const existing = current.find((line) => line.itemId === item.id);
+      if (existing) {
+        return current.map((line) => line.itemId === item.id ? { ...line, quantity: Math.min(20, line.quantity + quantity), price: item.price } : line);
+      }
+      return [...current, { itemId: item.id, itemName: item.name, price: item.price, quantity: Math.min(20, quantity) }];
+    });
+    setSelectedItem(null);
+  }
+
+  function setCartQuantity(itemId: string, quantity: number) {
+    setCart((current) => quantity <= 0
+      ? current.filter((line) => line.itemId !== itemId)
+      : current.map((line) => line.itemId === itemId ? { ...line, quantity: Math.min(20, quantity) } : line));
+  }
+
+  async function submitCustomerOrder(note: string) {
+    if (!tableNumber || !tableToken || cart.length === 0) return;
+    setIsSubmittingOrder(true);
+    setOrderError(null);
+    if (!pendingOrderRequestKey.current) {
+      pendingOrderRequestKey.current = globalThis.crypto?.randomUUID?.()
+        || `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    try {
+      const response = await fetch(`/api/menu/${restaurant.slug}/orders`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tableNumber,
+          tableToken,
+          idempotencyKey: pendingOrderRequestKey.current,
+          note,
+          items: cart.map((item) => ({ itemId: item.itemId, quantity: item.quantity })),
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setOrderError(data.error || "We could not place your order. Please try again.");
+        return;
+      }
+      const order = data as CustomerOrder;
+      setActiveOrder(order);
+      setCart([]);
+      pendingOrderRequestKey.current = null;
+      if (orderStorageKey) localStorage.setItem(orderStorageKey, order.id);
+    } catch {
+      setOrderError("You appear to be offline. Check your connection and try again.");
+    } finally {
+      setIsSubmittingOrder(false);
+    }
+  }
+
+  function startNewOrder() {
+    setActiveOrder(null);
+    setOrderError(null);
+    if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+  }
 
   return (
     <div
@@ -292,6 +425,7 @@ export default function MenuClient({
                       theme={theme}
                       layout={cardStyle}
                       onTap={setSelectedItem}
+                      onAdd={tableNumber ? addToCart : undefined}
                     />
                   ))}
                 </div>
@@ -309,6 +443,7 @@ export default function MenuClient({
           activeCategory={activeCategory}
           onCategoryChange={handleCategoryChange}
           onTapItem={setSelectedItem}
+          onAddToOrder={tableNumber ? addToCart : undefined}
           hideContent={showSearch && !!searchQuery}
         />
       </div>
@@ -387,12 +522,31 @@ export default function MenuClient({
       )}
 
       {/* Bottom Bar */}
+      <OrderPanel
+        key={activeOrder?.id ?? "cart"}
+        open={showOrderPanel}
+        theme={theme}
+        cart={cart}
+        activeOrder={cart.length === 0 ? activeOrder : null}
+        isSubmitting={isSubmittingOrder}
+        error={orderError}
+        onClose={() => setShowOrderPanel(false)}
+        onSubmit={submitCustomerOrder}
+        onSetQuantity={setCartQuantity}
+        onRemove={(itemId) => setCartQuantity(itemId, 0)}
+        onStartNewOrder={startNewOrder}
+      />
+
       <BottomBar
         tableNumber={tableNumber}
         hasWifi={!!restaurant.wifiSsid}
         callStatus={callStatus}
         onCallWaiter={handleCallWaiterTap}
         onToggleWifi={() => setShowWifiModal((v) => !v)}
+        cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+        cartTotal={cart.reduce((sum, item) => sum + item.price * item.quantity, 0)}
+        hasActiveOrder={!!activeOrder}
+        onOpenOrder={() => { setOrderError(null); setShowOrderPanel(true); }}
         theme={theme}
       />
 
@@ -415,6 +569,8 @@ export default function MenuClient({
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           theme={theme}
+          canOrder={!!tableNumber}
+          onAddToOrder={tableNumber ? (quantity) => addToCart(selectedItem, quantity) : undefined}
         />
       )}
 

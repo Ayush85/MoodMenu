@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { getRestaurantLandingUrl, getRestaurantMenuUrl } from "@/lib/restaurant-site";
 import { DEFAULT_THEME, MoodTheme, LandingPageContent, getFontOption } from "@/types";
 import InteractiveLanding from "@/components/restaurant/InteractiveLanding";
+import { serializeJsonLd } from "@/lib/structured-data";
+import { safeExternalUrl } from "@/lib/urls";
 
 export const dynamic = "force-dynamic";
 
@@ -100,7 +102,7 @@ export default async function LandingPage({ params }: Props) {
     .filter((item): item is { name: string; image: string } => !!item.image)
     .slice(0, 6);
 
-  const sameAs = [content?.instagram, content?.facebook].filter((v): v is string => !!v);
+  const sameAs = [safeExternalUrl(content?.instagram), safeExternalUrl(content?.facebook)].filter((v): v is string => !!v);
   const absoluteMenuHref = menuHref;
 
   const jsonLd = {
@@ -121,7 +123,7 @@ export default async function LandingPage({ params }: Props) {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       {fontOption && <link rel="stylesheet" href={fontOption.stylesheetUrl} />}
       <InteractiveLanding
         name={restaurant.name}

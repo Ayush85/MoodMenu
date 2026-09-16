@@ -3,9 +3,19 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { isValidEmail, normalizeEmail, validatePassword } from "@/lib/password-policy";
 import { withApiLogging } from "@/lib/api-handler";
+import { getClientIp } from "@/lib/client-ip";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const POST = withApiLogging(async function POST(req: NextRequest) {
   try {
+    const requestLimit = checkRateLimit(`register:${getClientIp(req)}`, 5, 15 * 60 * 1000);
+    if (!requestLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many registration attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(requestLimit.retryAfterSeconds) } },
+      );
+    }
+
     const body = await req.json();
     const email = normalizeEmail(String(body?.email || ""));
     const password = String(body?.password || "");

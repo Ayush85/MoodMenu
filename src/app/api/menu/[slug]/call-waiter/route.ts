@@ -3,14 +3,7 @@ import { prisma } from "@/lib/db";
 import { sendPush } from "@/lib/push";
 import { withApiLogging } from "@/lib/api-handler";
 import { isValidTableToken } from "@/lib/table-token";
-
-function getClientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) return realIp.trim();
-  return "unknown";
-}
+import { getClientIp } from "@/lib/client-ip";
 
 export const POST = withApiLogging(async function POST(
   req: NextRequest,

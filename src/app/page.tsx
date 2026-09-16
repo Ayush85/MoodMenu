@@ -5,6 +5,7 @@ import Features from "@/components/landing/Features";
 import HowItWorks from "@/components/landing/HowItWorks";
 import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
+import { serializeJsonLd } from "@/lib/structured-data";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -23,7 +24,7 @@ const jsonLd = {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#fafafa] overflow-x-hidden">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <Navbar />
       <Hero />
       <Stats />

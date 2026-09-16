@@ -1,5 +1,6 @@
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
+import { Plus } from "lucide-react";
 
 interface MenuItemData {
   id: string;
@@ -14,10 +15,11 @@ interface Props {
   item: MenuItemData;
   theme: MoodTheme;
   onTap: (item: MenuItemData) => void;
+  onAdd?: (item: MenuItemData) => void;
   layout?: "list" | "grid";
 }
 
-export default function MenuItemCard({ item, theme, onTap, layout = "list" }: Props) {
+export default function MenuItemCard({ item, theme, onTap, onAdd, layout = "list" }: Props) {
   const isDark = theme.mode === "dark";
   const initial = item.name.charAt(0).toUpperCase();
 
@@ -71,6 +73,11 @@ export default function MenuItemCard({ item, theme, onTap, layout = "list" }: Pr
         <span className="block text-sm font-extrabold mt-1.5" style={{ color: theme.primary }}>
           {formatPrice(item.price)}
         </span>
+        {onAdd && (
+          <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(item); }} className="mt-2 flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: theme.primary }}>
+            <Plus className="h-3.5 w-3.5" /> Add
+          </button>
+        )}
       </div>
     );
   }
@@ -99,6 +106,11 @@ export default function MenuItemCard({ item, theme, onTap, layout = "list" }: Pr
           {formatPrice(item.price)}
         </span>
       </div>
+      {onAdd && (
+        <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(item); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: theme.primary }} aria-label={`Add ${item.name} to order`}>
+          <Plus className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

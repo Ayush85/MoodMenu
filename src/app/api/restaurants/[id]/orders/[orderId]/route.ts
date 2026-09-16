@@ -6,6 +6,13 @@ import { withApiLogging } from "@/lib/api-handler";
 import { sendPush } from "@/lib/push";
 
 const validStatuses = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const;
+const allowedNextStatuses: Record<OrderStatus, OrderStatus[]> = {
+  NEW: ["PREPARING", "CANCELED"],
+  PREPARING: ["SERVED", "CANCELED"],
+  SERVED: ["PAID"],
+  PAID: [],
+  CANCELED: [],
+};
 
 type AccessInfo =
   | { kind: "OWNER" }
@@ -70,11 +77,18 @@ export const PATCH = withApiLogging(async function PATCH(
 
   const order = await prisma.orderTicket.findFirst({
     where: { id: orderId, restaurantId: id },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
+  }
+
+  if (!allowedNextStatuses[order.status].includes(status as OrderStatus)) {
+    return NextResponse.json(
+      { error: `Order cannot move from ${order.status} to ${status}` },
+      { status: 409 },
+    );
   }
 
   const updated = await prisma.orderTicket.update({

@@ -11,6 +11,7 @@ export default function ClassicLayout({
   activeCategory,
   onCategoryChange,
   onTapItem,
+  onAddToOrder,
   hideContent,
 }: MenuLayoutProps) {
   const isDark = theme.mode === "dark";
@@ -43,6 +44,7 @@ export default function ClassicLayout({
                 theme={theme}
                 layout={cardStyle}
                 onTap={onTapItem}
+                onAdd={onAddToOrder}
               />
             ))}
           </div>
@@ -67,6 +69,7 @@ export default function ClassicLayout({
                 theme={theme}
                 layout={cardStyle}
                 onTap={onTapItem}
+                onAdd={onAddToOrder}
               />
             ))}
 

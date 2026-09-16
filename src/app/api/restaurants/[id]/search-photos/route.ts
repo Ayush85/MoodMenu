@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getStockSearchQuery, searchPexelsPhotos } from "@/lib/stock-photos";
 import { withApiLogging } from "@/lib/api-handler";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const POST = withApiLogging(async function POST(
   req: NextRequest,
@@ -21,6 +22,8 @@ export const POST = withApiLogging(async function POST(
   if (!restaurant) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const requestLimit = checkRateLimit(`photo-search:${session.user.id}`, 60, 60 * 60 * 1000);
+  if (!requestLimit.allowed) return NextResponse.json({ error: "Photo search limit reached. Please try again later." }, { status: 429 });
 
   const body = await req.json();
   let query = typeof body.query === "string" ? body.query.trim() : "";

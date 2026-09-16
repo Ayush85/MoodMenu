@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
@@ -7,6 +8,8 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { withApiLogging } from "@/lib/api-handler";
 import { logger } from "@/lib/logger";
+import { detectImageContentType } from "@/lib/storage";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const PROMPT = `You are a menu parser. Extract all menu items from this menu image.
 Return ONLY valid JSON with this exact structure, no markdown, no explanation:
@@ -193,6 +196,17 @@ export const POST = withApiLogging(async function POST(
     return NextResponse.json({ error: "Restaurant ID required" }, { status: 400 });
   }
 
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { id, ownerId: session.user.id },
+    select: { id: true },
+  });
+  if (!restaurant) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const requestLimit = checkRateLimit(`ai:${session.user.id}`, 30, 60 * 60 * 1000);
+  if (!requestLimit.allowed) {
+    return NextResponse.json({ error: "AI generation limit reached. Please try again later." }, { status: 429 });
+  }
+
   const provider = process.env.AI_PROVIDER?.toLowerCase();
   if (!provider || (provider !== "gemini" && provider !== "openai" && provider !== "claude")) {
     return NextResponse.json(
@@ -218,14 +232,19 @@ export const POST = withApiLogging(async function POST(
   }
 
   const bytes = await file.arrayBuffer();
-  const base64 = Buffer.from(bytes).toString("base64");
+  const buffer = Buffer.from(bytes);
+  const detectedType = detectImageContentType(buffer);
+  if (!detectedType || detectedType !== file.type) {
+    return NextResponse.json({ error: "The uploaded file is not a valid image of the declared type." }, { status: 400 });
+  }
+  const base64 = buffer.toString("base64");
 
   try {
     const text = provider === "openai"
-      ? await parseWithOpenAI(base64, file.type)
+      ? await parseWithOpenAI(base64, detectedType)
       : provider === "claude"
-        ? await parseWithClaude(base64, file.type)
-        : await parseWithGemini(base64, file.type);
+        ? await parseWithClaude(base64, detectedType)
+        : await parseWithGemini(base64, detectedType);
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

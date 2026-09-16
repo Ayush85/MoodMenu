@@ -8,6 +8,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { withApiLogging } from "@/lib/api-handler";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 const LandingSchema = z.object({
   tagline: z.string(),
@@ -104,6 +105,10 @@ export const POST = withApiLogging(async function POST(
 
   if (!restaurant) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const requestLimit = checkRateLimit(`ai:${session.user.id}`, 30, 60 * 60 * 1000);
+  if (!requestLimit.allowed) {
+    return NextResponse.json({ error: "AI generation limit reached. Please try again later." }, { status: 429 });
   }
 
   const provider = process.env.AI_PROVIDER?.toLowerCase();

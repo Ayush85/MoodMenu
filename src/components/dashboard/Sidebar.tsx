@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import Logo from "@/components/ui/Logo";
 import NavLink from "@/components/ui/NavLink";
-import { ClipboardList, MoreHorizontal, Tags, Users } from "lucide-react";
+import { ClipboardList, MoreHorizontal, ShoppingBag, Users } from "lucide-react";
 
 interface RestaurantOption {
   id: string;
@@ -398,7 +398,7 @@ export default function Sidebar() {
             : [
                 { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: ClipboardList },
                 { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
-                { label: "Offers", href: `/dashboard/restaurant/${currentRestaurantId}/offers`, active: pathname.includes("/offers"), icon: Tags },
+                { label: "Orders", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: ShoppingBag },
               ]
           ).map((item) => (
             <Link key={item.href} href={item.href} onClick={close} className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold ${item.active ? "bg-orange-50 text-orange-600" : "text-gray-500"}`}>

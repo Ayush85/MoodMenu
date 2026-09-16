@@ -1,6 +1,7 @@
 "use client";
 
-import { Wifi, Bell, CheckCircle2, ChevronUp } from "lucide-react";
+import { Wifi, Bell, CheckCircle2, ChevronUp, ShoppingBag } from "lucide-react";
+import { formatPrice } from "@/lib/format";
 import { MoodTheme } from "@/types";
 
 interface Props {
@@ -9,6 +10,10 @@ interface Props {
   callStatus: "idle" | "calling" | "sent" | "error";
   onCallWaiter: () => void;
   onToggleWifi: () => void;
+  cartCount: number;
+  cartTotal: number;
+  hasActiveOrder: boolean;
+  onOpenOrder: () => void;
   theme: MoodTheme;
 }
 
@@ -18,6 +23,10 @@ export default function BottomBar({
   callStatus,
   onCallWaiter,
   onToggleWifi,
+  cartCount,
+  cartTotal,
+  hasActiveOrder,
+  onOpenOrder,
   theme,
 }: Props) {
   const isDark = theme.mode === "dark";
@@ -56,38 +65,40 @@ export default function BottomBar({
             </div>
           )}
 
-          {/* Call Waiter button */}
+          {/* Ordering is the primary table action. */}
           {tableNumber && (
-            <div
-              role="button"
-              tabIndex={0}
-              onClick={() => {
-                if (callStatus !== "calling" && callStatus !== "sent") onCallWaiter();
-              }}
-              onKeyDown={(e) => e.key === "Enter" && onCallWaiter()}
-              className="flex-1 py-3 rounded-xl font-bold text-white text-sm text-center cursor-pointer select-none flex items-center justify-center gap-1.5"
+            <button
+              type="button"
+              onClick={onOpenOrder}
+              className="flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-left text-white shadow-sm"
               style={{
-                backgroundColor: callStatus === "sent" ? "#22c55e" : theme.primary,
-                boxShadow: callStatus === "sent"
-                  ? "0 4px 16px rgba(34,197,94,0.3)"
-                  : `0 4px 16px ${theme.primary}30`,
-                opacity: callStatus === "calling" ? 0.7 : 1,
+                backgroundColor: theme.primary,
+                boxShadow: `0 4px 16px ${theme.primary}30`,
                 touchAction: "manipulation",
                 WebkitTapHighlightColor: "transparent",
               }}
             >
-              {callStatus === "sent" ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4" /> Waiter called!
-                </>
-              ) : callStatus === "calling" ? (
-                "Calling..."
-              ) : (
-                <>
-                  <Bell className="w-4 h-4" /> Call Waiter
-                </>
-              )}
-            </div>
+              <ShoppingBag className="h-4.5 w-4.5 shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-sm font-extrabold leading-tight">{cartCount > 0 ? "Review order" : hasActiveOrder ? "Track order" : "Your order"}</span>
+                <span className="block text-[10px] font-medium text-white/75 leading-tight">{cartCount > 0 ? `${cartCount} item${cartCount !== 1 ? "s" : ""} · ${formatPrice(cartTotal)}` : hasActiveOrder ? "View live status" : "Add items from the menu"}</span>
+              </span>
+            </button>
+          )}
+
+          {/* Call Waiter is intentionally secondary to ordering. */}
+          {tableNumber && (
+            <button
+              type="button"
+              onClick={() => { if (callStatus !== "calling" && callStatus !== "sent") onCallWaiter(); }}
+              disabled={callStatus === "calling"}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl disabled:opacity-60"
+              style={{ backgroundColor: callStatus === "sent" ? "#22c55e" : (isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)"), color: callStatus === "sent" ? "#fff" : theme.text }}
+              aria-label={callStatus === "sent" ? "Waiter called" : "Call waiter"}
+              title={callStatus === "sent" ? "Waiter called" : "Call waiter"}
+            >
+              {callStatus === "sent" ? <CheckCircle2 className="h-5 w-5" /> : <Bell className="h-5 w-5" />}
+            </button>
           )}
 
           {/* Scroll to top */}

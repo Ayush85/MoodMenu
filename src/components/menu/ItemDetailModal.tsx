@@ -2,6 +2,8 @@
 
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
+import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { useState } from "react";
 
 interface MenuItemData {
   id: string;
@@ -23,11 +25,14 @@ interface Props {
   item: MenuItemData;
   onClose: () => void;
   theme: MoodTheme;
+  canOrder?: boolean;
+  onAddToOrder?: (quantity: number) => void;
 }
 
-export default function ItemDetailModal({ item, onClose, theme }: Props) {
+export default function ItemDetailModal({ item, onClose, theme, canOrder = false, onAddToOrder }: Props) {
   const isDark = theme.mode === "dark";
   const initial = item.name.charAt(0).toUpperCase();
+  const [quantity, setQuantity] = useState(1);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -126,6 +131,20 @@ export default function ItemDetailModal({ item, onClose, theme }: Props) {
                   </span>
                 );
               })}
+            </div>
+          )}
+
+          {onAddToOrder && (
+            <div className="mt-5 flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-xl p-1" style={{ backgroundColor: `${theme.text}0b` }}>
+                <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-9 w-9 items-center justify-center rounded-lg" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
+                <span className="w-5 text-center text-sm font-bold">{quantity}</span>
+                <button type="button" onClick={() => setQuantity((value) => Math.min(20, value + 1))} className="flex h-9 w-9 items-center justify-center rounded-lg text-white" style={{ backgroundColor: theme.primary }} aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
+              </div>
+              <button type="button" disabled={!canOrder} onClick={() => { onAddToOrder(quantity); onClose(); }} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45" style={{ backgroundColor: theme.primary }}>
+                <ShoppingBag className="h-4 w-4" />
+                {canOrder ? `Add to order · ${formatPrice(item.price * quantity)}` : "Scan your table QR to order"}
+              </button>
             </div>
           )}
         </div>

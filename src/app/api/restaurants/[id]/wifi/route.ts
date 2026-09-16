@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isIP } from "node:net";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
@@ -23,9 +24,28 @@ export const PATCH = withApiLogging(async function PATCH(
   }
 
   const data: Record<string, unknown> = {};
-  if (wifiSsid !== undefined) data.wifiSsid = wifiSsid;
-  if (wifiPassword !== undefined) data.wifiPassword = wifiPassword;
-  if (allowedIp !== undefined) data.allowedIp = allowedIp || null;
+  if (wifiSsid !== undefined) {
+    if (wifiSsid !== null && (typeof wifiSsid !== "string" || wifiSsid.length > 128)) {
+      return NextResponse.json({ error: "WiFi network name is invalid" }, { status: 400 });
+    }
+    data.wifiSsid = typeof wifiSsid === "string" ? wifiSsid.trim() || null : null;
+  }
+  if (wifiPassword !== undefined) {
+    if (wifiPassword !== null && (typeof wifiPassword !== "string" || wifiPassword.length > 256)) {
+      return NextResponse.json({ error: "WiFi password is invalid" }, { status: 400 });
+    }
+    data.wifiPassword = typeof wifiPassword === "string" ? wifiPassword.slice(0, 256) || null : null;
+  }
+  if (allowedIp !== undefined) {
+    if (allowedIp !== null && typeof allowedIp !== "string") {
+      return NextResponse.json({ error: "Allowed IP must be an IPv4 or IPv6 address" }, { status: 400 });
+    }
+    const normalizedIp = typeof allowedIp === "string" ? allowedIp.trim() : "";
+    if (normalizedIp && isIP(normalizedIp) === 0) {
+      return NextResponse.json({ error: "Allowed IP must be an IPv4 or IPv6 address" }, { status: 400 });
+    }
+    data.allowedIp = normalizedIp || null;
+  }
 
   const updated = await prisma.restaurant.update({
     where: { id },

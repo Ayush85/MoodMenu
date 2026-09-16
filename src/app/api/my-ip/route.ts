@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withApiLogging } from "@/lib/api-handler";
+import { getClientIp } from "@/lib/client-ip";
 
 export const GET = withApiLogging(async function GET(req: NextRequest) {
-  const forwarded = req.headers.get("x-forwarded-for");
-  const realIp = req.headers.get("x-real-ip");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : realIp || "unknown";
-
-  return NextResponse.json({ ip });
+  return NextResponse.json({ ip: getClientIp(req) });
 });

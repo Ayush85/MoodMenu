@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { uploadImage } from "@/lib/storage";
+import { detectImageContentType, uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { withApiLogging } from "@/lib/api-handler";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function buildPrompt(restaurantName: string, text: string, customPrompt: string | undefined, theme: { primary?: string; accent?: string; bg?: string } | null) {
   const palette = [theme?.primary, theme?.accent, theme?.bg].filter(Boolean).join(", ");
@@ -38,6 +39,8 @@ export const POST = withApiLogging(async function POST(req: NextRequest, { param
   const { id } = await params;
   const restaurant = await prisma.restaurant.findFirst({ where: { id, ownerId: session.user.id }, select: { name: true, brandTheme: true } });
   if (!restaurant) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const requestLimit = checkRateLimit(`ai:${session.user.id}`, 30, 60 * 60 * 1000);
+  if (!requestLimit.allowed) return NextResponse.json({ error: "AI generation limit reached. Please try again later." }, { status: 429 });
 
   const body = await req.json().catch(() => ({}));
   if (typeof body.text !== "string" || !body.text.trim()) return NextResponse.json({ error: "Highlight text is required" }, { status: 400 });
@@ -50,7 +53,9 @@ export const POST = withApiLogging(async function POST(req: NextRequest, { param
     }
     const prompt = buildPrompt(restaurant.name, body.text, body.prompt, restaurant.brandTheme as { primary?: string; accent?: string; bg?: string } | null);
     const buffer = provider === "gemini" ? await generateGemini(prompt) : await generateOpenAI(prompt);
-    return NextResponse.json({ url: await uploadImage(buffer, "image/png") });
+    const contentType = detectImageContentType(buffer);
+    if (!contentType) throw new Error("AI provider returned an unsupported image format");
+    return NextResponse.json({ url: await uploadImage(buffer, contentType) });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to generate highlight image";
     logger.error("restaurant.generate_landing_image_failed", {

@@ -7,6 +7,7 @@ import { MoodCondition, MoodTheme, DEFAULT_THEME, MOOD_PRESETS, getFontOption } 
 import MenuClient from "@/components/menu/MenuClient";
 import { isOfferCurrentlyValid } from "@/lib/offers";
 import { isValidTableToken } from "@/lib/table-token";
+import { serializeJsonLd } from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
 
@@ -218,7 +219,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
       />
       {fontOption && <link rel="stylesheet" href={fontOption.stylesheetUrl} />}
       <MenuClient

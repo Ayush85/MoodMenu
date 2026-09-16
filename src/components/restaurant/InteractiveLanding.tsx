@@ -3,6 +3,7 @@
 import { useState, type CSSProperties, type PointerEvent } from "react";
 import { ArrowRight, Clock3, Globe, MapPin, Phone, UtensilsCrossed } from "lucide-react";
 import type { LandingHighlight, LandingPageContent, MoodTheme } from "@/types";
+import { safeExternalUrl } from "@/lib/urls";
 
 interface GalleryItem {
   name: string;
@@ -41,6 +42,8 @@ export default function InteractiveLanding({ name, city, logo, theme, fontFamily
   const about = content?.about || `${name} is located in ${city}.`;
   const highlights = content?.highlights?.filter(Boolean).map(normalizeHighlight) ?? [];
   const ctaText = content?.ctaText || "View our menu";
+  const instagramUrl = safeExternalUrl(content?.instagram);
+  const facebookUrl = safeExternalUrl(content?.facebook);
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     if (event.pointerType === "touch") return;
@@ -131,8 +134,8 @@ export default function InteractiveLanding({ name, city, logo, theme, fontFamily
           <strong>{name}</strong>
           <a href={mapHref} target="_blank" rel="noopener noreferrer"><MapPin className="h-4 w-4" /> {content?.address || city}</a>
           {content?.phone && <a href={`tel:${content.phone}`}><Phone className="h-4 w-4" /> {content.phone}</a>}
-          {content?.instagram && <a href={content.instagram} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" /> Instagram</a>}
-          {content?.facebook && <a href={content.facebook} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" /> Facebook</a>}
+          {instagramUrl && <a href={instagramUrl} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" /> Instagram</a>}
+          {facebookUrl && <a href={facebookUrl} target="_blank" rel="noopener noreferrer"><Globe className="h-4 w-4" /> Facebook</a>}
         </div>
         <div className="restaurant-site__footer-bottom"><span>{name} · {city}</span><span>Powered by Menuor</span></div>
       </footer>

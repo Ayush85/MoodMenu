@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./db";
+import { checkRateLimit } from "./rate-limit";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
@@ -17,6 +18,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const email = String(credentials.email).toLowerCase().trim();
         const password = String(credentials.password);
+
+        if (!checkRateLimit(`login:${email}`, 10, 15 * 60 * 1000).allowed) return null;
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -75,6 +78,40 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.actorType = user.actorType;
         token.restaurantId = user.restaurantId;
         token.restaurantIds = user.restaurantIds;
+      } else if (typeof token.id === "string" && token.actorType === "STAFF") {
+        const tokenId = token.id;
+        const staff = await prisma.restaurantStaff.findUnique({
+          where: { id: tokenId },
+          select: { isActive: true, role: true, restaurantId: true },
+        });
+
+        if (!staff?.isActive) {
+          token.id = undefined;
+          token.role = undefined;
+          token.actorType = undefined;
+          token.restaurantId = undefined;
+          token.restaurantIds = undefined;
+        } else {
+          token.role = staff.role;
+          token.restaurantId = staff.restaurantId;
+          token.restaurantIds = [staff.restaurantId];
+        }
+      } else if (typeof token.id === "string" && token.actorType === "USER") {
+        const tokenId = token.id;
+        const dbUser = await prisma.user.findUnique({
+          where: { id: tokenId },
+          select: { isActive: true, role: true },
+        });
+
+        if (!dbUser?.isActive) {
+          token.id = undefined;
+          token.role = undefined;
+          token.actorType = undefined;
+          token.restaurantId = undefined;
+          token.restaurantIds = undefined;
+        } else {
+          token.role = dbUser.role;
+        }
       }
       return token;
     },

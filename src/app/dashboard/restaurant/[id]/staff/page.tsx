@@ -428,9 +428,8 @@ export default function StaffPage() {
           tableId: selectedTableId,
           note: orderNote,
           items: orderDraft.map((row) => ({
-            itemName: row.itemName,
+            itemId: row.itemId,
             quantity: row.quantity,
-            unitPrice: row.unitPrice,
           })),
         }),
       });

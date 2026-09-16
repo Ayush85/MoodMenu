@@ -39,7 +39,7 @@ export const GET = withApiLogging(async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(restaurant);
+  return NextResponse.json(isStaff ? { ...restaurant, wifiPassword: null } : restaurant);
 });
 
 export const PATCH = withApiLogging(async function PATCH(

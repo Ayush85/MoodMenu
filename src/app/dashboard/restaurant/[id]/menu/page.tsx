@@ -7,7 +7,6 @@ import ConfirmModal from "@/components/ConfirmModal";
 import PhotoPicker from "@/components/dashboard/PhotoPicker";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { UtensilsCrossed, Search, ClipboardList, Pencil, ArrowLeftRight, Trash2, Plus, Sparkles } from "lucide-react";
-import * as XLSX from "xlsx";
 
 interface MenuItem {
   id: string;
@@ -670,31 +669,20 @@ export default function MenuManagePage() {
     setCsvErrors([]);
     setCsvSelected(new Set());
 
-    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-    const reader = new FileReader();
-
-    if (isExcel) {
-      reader.onload = (ev) => {
-        const data = ev.target?.result;
-        const wb = XLSX.read(data, { type: "array" });
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const csvText = XLSX.utils.sheet_to_csv(ws);
-        const { rows, errors } = parseCsv(csvText);
-        setCsvRows(rows);
-        setCsvErrors(errors);
-        setCsvSelected(new Set(rows.map((r) => r._key)));
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        const { rows, errors } = parseCsv(text);
-        setCsvRows(rows);
-        setCsvErrors(errors);
-        setCsvSelected(new Set(rows.map((r) => r._key)));
-      };
-      reader.readAsText(file);
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      toast("Please save Excel files as CSV before importing them.", "error");
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const { rows, errors } = parseCsv(text);
+      setCsvRows(rows);
+      setCsvErrors(errors);
+      setCsvSelected(new Set(rows.map((r) => r._key)));
+    };
+    reader.readAsText(file);
   }
 
   function handleCsvPaste(e: React.ChangeEvent<HTMLTextAreaElement>) {
@@ -1320,7 +1308,7 @@ export default function MenuManagePage() {
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white z-10">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Bulk Import Menu</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Import via CSV spreadsheet or photo scan</p>
+                <p className="text-xs text-gray-500 mt-0.5">Import via CSV file or photo scan</p>
               </div>
               <button onClick={resetImportModal} disabled={bulkGenActive} className="text-gray-400 hover:text-gray-600 ml-4 disabled:opacity-30">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1431,7 +1419,7 @@ export default function MenuManagePage() {
                         <p className="text-xs text-violet-600 mt-0.5">
                           Columns: <span className="font-mono">Category, Name, Description, Price, Tags</span>
                         </p>
-                        <p className="text-xs text-violet-500 mt-0.5">Also accepts Excel (.xlsx / .xls)</p>
+                        <p className="text-xs text-violet-500 mt-0.5">Use CSV columns: category, name, price</p>
                       </div>
                       <button onClick={downloadTemplate}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition shrink-0"
@@ -1462,9 +1450,9 @@ export default function MenuManagePage() {
                             </svg>
                           </div>
                           <p className="text-sm font-medium text-gray-700">{csvFileName || "Click to upload CSV file"}</p>
-                          <p className="text-xs text-gray-400 mt-1">Supports .csv, .xlsx, .xls, .txt files</p>
+                          <p className="text-xs text-gray-400 mt-1">Supports .csv and .txt files</p>
                         </div>
-                        <input type="file" accept=".csv,.txt,.xlsx,.xls" className="hidden" onChange={handleCsvFile} />
+                        <input type="file" accept=".csv,.txt" className="hidden" onChange={handleCsvFile} />
                       </label>
 
                       <div className="relative">

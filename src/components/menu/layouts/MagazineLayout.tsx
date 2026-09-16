@@ -11,6 +11,7 @@ export default function MagazineLayout({
   activeCategory,
   onCategoryChange,
   onTapItem,
+  onAddToOrder,
   hideContent,
 }: MenuLayoutProps) {
   const isDark = theme.mode === "dark";
@@ -43,6 +44,7 @@ export default function MagazineLayout({
                 theme={theme}
                 layout={cardStyle}
                 onTap={onTapItem}
+                onAdd={onAddToOrder}
               />
             ))}
           </div>
@@ -72,6 +74,7 @@ export default function MagazineLayout({
                 theme={theme}
                 layout={cardStyle}
                 onTap={onTapItem}
+                onAdd={onAddToOrder}
               />
             ))}
 

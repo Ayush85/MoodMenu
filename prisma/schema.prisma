@@ -160,6 +160,7 @@ model OrderTicket {
   session      TableSession?   @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   status       OrderStatus     @default(NEW)
   note         String?
+  customerRequestId String? @unique
   total        Float           @default(0)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt

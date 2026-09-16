@@ -2,6 +2,12 @@
   "name": "menuor",
   "version": "0.1.0",
   "private": true,
+  "overrides": {
+    "deepmerge-ts": "^8.0.2",
+    "esbuild": "^0.28.2",
+    "mysql2": "^3.24.4",
+    "uuid": "^14.0.2"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,7 +25,7 @@
     "@google/generative-ai": "^0.24.1",
     "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-pg": "^7.5.0",
-    "@prisma/client": "^7.5.0",
+    "@prisma/client": "^7.10.0",
     "@prisma/pg-worker": "^6.9.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/qrcode": "^1.5.6",
@@ -27,17 +33,15 @@
     "cloudinary": "^2.9.0",
     "dotenv": "^17.3.1",
     "firebase": "^12.18.0",
-    "firebase-admin": "^14.3.0",
+    "firebase-admin": "^14.4.0",
     "lucide-react": "^1.41.0",
-    "next": "16.2.0",
-    "next-auth": "^5.0.0-beta.30",
+    "next": "^16.3.5",
+    "next-auth": "^5.0.0-beta.32",
     "openai": "^6.39.1",
     "pg": "^8.20.0",
-    "prisma": "^7.5.0",
     "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "xlsx": "^0.18.5",
     "zod": "^4.5.4"
   },
   "devDependencies": {
@@ -46,7 +50,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.0",
+    "eslint-config-next": "^16.3.5",
+    "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"

@@ -23,6 +23,7 @@ export interface MenuLayoutProps {
   activeCategory: string | null;
   onCategoryChange: (id: string) => void;
   onTapItem: (item: MenuLayoutItem) => void;
+  onAddToOrder?: (item: MenuLayoutItem) => void;
   /** True while the search overlay is showing results — layout content should hide. */
   hideContent: boolean;
 }

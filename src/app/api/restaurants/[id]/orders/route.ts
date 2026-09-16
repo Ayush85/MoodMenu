@@ -5,9 +5,8 @@ import { sendPush } from "@/lib/push";
 import { withApiLogging } from "@/lib/api-handler";
 
 interface CreateOrderItem {
-  itemName: string;
-  quantity: number;
-  unitPrice: number;
+  itemId?: unknown;
+  quantity?: unknown;
 }
 
 type AccessInfo =
@@ -79,9 +78,9 @@ export const POST = withApiLogging(async function POST(
 
   const tableId = body?.tableId as string | undefined;
   const note = body?.note as string | undefined;
-  const items = (body?.items || []) as CreateOrderItem[];
+  const items = Array.isArray(body?.items) ? body.items as CreateOrderItem[] : [];
 
-  if (!tableId || items.length === 0) {
+  if (!tableId || items.length === 0 || items.length > 50) {
     return NextResponse.json({ error: "Table and at least one item are required" }, { status: 400 });
   }
 
@@ -107,41 +106,80 @@ export const POST = withApiLogging(async function POST(
     return NextResponse.json({ error: "Table not found" }, { status: 404 });
   }
 
-  const normalizedItems = items
-    .map((item) => ({
-      itemName: (item.itemName || "").trim(),
-      quantity: Number(item.quantity || 0),
-      unitPrice: Number(item.unitPrice || 0),
-    }))
-    .filter((item) => item.itemName && item.quantity > 0);
-
-  if (normalizedItems.length === 0) {
-    return NextResponse.json({ error: "Order items are invalid" }, { status: 400 });
+  const quantities = new Map<string, number>();
+  for (const item of items) {
+    if (typeof item.itemId !== "string" || !item.itemId) {
+      return NextResponse.json({ error: "Order items are invalid" }, { status: 400 });
+    }
+    const quantity = Number(item.quantity);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+      return NextResponse.json({ error: "Each item quantity must be between 1 and 20" }, { status: 400 });
+    }
+    const nextQuantity = (quantities.get(item.itemId) || 0) + quantity;
+    if (nextQuantity > 20) {
+      return NextResponse.json({ error: "You can order up to 20 of each item" }, { status: 400 });
+    }
+    quantities.set(item.itemId, nextQuantity);
   }
 
-  const lineItems = normalizedItems.map((item) => ({
-    itemName: item.itemName,
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    lineTotal: item.unitPrice * item.quantity,
-  }));
+  const menuItems = await prisma.menuItem.findMany({
+    where: {
+      id: { in: Array.from(quantities.keys()) },
+      isAvailable: true,
+      category: { restaurantId: id },
+    },
+    select: { id: true, name: true, price: true },
+  });
+
+  if (menuItems.length !== quantities.size) {
+    return NextResponse.json({ error: "One or more items are unavailable" }, { status: 409 });
+  }
+
+  const lineItems = menuItems.map((item) => {
+    const quantity = quantities.get(item.id)!;
+    return {
+      itemName: item.name,
+      quantity,
+      unitPrice: item.price,
+      lineTotal: item.price * quantity,
+    };
+  });
 
   const total = lineItems.reduce((sum, line) => sum + line.lineTotal, 0);
+  if (!Number.isFinite(total) || total > 100000) {
+    return NextResponse.json({ error: "This order total is too large" }, { status: 400 });
+  }
 
-  const order = await prisma.orderTicket.create({
-    data: {
-      restaurantId: id,
-      tableId,
-      note: note?.trim() || null,
-      total,
-      items: {
-        create: lineItems,
+  const order = await prisma.$transaction(async (tx) => {
+    let tableSession = await tx.tableSession.findFirst({
+      where: { tableId, status: "ACTIVE" },
+      orderBy: { startedAt: "desc" },
+    });
+
+    if (!tableSession) {
+      tableSession = await tx.tableSession.create({
+        data: { restaurantId: id, tableId },
+      });
+    }
+
+    const created = await tx.orderTicket.create({
+      data: {
+        restaurantId: id,
+        tableId,
+        sessionId: tableSession.id,
+        note: note?.trim().slice(0, 240) || null,
+        total,
+        items: { create: lineItems },
       },
-    },
-    include: {
-      table: true,
-      items: true,
-    },
+      include: { table: true, items: true },
+    });
+
+    await tx.tableSession.update({
+      where: { id: tableSession.id },
+      data: { totalAmount: { increment: total }, lastActivityAt: new Date() },
+    });
+
+    return created;
   });
 
   // Notify kitchen staff (non-blocking)

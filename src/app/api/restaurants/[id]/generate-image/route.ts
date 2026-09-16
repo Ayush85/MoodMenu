@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { uploadImage } from "@/lib/storage";
+import { detectImageContentType, uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { getStockSearchQuery, searchPexelsPhotos } from "@/lib/stock-photos";
 import { withApiLogging } from "@/lib/api-handler";
 import { logger } from "@/lib/logger";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 function buildPrompt(name: string, description?: string | null) {
   return `A photorealistic professional product photograph of "${name}"${
@@ -104,6 +105,10 @@ export const POST = withApiLogging(async function POST(
   if (!restaurant) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const requestLimit = checkRateLimit(`ai:${session.user.id}`, 30, 60 * 60 * 1000);
+  if (!requestLimit.allowed) {
+    return NextResponse.json({ error: "AI generation limit reached. Please try again later." }, { status: 429 });
+  }
 
   const { name, description, source } = await req.json();
   if (!name || typeof name !== "string" || !name.trim()) {
@@ -135,7 +140,9 @@ export const POST = withApiLogging(async function POST(
       usedSource = "ai";
     }
 
-    const url = await uploadImage(buffer, "image/png");
+    const contentType = detectImageContentType(buffer);
+    if (!contentType) throw new Error("AI provider returned an unsupported image format");
+    const url = await uploadImage(buffer, contentType);
     return NextResponse.json({ url, source: usedSource });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to generate image";

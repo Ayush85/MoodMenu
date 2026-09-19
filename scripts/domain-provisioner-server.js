@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-require-imports */
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const http = require("node:http");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const crypto = require("node:crypto");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { spawn } = require("node:child_process");
 
 const port = Number(process.env.DOMAIN_PROVISIONER_PORT || 3031);

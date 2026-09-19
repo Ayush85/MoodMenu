@@ -6,7 +6,7 @@ import { useToast } from "@/components/Toast";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { Sun, Moon, LayoutGrid, List, ChevronUp, ChevronDown, GripVertical, Image as ImageIcon, Pencil } from "lucide-react";
 import { FONT_OPTIONS, DEFAULT_THEME, DESIGN_TEMPLATES, DesignTemplate } from "@/types";
-import { LandingPageSettings } from "../landing/page";
+import LandingPageSettings from "@/components/dashboard/LandingPageSettings";
 
 interface MenuItemRow {
   id: string;

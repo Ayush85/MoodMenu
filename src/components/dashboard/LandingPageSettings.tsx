@@ -1,0 +1,236 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useToast } from "@/components/Toast";
+import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
+import { Sparkles, Plus, X, ExternalLink } from "lucide-react";
+import { LandingHighlight, LandingPageContent, DEFAULT_LANDING_CTA } from "@/types";
+
+interface Restaurant {
+  id: string;
+  slug: string;
+  name: string;
+  landingEnabled: boolean;
+  landingPage: LandingPageContent | null;
+}
+
+function normalizeHighlight(value: string | LandingHighlight): LandingHighlight {
+  if (typeof value === "string") return { text: value, image: null, prompt: "" };
+  return { text: value.text || "", image: value.image || null, prompt: value.prompt || "" };
+}
+
+export default function LandingPageSettings({ embedded = false }: { embedded?: boolean }) {
+  const params = useParams();
+  const id = params.id as string;
+  const { toast } = useToast();
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [tagline, setTagline] = useState("");
+  const [about, setAbout] = useState("");
+  const [highlights, setHighlights] = useState<LandingHighlight[]>([]);
+  const [ctaText, setCtaText] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [hours, setHours] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [facebook, setFacebook] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/restaurants/${id}`)
+      .then((res) => res.json())
+      .then((data: Restaurant) => {
+        setRestaurant(data);
+        setEnabled(data.landingEnabled);
+        const content = data.landingPage;
+        setTagline(content?.tagline || "");
+        setAbout(content?.about || "");
+        setHighlights(content?.highlights?.length ? content.highlights.map(normalizeHighlight) : []);
+        setCtaText(content?.ctaText || "");
+        setPhone(content?.phone || "");
+        setAddress(content?.address || "");
+        setHours(content?.hours || "");
+        setInstagram(content?.instagram || "");
+        setFacebook(content?.facebook || "");
+        setLoading(false);
+      });
+  }, [id]);
+
+  async function generateWithAI() {
+    setGenerating(true);
+    try {
+      const res = await fetch(`/api/restaurants/${id}/generate-landing`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || "Couldn't generate copy", "error");
+        return;
+      }
+      setTagline(data.tagline || "");
+      setAbout(data.about || "");
+      setHighlights(Array.isArray(data.highlights) ? data.highlights.map((text: string) => ({ text, image: null, prompt: "" })) : []);
+      setCtaText(data.ctaText || "");
+      toast("Draft generated — review and click Save to keep it");
+    } catch {
+      toast("Couldn't generate copy", "error");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function save() {
+    setSaving(true);
+    try {
+      const landingPage: LandingPageContent = {
+        tagline: tagline.trim(),
+        about: about.trim(),
+        highlights: highlights.map((highlight) => ({ ...highlight, text: highlight.text.trim(), prompt: highlight.prompt.trim() })).filter((highlight) => highlight.text),
+        ctaText: ctaText.trim() || DEFAULT_LANDING_CTA,
+        phone: phone.trim() || null,
+        address: address.trim() || null,
+        hours: hours.trim() || null,
+        instagram: instagram.trim() || null,
+        facebook: facebook.trim() || null,
+      };
+      const res = await fetch(`/api/restaurants/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ landingEnabled: enabled, landingPage }),
+      });
+      if (!res.ok) throw new Error();
+      toast("Landing page saved");
+    } catch {
+      toast("Couldn't save landing page", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateHighlight(index: number, value: string) {
+    setHighlights((previous) => previous.map((highlight, current) => current === index ? { ...highlight, text: value } : highlight));
+  }
+
+  function removeHighlight(index: number) {
+    setHighlights((previous) => previous.filter((_, current) => current !== index));
+  }
+
+  function addHighlight() {
+    setHighlights((previous) => previous.length >= 5 ? previous : [...previous, { text: "", image: null, prompt: "" }]);
+  }
+
+  async function generateHighlightImage(index: number) {
+    const highlight = highlights[index];
+    if (!highlight?.text.trim()) {
+      toast("Add the highlight text first", "error");
+      return;
+    }
+    setHighlights((previous) => previous.map((item, current) => current === index ? { ...item, image: "generating" } : item));
+    try {
+      const res = await fetch(`/api/restaurants/${id}/generate-landing-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: highlight.text, prompt: highlight.prompt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't generate image");
+      setHighlights((previous) => previous.map((item, current) => current === index ? { ...item, image: data.url } : item));
+      toast("Highlight image generated — save the landing page to publish it");
+    } catch (error) {
+      setHighlights((previous) => previous.map((item, current) => current === index ? { ...item, image: null } : item));
+      toast(error instanceof Error ? error.message : "Couldn't generate image", "error");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className={embedded ? "max-w-3xl" : "page-shell max-w-3xl"}>
+        <div className="mb-6"><SkeletonLine width="180px" height="32px" /></div>
+        <div className="space-y-4">{[1, 2, 3].map((item) => <SkeletonBlock key={item} height="h-24" />)}</div>
+      </div>
+    );
+  }
+
+  if (!restaurant) return <div>Not found</div>;
+
+  return (
+    <div className={embedded ? "max-w-3xl animate-fade-in" : "page-shell max-w-3xl animate-fade-in"}>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          {!embedded && <h1 className="page-title">Landing Page</h1>}
+          {!embedded && <p className="page-subtitle mt-1">A marketing page shown at your domain&apos;s root, with the menu at /menu</p>}
+        </div>
+        {enabled && <Link href={`/landing/${restaurant.slug}`} target="_blank" className="btn-soft text-sm! !w-auto shrink-0 flex items-center gap-1.5">Preview <ExternalLink className="w-3.5 h-3.5" /></Link>}
+      </div>
+
+      <div className="surface-card mb-6 flex items-center justify-between gap-4 p-5">
+        <div>
+          <h3 className="font-bold text-gray-900">Enable landing page</h3>
+          <p className="mt-0.5 text-xs text-gray-500">When on, visitors to your domain&apos;s root see this page instead of the menu directly.</p>
+        </div>
+        <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+          <input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} className="peer sr-only" />
+          <div className="h-6 w-11 rounded-full bg-gray-200 transition-colors peer-checked:bg-orange-500" />
+          <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-5" />
+        </label>
+      </div>
+
+      <div className="surface-card mb-6 flex items-center justify-between gap-4 border border-orange-100 bg-orange-50 p-5">
+        <div>
+          <h3 className="flex items-center gap-1.5 font-bold text-gray-900"><Sparkles className="h-4 w-4 text-orange-500" />Write it for me</h3>
+          <p className="mt-0.5 text-xs text-gray-500">Generates a tagline, about text, and highlights from your restaurant name and menu — review before saving.</p>
+        </div>
+        <button onClick={generateWithAI} disabled={generating} className="btn-primary !w-auto shrink-0 px-5 text-sm! disabled:opacity-50">{generating ? "Generating…" : "Generate with AI"}</button>
+      </div>
+
+      <div className="surface-card mb-6 space-y-4 p-5">
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tagline</label>
+          <input type="text" value={tagline} onChange={(event) => setTagline(event.target.value)} placeholder="A short, catchy line about your restaurant" className="control-input w-full" />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">About</label>
+          <textarea value={about} onChange={(event) => setAbout(event.target.value)} placeholder="A couple of sentences describing your restaurant" rows={4} className="control-input w-full resize-none" />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Highlights</label>
+          <div className="space-y-2">
+            {highlights.map((highlight, index) => (
+              <div key={index} className="space-y-2 rounded-xl border border-gray-100 bg-gray-50/70 p-3">
+                <div className="flex gap-2">
+                  <input type="text" value={highlight.text} onChange={(event) => updateHighlight(index, event.target.value)} placeholder="e.g. Fresh, local ingredients" className="control-input flex-1" />
+                  <button onClick={() => removeHighlight(index)} className="btn-soft !w-auto px-3"><X className="h-4 w-4" /></button>
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={highlight.prompt} onChange={(event) => setHighlights((previous) => previous.map((item, current) => current === index ? { ...item, prompt: event.target.value } : item))} placeholder="Image direction, e.g. warm Nepali thali on a stone table" className="control-input flex-1 text-sm" />
+                  <button onClick={() => generateHighlightImage(index)} disabled={highlight.image === "generating"} className="btn-soft !w-auto px-3 text-orange-600 disabled:opacity-50"><Sparkles className="h-4 w-4" /> {highlight.image === "generating" ? "Generating…" : "Generate image"}</button>
+                </div>
+                {highlight.image && highlight.image !== "generating" && <img src={highlight.image} alt="Generated highlight preview" className="h-24 w-full rounded-lg object-cover" />}
+              </div>
+            ))}
+          </div>
+          {highlights.length < 5 && <button onClick={addHighlight} className="mt-2 flex items-center gap-1 text-sm font-semibold text-orange-600 hover:text-orange-700"><Plus className="h-4 w-4" /> Add highlight</button>}
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Menu button text</label>
+          <input type="text" value={ctaText} onChange={(event) => setCtaText(event.target.value)} placeholder={DEFAULT_LANDING_CTA} className="control-input w-full" />
+        </div>
+      </div>
+
+      <div className="surface-card mb-6 space-y-4 p-5">
+        <h3 className="font-bold text-gray-900">Contact &amp; Hours</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Phone</label><input type="text" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="+977 98…" className="control-input w-full" /></div>
+          <div><label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Address</label><input type="text" value={address} onChange={(event) => setAddress(event.target.value)} placeholder="Street, area" className="control-input w-full" /></div>
+          <div><label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Hours</label><input type="text" value={hours} onChange={(event) => setHours(event.target.value)} placeholder="e.g. 10am – 10pm daily" className="control-input w-full" /></div>
+          <div><label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Instagram URL</label><input type="text" value={instagram} onChange={(event) => setInstagram(event.target.value)} placeholder="https://instagram.com/…" className="control-input w-full" /></div>
+          <div><label className="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Facebook URL</label><input type="text" value={facebook} onChange={(event) => setFacebook(event.target.value)} placeholder="https://facebook.com/…" className="control-input w-full" /></div>
+        </div>
+      </div>
+
+      <button onClick={save} disabled={saving} className="btn-primary w-full disabled:opacity-50">{saving ? "Saving…" : "Save Landing Page"}</button>
+    </div>
+  );
+}

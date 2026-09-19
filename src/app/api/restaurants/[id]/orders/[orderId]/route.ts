@@ -138,7 +138,7 @@ export const PATCH = withApiLogging(async function PATCH(
           title: `✅ Order ready — ${tableLabel}`,
           body: `${updated.items.length} item${updated.items.length !== 1 ? "s" : ""} ready to serve`,
           userIds: recipientIds,
-          url: `/dashboard/restaurant/${id}/staff`,
+          url: `/dashboard/restaurant/${id}/orders`,
           data: {
             type: "order_status",
             orderId: updated.id,

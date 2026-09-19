@@ -206,7 +206,7 @@ export const POST = withApiLogging(async function POST(
         title: `🍽️ New Order — ${tableLabel}`,
         body: `${lineItems.length} item(s) · Rs. ${total.toLocaleString("en-IN")}`,
         userIds: recipientIds,
-        url: `/dashboard/restaurant/${id}/staff`,
+        url: `/dashboard/restaurant/${id}/orders`,
         data: {
           type: "new_order",
           orderId: order.id,

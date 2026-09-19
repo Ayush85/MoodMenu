@@ -13,10 +13,8 @@ function iconType(src: string): string {
 // restaurant (see src/app/dashboard/restaurant/[id]/layout.tsx). Gives
 // staff/admin an installed app icon that's the restaurant's own logo, not
 // Menuor's, on any domain — and the install itself differs by who's
-// installing: an owner/admin gets the full dashboard, while staff (who
-// only ever use the Staff Panel — see canUseCalls/canTakeOrders in
-// staff/page.tsx) land straight on it instead of the menu editor they
-// can't use.
+// installing: an owner/admin gets the full dashboard, while staff land
+// straight in the operational orders workspace instead of the menu editor.
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -35,7 +33,7 @@ export async function GET(
 
   const roleLabel = isStaff ? "Staff" : "Admin";
   const startUrl = isStaff
-    ? `/dashboard/restaurant/${id}/staff`
+    ? `/dashboard/restaurant/${id}/orders`
     : `/dashboard/restaurant/${id}/menu`;
 
   return NextResponse.json(

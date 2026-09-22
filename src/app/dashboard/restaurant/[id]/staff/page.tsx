@@ -126,6 +126,7 @@ export default function StaffPage() {
   const [orderTableFilter, setOrderTableFilter] = useState("");
   const [savingOrder, setSavingOrder] = useState(false);
   const [showComposer, setShowComposer] = useState(false);
+  const [mobileOrderStatus, setMobileOrderStatus] = useState<OrderTicket["status"]>("NEW");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffEmail, setNewStaffEmail] = useState("");
@@ -396,6 +397,18 @@ export default function StaffPage() {
       return true;
     });
   }, [orders, orderTableFilter]);
+
+  const ordersByStatus = useMemo(() => {
+    const map: Record<OrderTicket["status"], OrderTicket[]> = {
+      NEW: [], PREPARING: [], SERVED: [], PAID: [], CANCELED: [],
+    };
+    for (const order of filteredOrders) map[order.status].push(order);
+    map.NEW.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    map.PREPARING.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    map.SERVED.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    map.PAID.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return map;
+  }, [filteredOrders]);
 
   const paidRevenue = useMemo(() => {
     return orders
@@ -999,17 +1012,43 @@ export default function StaffPage() {
           </div>
 
           {/* Kanban board — the order pipeline as it actually flows, one
-              lane per status, instead of a single list behind a filter. */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {ORDER_COLUMNS.map((col) => {
-              const columnOrders = filteredOrders
-                .filter((o) => o.status === col.status)
-                .sort((a, b) =>
-                  col.status === "PAID"
-                    ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                    : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+              lane per status, instead of a single list behind a filter.
+              On phones, 4 stacked scrolling lanes is unusable, so mobile
+              gets a single-lane view driven by a status tab strip instead. */}
+          <div className="sm:hidden">
+            <div className="surface-card flex gap-1 overflow-x-auto p-1.5">
+              {ORDER_COLUMNS.map((col) => {
+                const count = ordersByStatus[col.status].length;
+                const active = mobileOrderStatus === col.status;
+                return (
+                  <button
+                    key={col.status}
+                    onClick={() => setMobileOrderStatus(col.status)}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                      active ? "bg-orange-500 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${active ? "bg-white" : col.dot}`} />
+                    {col.label}
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? "bg-white/25" : "bg-gray-100 text-gray-500"}`}>
+                      {count}
+                    </span>
+                  </button>
                 );
+              })}
+            </div>
+            <div className="mt-3 space-y-2.5">
+              {ordersByStatus[mobileOrderStatus].length === 0 ? (
+                <div className="surface-card py-10 text-center text-xs text-gray-400">Nothing here</div>
+              ) : (
+                ordersByStatus[mobileOrderStatus].map(renderOrderCard)
+              )}
+            </div>
+          </div>
 
+          <div className="hidden gap-4 sm:grid sm:grid-cols-2 xl:grid-cols-4">
+            {ORDER_COLUMNS.map((col) => {
+              const columnOrders = ordersByStatus[col.status];
               return (
                 <div key={col.status} className={`surface-card overflow-hidden border-t-4 ${col.header}`}>
                   <div className="px-3.5 py-3 border-b border-gray-100 flex items-center gap-2">

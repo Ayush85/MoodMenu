@@ -6,7 +6,7 @@ import { useToast } from "@/components/Toast";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
 import { Sun, Moon, LayoutGrid, List, ChevronUp, ChevronDown, GripVertical, Image as ImageIcon, Pencil } from "lucide-react";
 import { FONT_OPTIONS, DEFAULT_THEME, DESIGN_TEMPLATES, DesignTemplate } from "@/types";
-import { LandingPageSettings } from "../landing/page";
+import LandingPageSettings from "@/components/dashboard/LandingPageSettings";
 
 interface MenuItemRow {
   id: string;
@@ -537,7 +537,7 @@ export default function DesignPage() {
         <h3 className="font-bold text-gray-900 mb-1">Custom Domain</h3>
         <p className="text-xs text-gray-500 mb-4">
           Use your own domain instead of menuor.com — your menu (or landing page, if enabled) shows at the root, and <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/admin</code> and{" "}
-          <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/staff</code> reach this dashboard and the staff view under it. Logins are tied to
+          <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/orders</code> reach this dashboard&apos;s operational order workspace, while <code className="bg-gray-100 px-1 py-0.5 rounded text-[11px]">/staff</code> is reserved for owner-only account management. Logins are tied to
           the domain you&apos;re on, so you&apos;ll need to sign in once on your new domain too — it won&apos;t reuse a menuor.com session.
         </p>
 

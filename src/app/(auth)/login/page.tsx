@@ -39,7 +39,7 @@ export default function LoginPage() {
         const isStaff = session?.user?.actorType === "STAFF";
         const rid = session?.user?.restaurantId || session?.user?.restaurantIds?.[0];
         if (isStaff && rid) {
-          router.push(`/dashboard/restaurant/${rid}/staff`);
+          router.push(`/dashboard/restaurant/${rid}/orders`);
         } else {
           router.push("/dashboard");
         }

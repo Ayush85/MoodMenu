@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import Logo from "@/components/ui/Logo";
 import NavLink from "@/components/ui/NavLink";
-import { ClipboardList, MoreHorizontal, ShoppingBag, Users } from "lucide-react";
+import { BookOpen, ClipboardList, MoreHorizontal, Users } from "lucide-react";
 
 interface RestaurantOption {
   id: string;
@@ -35,6 +35,12 @@ const RESTAURANT_NAV = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
+  },
+  {
+    key: "orders",
+    label: "Orders",
+    suffix: "/orders",
+    icon: <ClipboardList className="w-4.25 h-4.25" />,
   },
   {
     key: "menu",
@@ -254,15 +260,11 @@ export default function Sidebar() {
         {insideRestaurant && isStaff && (
           <nav className="space-y-0.5">
             <NavLink
-              href={`/dashboard/restaurant/${currentRestaurantId}/staff`}
+              href={`/dashboard/restaurant/${currentRestaurantId}/orders`}
               pathname={pathname}
               onClick={close}
-              label="Staff Panel"
-              icon={
-                <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              }
+              label="Orders"
+              icon={<ClipboardList className="w-4.25 h-4.25" />}
             />
           </nav>
         )}
@@ -393,12 +395,12 @@ export default function Sidebar() {
         {(
           (isStaff
             ? [
-                { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
+                { label: "Orders", href: `/dashboard/restaurant/${currentRestaurantId}/orders`, active: pathname.includes("/orders"), icon: ClipboardList },
               ]
             : [
-                { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: ClipboardList },
+                { label: "Orders", href: `/dashboard/restaurant/${currentRestaurantId}/orders`, active: pathname.includes("/orders"), icon: ClipboardList },
+                { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: BookOpen },
                 { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
-                { label: "Orders", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: ShoppingBag },
               ]
           ).map((item) => (
             <Link key={item.href} href={item.href} onClick={close} className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold ${item.active ? "bg-orange-50 text-orange-600" : "text-gray-500"}`}>

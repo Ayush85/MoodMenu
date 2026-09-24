@@ -47,14 +47,16 @@ enum OfferType {
 }
 
 model User {
-  id          String       @id @default(cuid())
-  email       String       @unique
-  password    String?
-  name        String
-  role        Role         @default(ADMIN)
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  restaurants Restaurant[]
+  id               String       @id @default(cuid())
+  email            String       @unique
+  password         String?
+  name             String
+  role             Role         @default(ADMIN)
+  isActive         Boolean      @default(true)
+  resetToken       String?      @unique
+  resetTokenExpiry DateTime?
+  createdAt        DateTime     @default(now())
+  restaurants      Restaurant[]
 }
 
 model Restaurant {

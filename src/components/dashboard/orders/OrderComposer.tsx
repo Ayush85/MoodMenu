@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
 import type { MenuItemOption, OrderTicket, RestaurantTableData } from "./types";
 
@@ -21,6 +21,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
   const [orderNote, setOrderNote] = useState("");
   const [itemSearch, setItemSearch] = useState("");
   const [savingOrder, setSavingOrder] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open || !canTakeOrders) return;
@@ -62,6 +63,17 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, open]);
+
+  useEffect(() => {
+    // Auto-focusing search is a nice shortcut with a keyboard already
+    // attached, but on a touch device it pops the on-screen keyboard the
+    // instant the sheet opens, before the table has even been picked —
+    // only do it when there's no touch involved.
+    if (!open) return;
+    if (window.matchMedia("(pointer: fine)").matches) {
+      searchInputRef.current?.focus();
+    }
+  }, [open]);
 
   function incrementItem(itemId: string) {
     setSelectedItems((previous) => ({ ...previous, [itemId]: (previous[itemId] || 0) + 1 }));
@@ -206,10 +218,15 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
 
             <div>
               <label className="field-label">Add menu items</label>
-              <input value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} placeholder="Search by item name" className="control-input mt-1 w-full" autoFocus />
+              <input ref={searchInputRef} value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} placeholder="Search by item name" className="control-input mt-1 w-full" />
             </div>
 
-            <div className="max-h-72 space-y-3 overflow-y-auto rounded-2xl border border-gray-200 p-2">
+            {/* No inner scroll on mobile — a scroll region nested inside the
+                already-scrolling sheet body just traps the finger's drag on
+                whichever region it started in. The list flows with the
+                sheet's own scroll instead; sm+ (a mouse, more headroom)
+                gets it back as a bounded, independently-scrolling panel. */}
+            <div className="space-y-3 rounded-2xl border border-gray-200 p-2 sm:max-h-72 sm:overflow-y-auto">
               {groupedMenuItems.map((group) => (
                 <div key={group.categoryId}>
                   <p className="sticky top-0 z-10 -mx-2 bg-white/95 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-gray-400 backdrop-blur">{group.categoryName}</p>
@@ -223,9 +240,9 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
                             <p className="text-xs text-gray-500">Rs. {fmt(item.price)}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <button onClick={() => decrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-lg text-gray-700">−</button>
+                            <button onClick={() => decrementItem(item.id)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-lg text-gray-700">−</button>
                             <span className="w-5 text-center text-sm font-extrabold">{quantity}</span>
-                            <button onClick={() => incrementItem(item.id)} className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-900 text-lg text-white">+</button>
+                            <button onClick={() => incrementItem(item.id)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900 text-lg text-white">+</button>
                           </div>
                         </div>
                       );

@@ -79,6 +79,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
   } | null>(null);
   const previousNewOrderIds = useRef<Set<string> | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const scrollRafRef = useRef<number | null>(null);
 
   const fetchOrders = useCallback(() => {
     fetch(`/api/restaurants/${restaurantId}/orders`)
@@ -120,6 +121,12 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
+
   const filteredOrders = useMemo(() => {
     const token = orderTableFilter.trim().toLowerCase();
     if (!token) return orders;
@@ -143,10 +150,17 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
   );
 
   function handleScrollerScroll() {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const index = Math.round(el.scrollLeft / el.clientWidth);
-    setActiveColumn((current) => (current === index ? current : index));
+    // Scroll fires on every frame during a swipe — committing state on each
+    // one causes visible jank on mid-range phones. Coalesce to one state
+    // update per animation frame instead.
+    if (scrollRafRef.current !== null) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      const el = scrollerRef.current;
+      if (!el) return;
+      const index = Math.round(el.scrollLeft / el.clientWidth);
+      setActiveColumn((current) => (current === index ? current : index));
+    });
   }
 
   function scrollToColumn(index: number) {
@@ -206,28 +220,28 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
       now - new Date(order.createdAt).getTime() > 10 * 60 * 1000;
 
     return (
-      <div key={order.id} className="space-y-2.5 rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm">
+      <div key={order.id} className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-sm font-bold leading-tight text-gray-900">{order.table.label || `Table ${order.table.number}`}</p>
-            <p className={`mt-0.5 text-[11px] ${isStale ? "font-semibold text-red-500" : "text-gray-400"}`}>
+            <p className="text-base font-bold leading-tight text-gray-900">{order.table.label || `Table ${order.table.number}`}</p>
+            <p className={`mt-0.5 text-xs ${isStale ? "font-semibold text-red-500" : "text-gray-400"}`}>
               {isStale && "⚠ "}{timeAgo(order.createdAt)}
             </p>
           </div>
-          <span className="shrink-0 text-sm font-extrabold text-gray-900">Rs. {fmt(order.total)}</span>
+          <span className="shrink-0 text-base font-extrabold text-gray-900">Rs. {fmt(order.total)}</span>
         </div>
 
-        <div className="space-y-1.5 rounded-lg bg-gray-50 px-2.5 py-2">
+        <div className="space-y-2 rounded-lg bg-gray-50 px-3 py-2.5">
           {order.items.map((line) => (
-            <div key={line.id} className="flex items-center justify-between text-xs text-gray-700">
+            <div key={line.id} className="flex items-center justify-between text-sm text-gray-700">
               <span className="min-w-0 truncate font-medium">
-                <span className="mr-1.5 inline-flex min-w-4 justify-center rounded-md bg-gray-200 px-1 text-[10px] font-bold text-gray-600">{line.quantity}</span>
+                <span className="mr-1.5 inline-flex min-w-5 justify-center rounded-md bg-gray-200 px-1 text-xs font-bold text-gray-600">{line.quantity}</span>
                 {line.itemName}
               </span>
               <span className="ml-2 shrink-0 font-medium text-gray-500">Rs. {fmt(line.lineTotal)}</span>
             </div>
           ))}
-          {order.note && <p className="mt-1.5 border-t border-gray-200 pt-1.5 text-[11px] italic text-gray-500">&ldquo;{order.note}&rdquo;</p>}
+          {order.note && <p className="mt-1.5 border-t border-gray-200 pt-1.5 text-xs italic text-gray-500">&ldquo;{order.note}&rdquo;</p>}
         </div>
 
         <div className="flex flex-wrap gap-1.5">
@@ -301,7 +315,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
       <div
         ref={scrollerRef}
         onScroll={handleScrollerScroll}
-        className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 xl:grid xl:grid-cols-4 xl:overflow-visible xl:pb-0"
+        className="flex snap-x snap-mandatory overscroll-x-contain scroll-smooth overflow-x-auto xl:grid xl:grid-cols-4 xl:gap-4 xl:overflow-visible"
       >
         {ORDER_COLUMNS.map((column) => {
           const columnOrders = filteredOrders
@@ -310,6 +324,10 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
               ? new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
               : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
+          // No gap between columns on mobile: each column is exactly one
+          // scroller-width wide, which is what makes `scrollLeft / clientWidth`
+          // in handleScrollerScroll land on an exact integer index instead of
+          // drifting further off with every column swiped past.
           return (
             <div key={column.status} className={`surface-card w-full shrink-0 snap-start overflow-hidden border-t-4 ${column.header} xl:w-auto`}>
               <div className="hidden items-center gap-2 border-b border-gray-100 px-3.5 py-3 xl:flex">

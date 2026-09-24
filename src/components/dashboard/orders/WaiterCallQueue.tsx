@@ -157,15 +157,15 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
 
   return (
     <section className="space-y-3">
-      <div className="surface-card flex items-center justify-between gap-3 p-4">
-        <div>
+      <div className="surface-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Front-of-house calls</p>
           <p className="mt-1 text-sm text-gray-500">Respond to guests without leaving Orders.</p>
         </div>
         <button
           onClick={requestNotifPermission}
           title={notifGranted ? "Notifications enabled" : "Enable browser notifications for waiter calls"}
-          className={`flex shrink-0 items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 text-xs transition sm:justify-start sm:py-1.5 ${
             notifGranted
               ? "border-amber-200 bg-amber-50 text-amber-700"
               : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
@@ -234,19 +234,21 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
           </div>
           <div className="divide-y divide-gray-100">
             {callQueue.map((call) => (
-              <div key={call.id} className="flex items-center gap-3 px-4 py-3.5">
-                <span className={`h-2 w-2 shrink-0 rounded-full ${call.status === "PENDING" ? "animate-pulse bg-red-400" : "bg-amber-400"}`} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold text-gray-900">{call.tableLabel || `Table ${call.tableNumber}`}</p>
-                  {call.message && <p className="mt-0.5 truncate text-xs text-gray-400">{call.message}</p>}
+              <div key={call.id} className="flex flex-col gap-2.5 px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${call.status === "PENDING" ? "animate-pulse bg-red-400" : "bg-amber-400"}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-gray-900">{call.tableLabel || `Table ${call.tableNumber}`}</p>
+                    {call.message && <p className="mt-0.5 truncate text-xs text-gray-400">{call.message}</p>}
+                  </div>
+                  <span className="shrink-0 text-[11px] text-gray-400">{timeAgoShort(call.createdAt)}</span>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-[11px] text-gray-400">{timeAgoShort(call.createdAt)}</span>
+                <div className="flex items-center gap-2 pl-5">
                   {call.status === "PENDING" && (
                     <button
                       onClick={() => updateCallStatus(call.id, "ACKNOWLEDGED")}
                       disabled={updatingCallId === call.id}
-                      className="rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-600 transition hover:bg-amber-100 disabled:opacity-50"
+                      className="min-h-9 flex-1 rounded-lg bg-amber-50 px-2.5 text-xs font-semibold text-amber-600 transition hover:bg-amber-100 disabled:opacity-50"
                     >
                       ACK
                     </button>
@@ -254,7 +256,7 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
                   <button
                     onClick={() => updateCallStatus(call.id, "RESOLVED")}
                     disabled={updatingCallId === call.id}
-                    className="rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-50"
+                    className="min-h-9 flex-1 rounded-lg bg-emerald-50 px-2.5 text-xs font-semibold text-emerald-600 transition hover:bg-emerald-100 disabled:opacity-50"
                   >
                     Done
                   </button>

@@ -17,9 +17,9 @@ export const GET = withApiLogging(async function GET(
 
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
-    select: { id: true, tables: { where: { number: tableNumber }, select: { id: true } } },
+    select: { id: true, tables: { where: { number: tableNumber }, select: { id: true, qrVersion: true } } },
   });
-  if (!restaurant || !isValidTableToken(restaurant.id, tableNumber, tableToken)) {
+  if (!restaurant || !isValidTableToken(restaurant.id, tableNumber, tableToken, restaurant.tables[0]?.qrVersion ?? 0)) {
     return NextResponse.json({ error: "Invalid order link" }, { status: 400 });
   }
 

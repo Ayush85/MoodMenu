@@ -111,6 +111,10 @@ model RestaurantTable {
   id           String         @id @default(cuid())
   number       Int
   label        String?
+  // Bumped to invalidate this table's currently-printed QR code (lost,
+  // photographed, leaked) without affecting any other table. See
+  // src/lib/table-token.ts.
+  qrVersion    Int            @default(0)
   restaurantId String
   restaurant   Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   waiterCalls  WaiterCall[]

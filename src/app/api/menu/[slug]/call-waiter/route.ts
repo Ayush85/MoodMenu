@@ -48,7 +48,7 @@ export const POST = withApiLogging(async function POST(
   // The table number must carry the signed token this restaurant's own QR
   // code embeds — otherwise it was edited by hand in the URL/request body,
   // and a customer could claim to be at any table. See src/lib/table-token.ts.
-  if (!isValidTableToken(restaurant.id, tableNumber, body.tableToken)) {
+  if (!isValidTableToken(restaurant.id, tableNumber, body.tableToken, restaurant.tables[0]?.qrVersion ?? 0)) {
     // A distinct status from the WiFi-gate 403 below, so the client can
     // tell "bad/edited table link" apart from "not on restaurant WiFi".
     return NextResponse.json(

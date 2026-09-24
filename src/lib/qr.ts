@@ -8,7 +8,8 @@ export async function generateMenuQR(
   customDomain?: string | null,
   landingEnabled?: boolean,
   domainVerifiedAt?: Date | string | null,
-  restaurantId?: string
+  restaurantId?: string,
+  qrVersion?: number
 ): Promise<string> {
   let menuUrl = getRestaurantMenuUrl({
     slug,
@@ -23,7 +24,7 @@ export async function generateMenuQR(
   // menu but can't call a waiter, so fail loudly instead of silently.
   if (tableNumber) {
     if (!restaurantId) throw new Error("generateMenuQR: restaurantId is required when tableNumber is set");
-    menuUrl += `?table=${tableNumber}&t=${signTableToken(restaurantId, tableNumber)}`;
+    menuUrl += `?table=${tableNumber}&t=${signTableToken(restaurantId, tableNumber, qrVersion)}`;
   }
 
   return QRCode.toDataURL(menuUrl, {

@@ -1,0 +1,1 @@
+ALTER TABLE "RestaurantTable" ADD COLUMN "qrVersion" INTEGER NOT NULL DEFAULT 0;

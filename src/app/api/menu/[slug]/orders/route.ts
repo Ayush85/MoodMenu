@@ -41,7 +41,7 @@ export const POST = withApiLogging(async function POST(
       id: true,
       ownerId: true,
       allowedIp: true,
-      tables: { where: { number: tableNumber }, select: { id: true, number: true, label: true } },
+      tables: { where: { number: tableNumber }, select: { id: true, number: true, label: true, qrVersion: true } },
       staffMembers: {
         where: { isActive: true, role: { in: ["COOK", "CHEF"] } },
         select: { id: true },
@@ -50,7 +50,7 @@ export const POST = withApiLogging(async function POST(
   });
 
   if (!restaurant) return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
-  if (!isValidTableToken(restaurant.id, tableNumber, tableToken)) {
+  if (!isValidTableToken(restaurant.id, tableNumber, tableToken, restaurant.tables[0]?.qrVersion ?? 0)) {
     return NextResponse.json({ error: "This table link is no longer valid. Please scan the QR code again." }, { status: 400 });
   }
 

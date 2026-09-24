@@ -124,10 +124,17 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   // table" (browse-only; no Call Waiter), matching a customer who opened
   // the menu without a table QR at all. See src/lib/table-token.ts.
   const rawTableNumber = tableParam ? parseInt(tableParam) : null;
+  const rawTableRecord =
+    rawTableNumber !== null && Number.isFinite(rawTableNumber)
+      ? await prisma.restaurantTable.findFirst({
+          where: { restaurantId: restaurant.id, number: rawTableNumber },
+          select: { qrVersion: true },
+        })
+      : null;
   const tableIsValid =
     rawTableNumber !== null &&
     Number.isFinite(rawTableNumber) &&
-    isValidTableToken(restaurant.id, rawTableNumber, tableTokenParam);
+    isValidTableToken(restaurant.id, rawTableNumber, tableTokenParam, rawTableRecord?.qrVersion ?? 0);
   const tableNumber = tableIsValid ? rawTableNumber : null;
   const tableToken = tableIsValid ? (tableTokenParam as string) : null;
 

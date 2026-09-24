@@ -40,7 +40,7 @@ export const GET = withApiLogging(async function GET(
   // table number wasn't hand-edited in the URL — see src/lib/table-token.ts.
   const withTokens = tables.map((table) => ({
     ...table,
-    qrToken: signTableToken(id, table.number),
+    qrToken: signTableToken(id, table.number, table.qrVersion),
   }));
 
   return NextResponse.json(withTokens);
@@ -100,6 +100,42 @@ export const POST = withApiLogging(async function POST(
   }
 
   return NextResponse.json({ created: tableCount }, { status: 201 });
+});
+
+// PATCH { tableId, action: "regenerateQr" } — invalidates that table's
+// currently-printed QR code by bumping its version, without affecting any
+// other table. The owner must reprint/re-place the QR after this.
+export const PATCH = withApiLogging(async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (session.user.actorType === "STAFF") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { id, ownerId: session.user.id },
+  });
+  if (!restaurant) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const { tableId, action } = await req.json();
+  if (action !== "regenerateQr" || typeof tableId !== "string") {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
+
+  const table = await prisma.restaurantTable.update({
+    where: { id: tableId, restaurantId: id },
+    data: { qrVersion: { increment: 1 } },
+  });
+
+  return NextResponse.json({ ...table, qrToken: signTableToken(id, table.number, table.qrVersion) });
 });
 
 export const DELETE = withApiLogging(async function DELETE(

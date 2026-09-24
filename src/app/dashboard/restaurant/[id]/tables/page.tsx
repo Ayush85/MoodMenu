@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Wifi, Lock } from "lucide-react";
+import { Wifi, Lock, RefreshCw } from "lucide-react";
 import { SkeletonLine, SkeletonBlock } from "@/components/Skeleton";
+import { useToast } from "@/components/Toast";
 
 interface Table {
   id: string;
   number: number;
   label: string | null;
+  qrVersion: number;
 }
 
 interface Restaurant {
@@ -33,6 +35,8 @@ export default function TablesPage() {
   const [wifiSaved, setWifiSaved] = useState(false);
   const [resettingTable, setResettingTable] = useState<string | null>(null);
   const [activeSessions, setActiveSessions] = useState<Record<string, boolean>>({});
+  const [regeneratingTable, setRegeneratingTable] = useState<string | null>(null);
+  const { toast } = useToast();
 
   function fetchData() {
     Promise.all([
@@ -63,6 +67,28 @@ export default function TablesPage() {
       body: JSON.stringify({ count: parseInt(tableCount) }),
     });
     fetchData();
+  }
+
+  async function regenerateQr(tableId: string, tableNumber: number) {
+    if (!window.confirm(`This will invalidate Table ${tableNumber}'s current printed QR code — anyone still using it won't be able to call a waiter or order until it's reprinted. Continue?`)) {
+      return;
+    }
+    setRegeneratingTable(tableId);
+    try {
+      const res = await fetch(`/api/restaurants/${id}/tables`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tableId, action: "regenerateQr" }),
+      });
+      if (!res.ok) {
+        toast("Could not regenerate this table's QR code", "error");
+        return;
+      }
+      toast("QR code regenerated — reprint it from the QR page before customers scan the old one");
+      fetchData();
+    } finally {
+      setRegeneratingTable(null);
+    }
   }
 
   async function deleteTable(tableId: string) {
@@ -299,6 +325,17 @@ export default function TablesPage() {
                       {resettingTable === table.id ? "…" : "Reset"}
                     </button>
                   )}
+
+                  {/* Regenerate QR button — invalidates the currently-printed
+                      code for this table only, e.g. if it was lost or leaked. */}
+                  <button
+                    onClick={() => regenerateQr(table.id, table.number)}
+                    disabled={regeneratingTable === table.id}
+                    title="Regenerate this table's QR code"
+                    className="absolute -top-2 -left-2 w-5 h-5 bg-gray-700 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center shadow-sm hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-2.5 h-2.5 ${regeneratingTable === table.id ? "animate-spin" : ""}`} />
+                  </button>
 
                   {/* Delete button */}
                   <button

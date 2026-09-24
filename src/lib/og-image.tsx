@@ -16,7 +16,7 @@ export function OgImageContent() {
     >
       <span style={{ fontSize: 120, fontWeight: 800, color: "#111111", letterSpacing: -2 }}>Menuor</span>
       <span style={{ marginTop: 16, fontSize: 32, color: "#4b5563" }}>
-        Smart digital menus for restaurants
+        The restaurant management system with a digital menu
       </span>
     </div>
   );

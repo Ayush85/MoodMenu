@@ -6,7 +6,7 @@ export default function Footer() {
     <footer className="border-t border-black/[0.04] bg-white">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
         <Logo size={24} />
-        <p className="text-sm text-gray-400">Smart digital menus for restaurants in Nepal</p>
+        <p className="text-sm text-gray-400">Restaurant management system for Nepal — digital menus, orders, and staff tools</p>
         <div className="flex gap-6 text-sm text-gray-400">
           <Link href="/login" className="hover:text-gray-600 transition">
             Sign In

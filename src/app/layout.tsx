@@ -16,9 +16,9 @@ const geistMono = Geist_Mono({
 
 const APP_URL = process.env.APP_BASE_URL || "https://menuor.com";
 const APP_NAME = "Menuor";
-const APP_TITLE = "Menuor — Smart Digital Menus for Restaurants";
+const APP_TITLE = "Menuor — Restaurant Management System & Digital Menu Software";
 const APP_DESC =
-  "Give your restaurant a smart digital menu with QR codes, waiter calls, and weather-adaptive themes. Free to start — go live in minutes.";
+  "Menuor is a restaurant management system with a QR-code digital menu, table ordering, waiter calls, staff accounts, expense tracking, and weather-adaptive themes. Free to start — go live in minutes.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
@@ -29,10 +29,16 @@ export const metadata: Metadata = {
   },
   description: APP_DESC,
   keywords: [
+    "restaurant management system",
+    "restaurant management software",
     "digital restaurant menu",
+    "digital menu system",
     "QR code menu",
     "smart menu system",
     "restaurant ordering system",
+    "order management system",
+    "staff management software",
+    "restaurant analytics",
     "waiter call button",
     "Nepal restaurant app",
     "table ordering",

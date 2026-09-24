@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import Stats from "@/components/landing/Stats";
@@ -6,6 +7,12 @@ import HowItWorks from "@/components/landing/HowItWorks";
 import CTA from "@/components/landing/CTA";
 import Footer from "@/components/landing/Footer";
 import { serializeJsonLd } from "@/lib/structured-data";
+
+const APP_URL = process.env.APP_BASE_URL || "https://menuor.com";
+
+export const metadata: Metadata = {
+  alternates: { canonical: APP_URL },
+};
 
 const jsonLd = {
   "@context": "https://schema.org",

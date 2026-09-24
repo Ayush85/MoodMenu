@@ -18,9 +18,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (hostname && !isPlatformHost(hostname)) {
     const restaurant = await prisma.restaurant.findUnique({
       where: { customDomain: hostname },
-      select: { customDomain: true, domainVerifiedAt: true, landingEnabled: true, updatedAt: true },
+      select: {
+        customDomain: true,
+        domainVerifiedAt: true,
+        landingEnabled: true,
+        updatedAt: true,
+        categories: { select: { _count: { select: { items: true } } } },
+      },
     });
     if (!restaurant || !hasVerifiedCustomDomain(restaurant)) return [];
+    // A restaurant with no menu items yet has nothing worth crawling.
+    if (!restaurant.categories.some((c) => c._count.items > 0)) return [];
 
     const origin = `https://${hostname}`;
     if (restaurant.landingEnabled) {
@@ -35,11 +43,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Restaurants on their own custom domain are excluded here — their
   // canonical URLs live on that domain now, not under /menu or /landing.
   const restaurants = await prisma.restaurant.findMany({
-    select: { slug: true, customDomain: true, domainVerifiedAt: true, updatedAt: true, landingEnabled: true },
+    select: {
+      slug: true,
+      customDomain: true,
+      domainVerifiedAt: true,
+      updatedAt: true,
+      landingEnabled: true,
+      categories: { select: { _count: { select: { items: true } } } },
+    },
   });
 
   const restaurantPages: MetadataRoute.Sitemap = restaurants.flatMap((r) => {
     if (hasVerifiedCustomDomain(r)) {
+      return [];
+    }
+    // Skip fresh signups with no menu items yet — thin/empty content isn't
+    // worth advertising to crawlers.
+    if (!r.categories.some((c) => c._count.items > 0)) {
       return [];
     }
 

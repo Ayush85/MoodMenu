@@ -20,12 +20,25 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
-    select: { name: true, city: true, logo: true, customDomain: true, domainVerifiedAt: true, landingEnabled: true },
+    select: {
+      name: true,
+      city: true,
+      logo: true,
+      customDomain: true,
+      domainVerifiedAt: true,
+      landingEnabled: true,
+      categories: { select: { items: { select: { id: true }, take: 1 } }, take: 1 },
+    },
   });
 
   if (!restaurant) {
     return { title: "Menu Not Found", robots: { index: false } };
   }
+
+  // A restaurant that hasn't added any menu items yet has nothing worth
+  // indexing — keep thin/empty signup pages out of search results so they
+  // don't dilute the domain's overall search quality.
+  const hasMenuItems = restaurant.categories.some((cat) => cat.items.length > 0);
 
   const title = `${restaurant.name} Menu`;
   const description = `Browse the full menu at ${restaurant.name} in ${restaurant.city}. Order food and call your waiter directly from your phone.`;
@@ -36,20 +49,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     ...(logoUrl ? { icons: { icon: logoUrl, apple: logoUrl } } : {}),
-    robots: { index: true, follow: true },
+    robots: { index: hasMenuItems, follow: true },
     alternates: { canonical: canonicalUrl },
     openGraph: {
       type: "website",
       title,
       description,
       url: canonicalUrl,
-      ...(restaurant.logo ? { images: [{ url: restaurant.logo, alt: restaurant.name }] } : {}),
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
-      ...(restaurant.logo ? { images: [restaurant.logo] } : {}),
     },
   };
 }

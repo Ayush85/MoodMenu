@@ -50,6 +50,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     return { title: "Not Found", robots: { index: false } };
   }
 
+  // Same thin-content guard as /menu/[slug]: a landing page with no menu
+  // items yet is a fresh signup, not something worth surfacing in search.
+  // (getRestaurant's own item select is gallery-filtered to images-only, so
+  // that can't answer "has any items at all" — check separately.)
+  const itemCount = await prisma.menuItem.count({ where: { category: { restaurant: { slug } } } });
+  const hasMenuItems = itemCount > 0;
+
   const content = restaurant.landingPage as unknown as LandingPageContent | null;
   const title = `${restaurant.name} — ${restaurant.city}`;
   const description = content?.about || content?.tagline || `Welcome to ${restaurant.name} in ${restaurant.city}.`;
@@ -60,20 +67,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     ...(logoUrl ? { icons: { icon: logoUrl, apple: logoUrl } } : {}),
-    robots: { index: true, follow: true },
+    robots: { index: hasMenuItems, follow: true },
     alternates: { canonical: canonicalUrl },
     openGraph: {
       type: "website",
       title,
       description,
       url: canonicalUrl,
-      ...(restaurant.logo ? { images: [{ url: restaurant.logo, alt: restaurant.name }] } : {}),
     },
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
-      ...(restaurant.logo ? { images: [restaurant.logo] } : {}),
     },
   };
 }

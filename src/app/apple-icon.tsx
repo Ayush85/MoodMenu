@@ -1,5 +1,4 @@
 import { ImageResponse } from "next/og";
-import { BRAND_MARK_VIEWBOX, BRAND_MARK_PATH, BRAND_MARK_DOT, BRAND_GRADIENT_CSS } from "@/lib/brand-mark";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -14,13 +13,9 @@ export default async function AppleIcon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: BRAND_GRADIENT_CSS,
         }}
       >
-        <svg width={120} height={120} viewBox={BRAND_MARK_VIEWBOX}>
-          <path d={BRAND_MARK_PATH} fill="#ffffff" />
-          <circle cx={BRAND_MARK_DOT.cx} cy={BRAND_MARK_DOT.cy} r={BRAND_MARK_DOT.r} fill="#0f172a" />
-        </svg>
+        <span style={{ fontSize: 38, fontWeight: 800, color: "#111111", letterSpacing: -1 }}>Menuor</span>
       </div>
     ),
     { ...size }

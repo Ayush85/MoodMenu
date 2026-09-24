@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
-import Logo from "@/components/ui/Logo";
 import NavLink from "@/components/ui/NavLink";
 import { BookOpen, ClipboardList, MoreHorizontal, Users } from "lucide-react";
 
@@ -156,9 +155,6 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={close}>
-          <span className="transition-all group-hover:scale-105">
-            <Logo variant="mark" size={32} />
-          </span>
           <div>
             <span className="text-[15px] font-bold text-gray-900 block leading-none">Menuor</span>
             <span className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5 block">
@@ -351,7 +347,6 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden sticky top-0 z-40 px-4 h-14 flex items-center justify-between bg-white border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <Logo variant="mark" size={28} />
           <span className="text-sm font-bold text-gray-900">Menuor</span>
         </Link>
         <div className="flex items-center gap-1">

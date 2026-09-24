@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import Logo from "@/components/ui/Logo";
 import NavLink from "@/components/ui/NavLink";
 
 export default function AdminSidebar() {
@@ -26,9 +25,6 @@ export default function AdminSidebar() {
       <div className="mb-3 md:mb-8 flex items-start justify-between gap-3 md:block">
         <div>
           <Link href="/admin" className="flex items-center gap-2 group mb-2">
-            <span className="transition-all group-hover:scale-105">
-              <Logo variant="mark" size={36} />
-            </span>
             <span className="text-lg font-bold text-white">Menuor</span>
           </Link>
           <span className="text-[10px] font-semibold uppercase tracking-widest text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-md inline-block">

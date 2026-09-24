@@ -69,6 +69,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
   const [showComposer, setShowComposer] = useState(false);
   const [orderPollKey, setOrderPollKey] = useState(0);
   const [now, setNow] = useState(0);
+  const [activeColumn, setActiveColumn] = useState(0);
   const [confirmAction, setConfirmAction] = useState<{
     title: string;
     message: string;
@@ -77,6 +78,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
     onConfirm: () => void;
   } | null>(null);
   const previousNewOrderIds = useRef<Set<string> | null>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const fetchOrders = useCallback(() => {
     fetch(`/api/restaurants/${restaurantId}/orders`)
@@ -139,6 +141,20 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
     () => orders.filter((order) => order.status === "SERVED").length,
     [orders],
   );
+
+  function handleScrollerScroll() {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const index = Math.round(el.scrollLeft / el.clientWidth);
+    setActiveColumn((current) => (current === index ? current : index));
+  }
+
+  function scrollToColumn(index: number) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: index * el.clientWidth, behavior: "smooth" });
+    setActiveColumn(index);
+  }
 
   function canUpdateStatus(status: OrderStatus) {
     return getAllowedOrderStatuses(actorType, staffRole).includes(status);
@@ -216,7 +232,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
 
         <div className="flex flex-wrap gap-1.5">
           {suggestedStatus && canUpdateStatus(suggestedStatus) && (
-            <button onClick={() => handleOrderStatusClick(order, suggestedStatus)} className="flex min-h-9 items-center gap-1 rounded-lg bg-orange-500 px-3 text-[11px] font-bold text-white transition hover:bg-orange-600">
+            <button onClick={() => handleOrderStatusClick(order, suggestedStatus)} className="flex min-h-10 items-center gap-1 rounded-lg bg-orange-500 px-3.5 text-xs font-bold text-white transition hover:bg-orange-600">
               <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
@@ -224,7 +240,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
             </button>
           )}
           {actionStatuses.filter((status) => status !== suggestedStatus).map((status) => (
-            <button key={status} onClick={() => handleOrderStatusClick(order, status)} className={`min-h-9 rounded-lg border px-2.5 text-[11px] font-medium transition ${status === "CANCELED" ? "border-red-200 bg-red-50 text-red-500 hover:bg-red-100" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
+            <button key={status} onClick={() => handleOrderStatusClick(order, status)} className={`min-h-10 rounded-lg border px-3 text-xs font-medium transition ${status === "CANCELED" ? "border-red-200 bg-red-50 text-red-500 hover:bg-red-100" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
               {STATUS_META[status].label}
             </button>
           ))}
@@ -235,28 +251,58 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-600">Active Queue</p>
-          <p className="mt-1 text-2xl font-extrabold leading-none text-amber-900">{activeOrderQueue}</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-2.5 sm:px-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 sm:text-[11px]">Active Queue</p>
+          <p className="mt-1 text-xl font-extrabold leading-none text-amber-900 sm:text-2xl">{activeOrderQueue}</p>
         </div>
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-600">Ready to Close</p>
-          <p className="mt-1 text-2xl font-extrabold leading-none text-emerald-900">{readyToCloseCount}</p>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-2.5 py-2.5 sm:px-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-600 sm:text-[11px]">Ready to Close</p>
+          <p className="mt-1 text-xl font-extrabold leading-none text-emerald-900 sm:text-2xl">{readyToCloseCount}</p>
         </div>
-        <div className="col-span-2 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2.5 sm:col-span-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-600">Paid Revenue</p>
-          <p className="mt-1 text-2xl font-extrabold leading-none text-violet-900">Rs. {fmt(paidRevenue)}</p>
+        <div className="rounded-xl border border-violet-200 bg-violet-50 px-2.5 py-2.5 sm:px-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-600 sm:text-[11px]">Paid Revenue</p>
+          <p className="mt-1 truncate text-xl font-extrabold leading-none text-violet-900 sm:text-2xl">Rs. {fmt(paidRevenue)}</p>
         </div>
       </div>
 
       <section className="surface-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:p-4">
         <input value={orderTableFilter} onChange={(event) => setOrderTableFilter(event.target.value)} placeholder="Filter by table name or number" className="control-input flex-1" />
-        <span className="text-xs text-gray-500">{filteredOrders.length} order{filteredOrders.length === 1 ? "" : "s"}</span>
-        {canTakeOrders && <button onClick={() => setShowComposer(true)} className="btn-primary shrink-0 py-3 sm:w-auto">+ Create new order</button>}
+        <div className="flex items-center justify-between gap-3 sm:contents">
+          <span className="text-xs text-gray-500">{filteredOrders.length} order{filteredOrders.length === 1 ? "" : "s"}</span>
+          {canTakeOrders && <button onClick={() => setShowComposer(true)} className="btn-primary shrink-0 py-3 sm:w-auto">+ Create new order</button>}
+        </div>
       </section>
 
-      <div className="flex gap-4 overflow-x-auto pb-2 xl:grid xl:grid-cols-4 xl:overflow-visible">
+      {/* Status tab strip — mobile only. The column scroller below shows one
+          full-width lane per swipe with no partial neighbor peeking in, so
+          without this strip there'd be no way to tell how many lanes exist
+          or which one is currently in view. */}
+      <div className="flex gap-1.5 overflow-x-auto xl:hidden">
+        {ORDER_COLUMNS.map((column, index) => {
+          const count = filteredOrders.filter((order) => order.status === column.status).length;
+          const isActive = activeColumn === index;
+          return (
+            <button
+              key={column.status}
+              onClick={() => scrollToColumn(index)}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                isActive ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-white" : column.dot}`} />
+              {column.label}
+              <span className={isActive ? "text-white/70" : "text-gray-400"}>{count}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        ref={scrollerRef}
+        onScroll={handleScrollerScroll}
+        className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 xl:grid xl:grid-cols-4 xl:overflow-visible xl:pb-0"
+      >
         {ORDER_COLUMNS.map((column) => {
           const columnOrders = filteredOrders
             .filter((order) => order.status === column.status)
@@ -265,8 +311,8 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
               : new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
           return (
-            <div key={column.status} className={`surface-card min-w-[min(86vw,20rem)] flex-1 overflow-hidden border-t-4 ${column.header} xl:min-w-0`}>
-              <div className="flex items-center gap-2 border-b border-gray-100 px-3.5 py-3">
+            <div key={column.status} className={`surface-card w-full shrink-0 snap-start overflow-hidden border-t-4 ${column.header} xl:w-auto`}>
+              <div className="hidden items-center gap-2 border-b border-gray-100 px-3.5 py-3 xl:flex">
                 <span className={`h-2 w-2 rounded-full ${column.dot}`} />
                 <h2 className="text-sm font-bold text-gray-900">{column.label}</h2>
                 <span className="ml-auto text-xs font-bold text-gray-400">{columnOrders.length}</span>

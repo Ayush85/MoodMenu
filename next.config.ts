@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 // Report-only for now: this app relies heavily on inline styles (style={{}}
 // everywhere) and inline JSON-LD <script> tags, so an *enforcing* CSP needs
@@ -11,7 +12,7 @@ const CSP_REPORT_ONLY = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https://res.cloudinary.com https://aydexis.sgp1.digitaloceanspaces.com",
-  "connect-src 'self' https://fcm.googleapis.com https://firebaseinstallations.googleapis.com",
+  "connect-src 'self' https://fcm.googleapis.com https://firebaseinstallations.googleapis.com https://*.ingest.de.sentry.io https://*.ingest.sentry.io",
   "frame-ancestors 'self'",
   "object-src 'none'",
   "base-uri 'self'",
@@ -48,4 +49,12 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// No SENTRY_AUTH_TOKEN configured (would enable source-map upload for
+// readable stack traces) -- errors are still captured and reported without
+// it, just with minified stack traces until that's added.
+export default withSentryConfig(nextConfig, {
+  org: "aydexis",
+  project: "javascript-nextjs",
+  silent: true,
+  widenClientFileUpload: false,
+});

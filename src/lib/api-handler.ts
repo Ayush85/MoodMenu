@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import * as Sentry from "@sentry/nextjs";
 import { logger } from "./logger";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +38,9 @@ export function withApiLogging<H extends AnyHandler>(handler: H): H {
         durationMs: Date.now() - start,
         error,
       });
+      // The container log line above rotates away; without this an
+      // uncaught API error was previously invisible once that happened.
+      Sentry.captureException(error, { tags: { route, requestId } });
       return NextResponse.json(
         { error: "Internal server error", requestId },
         { status: 500, headers: { "x-request-id": requestId } }

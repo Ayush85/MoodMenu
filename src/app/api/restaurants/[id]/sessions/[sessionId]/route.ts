@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
-
-async function canAccess(restaurantId: string, userId: string, actorType?: string) {
-  if (actorType === "STAFF") {
-    return prisma.restaurantStaff.findFirst({
-      where: { id: userId, restaurantId, isActive: true },
-    });
-  }
-  return prisma.restaurant.findFirst({ where: { id: restaurantId, ownerId: userId } });
-}
+import { getRestaurantAccess } from "@/lib/restaurant-access";
 
 // PATCH /api/restaurants/[id]/sessions/[sessionId]
 // Body: { action: "close" }  — closes the session and marks all orders PAID
@@ -22,7 +14,7 @@ export const PATCH = withApiLogging(async function PATCH(
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, sessionId } = await params;
-  if (!await canAccess(id, session.user.id, session.user.actorType)) {
+  if (!await getRestaurantAccess(id, { id: session.user.id, actorType: session.user.actorType })) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

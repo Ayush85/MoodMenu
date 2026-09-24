@@ -68,50 +68,58 @@ export const POST = withApiLogging(async function POST(
   let categoriesCreated = 0;
   const createdItems: { id: string; name: string; description: string | null }[] = [];
 
-  const maxOrderResult = await prisma.category.aggregate({
-    where: { restaurantId: id },
-    _max: { order: true },
-  });
-  let nextOrder = (maxOrderResult._max.order ?? -1) + 1;
-
-  for (const [catName, catRows] of Object.entries(grouped)) {
-    const key = catName.toLowerCase();
-    let categoryId = categoryMap[key];
-
-    if (!categoryId) {
-      const newCat = await prisma.category.create({
-        data: {
-          name: catName,
-          order: nextOrder++,
-          restaurantId: id,
-        },
-      });
-      categoryId = newCat.id;
-      categoryMap[key] = categoryId;
-      categoriesCreated++;
-    }
-
-    const maxItemOrder = await prisma.menuItem.aggregate({
-      where: { categoryId },
+  // Everything below runs in one transaction: a large import failing midway
+  // (a DB hiccup on row 300 of 500) used to leave whatever had already been
+  // created in place with no indication of which rows made it — now it's
+  // all-or-nothing. Raised timeout/maxWait since up to 500 rows run
+  // sequentially (order assignment per category needs it) rather than as a
+  // single batched write.
+  await prisma.$transaction(async (tx) => {
+    const maxOrderResult = await tx.category.aggregate({
+      where: { restaurantId: id },
       _max: { order: true },
     });
-    let nextItemOrder = (maxItemOrder._max.order ?? -1) + 1;
+    let nextOrder = (maxOrderResult._max.order ?? -1) + 1;
 
-    for (const row of catRows) {
-      const item = await prisma.menuItem.create({
-        data: {
-          name: row.name.trim(),
-          description: row.description?.trim() || null,
-          price: row.price,
-          tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
-          order: nextItemOrder++,
-          categoryId,
-        },
-        select: { id: true, name: true, description: true },
+    for (const [catName, catRows] of Object.entries(grouped)) {
+      const key = catName.toLowerCase();
+      let categoryId = categoryMap[key];
+
+      if (!categoryId) {
+        const newCat = await tx.category.create({
+          data: {
+            name: catName,
+            order: nextOrder++,
+            restaurantId: id,
+          },
+        });
+        categoryId = newCat.id;
+        categoryMap[key] = categoryId;
+        categoriesCreated++;
+      }
+
+      const maxItemOrder = await tx.menuItem.aggregate({
+        where: { categoryId },
+        _max: { order: true },
       });
-      createdItems.push(item);
+      let nextItemOrder = (maxItemOrder._max.order ?? -1) + 1;
+
+      for (const row of catRows) {
+        const item = await tx.menuItem.create({
+          data: {
+            name: row.name.trim(),
+            description: row.description?.trim() || null,
+            price: row.price,
+            tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
+            order: nextItemOrder++,
+            categoryId,
+          },
+          select: { id: true, name: true, description: true },
+        });
+        createdItems.push(item);
+      }
     }
-  }
+  }, { timeout: 30000, maxWait: 10000 });
 
   return NextResponse.json({
     ok: true,

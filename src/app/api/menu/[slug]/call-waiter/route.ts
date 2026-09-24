@@ -4,6 +4,7 @@ import { sendPush } from "@/lib/push";
 import { withApiLogging } from "@/lib/api-handler";
 import { isValidTableToken } from "@/lib/table-token";
 import { getClientIp } from "@/lib/client-ip";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const POST = withApiLogging(async function POST(
   req: NextRequest,
@@ -11,6 +12,14 @@ export const POST = withApiLogging(async function POST(
 ) {
   const { slug } = await params;
   const body = await req.json();
+
+  const requestLimit = checkRateLimit(`call-waiter:${getClientIp(req)}`, 20, 10 * 60 * 1000);
+  if (!requestLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment and try again." },
+      { status: 429, headers: { "Retry-After": String(requestLimit.retryAfterSeconds) } },
+    );
+  }
 
   const tableNumber = parseInt(String(body.tableNumber));
   if (!tableNumber || tableNumber < 1 || tableNumber > 9999) {

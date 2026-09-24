@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { OrderStatus } from "@/generated/prisma/client";
 import { withApiLogging } from "@/lib/api-handler";
 import { sendPush } from "@/lib/push";
+import { getRestaurantAccess } from "@/lib/restaurant-access";
 
 const validStatuses = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const;
 const allowedNextStatuses: Record<OrderStatus, OrderStatus[]> = {
@@ -13,28 +14,6 @@ const allowedNextStatuses: Record<OrderStatus, OrderStatus[]> = {
   PAID: [],
   CANCELED: [],
 };
-
-type AccessInfo =
-  | { kind: "OWNER" }
-  | { kind: "STAFF"; role: "WAITER" | "COOK" | "CHEF" };
-
-async function getRestaurantAccess(restaurantId: string, sessionUser: { id: string; actorType?: "USER" | "STAFF" }): Promise<AccessInfo | null> {
-  if (sessionUser.actorType === "STAFF") {
-    const staffRecord = await prisma.restaurantStaff.findFirst({
-      where: { id: sessionUser.id, restaurantId, isActive: true },
-      select: { id: true, role: true },
-    });
-    if (!staffRecord) return null;
-    return { kind: "STAFF", role: staffRecord.role as "WAITER" | "COOK" | "CHEF" };
-  }
-
-  const ownerRecord = await prisma.restaurant.findFirst({
-    where: { id: restaurantId, ownerId: sessionUser.id },
-    select: { id: true },
-  });
-  if (!ownerRecord) return null;
-  return { kind: "OWNER" };
-}
 
 export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,

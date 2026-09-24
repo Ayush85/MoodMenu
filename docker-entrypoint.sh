@@ -13,7 +13,15 @@ su-exec nextjs node node_modules/prisma/build/index.js migrate deploy
 echo "Migrations applied successfully."
 
 echo "Running seed..."
-su-exec nextjs sh ./scripts/seed-prod.sh || echo "Seed step finished."
+# Best-effort: a seed failure shouldn't block the server from starting, but
+# it must not look identical to a success in the logs either — swallowing
+# the exit code entirely made a broken/misconfigured seed script silently
+# no-op on every deploy with nothing to alert on.
+if su-exec nextjs sh ./scripts/seed-prod.sh; then
+  echo "Seed step finished successfully."
+else
+  echo "WARNING: seed step failed (exit code $?) — continuing startup anyway. Check scripts/seed-prod.sh." >&2
+fi
 
 echo "Starting server..."
 exec su-exec nextjs node server.js

@@ -69,29 +69,35 @@ export const POST = withApiLogging(async function POST(
   const { count } = await req.json();
   const tableCount = Math.min(Math.max(parseInt(count) || 1, 1), 100);
 
-  const existing = await prisma.restaurantTable.findMany({
-    where: { restaurantId: id },
-    orderBy: { number: "desc" },
-    take: 1,
-  });
+  // Read-then-create needs to be atomic: two concurrent "add tables"
+  // requests reading the same starting number outside a transaction could
+  // otherwise leave a partial batch created before the unique constraint on
+  // (restaurantId, number) rejects the rest. Wrapping it means the whole
+  // batch commits together or not at all.
+  try {
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.restaurantTable.findMany({
+        where: { restaurantId: id },
+        orderBy: { number: "desc" },
+        take: 1,
+      });
 
-  const startNumber = existing.length > 0 ? existing[0].number + 1 : 1;
+      const startNumber = existing.length > 0 ? existing[0].number + 1 : 1;
 
-  const tables = [];
-  for (let i = 0; i < tableCount; i++) {
-    const num = startNumber + i;
-    tables.push(
-      prisma.restaurantTable.create({
-        data: {
-          number: num,
-          label: `Table ${num}`,
-          restaurantId: id,
-        },
-      })
-    );
+      for (let i = 0; i < tableCount; i++) {
+        const num = startNumber + i;
+        await tx.restaurantTable.create({
+          data: {
+            number: num,
+            label: `Table ${num}`,
+            restaurantId: id,
+          },
+        });
+      }
+    });
+  } catch {
+    return NextResponse.json({ error: "Could not create tables. Please try again." }, { status: 409 });
   }
-
-  await Promise.all(tables);
 
   return NextResponse.json({ created: tableCount }, { status: 201 });
 });

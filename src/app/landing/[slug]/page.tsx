@@ -27,6 +27,7 @@ async function getRestaurant(slug: string) {
       landingPage: true,
       latitude: true,
       longitude: true,
+      isSuspended: true,
       categories: {
         orderBy: { order: "asc" },
         select: {
@@ -56,6 +57,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // that can't answer "has any items at all" — check separately.)
   const itemCount = await prisma.menuItem.count({ where: { category: { restaurant: { slug } } } });
   const hasMenuItems = itemCount > 0;
+  const shouldIndex = hasMenuItems && !restaurant.isSuspended;
 
   const content = restaurant.landingPage as unknown as LandingPageContent | null;
   const title = `${restaurant.name} — ${restaurant.city}`;
@@ -67,7 +69,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     ...(logoUrl ? { icons: { icon: logoUrl, apple: logoUrl } } : {}),
-    robots: { index: hasMenuItems, follow: true },
+    robots: { index: shouldIndex, follow: true },
     alternates: { canonical: canonicalUrl },
     openGraph: {
       type: "website",
@@ -88,6 +90,18 @@ export default async function LandingPage({ params }: Props) {
   const restaurant = await getRestaurant(slug);
 
   if (!restaurant) notFound();
+
+  if (restaurant.isSuspended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center bg-gray-50">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Page temporarily unavailable</h1>
+          <p className="text-gray-500">This restaurant&apos;s page isn&apos;t available right now. Please check back later.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!restaurant.landingEnabled) redirect(`/menu/${slug}`);
 
   const content = restaurant.landingPage as unknown as LandingPageContent | null;

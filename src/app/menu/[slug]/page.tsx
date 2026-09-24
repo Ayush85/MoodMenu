@@ -27,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       customDomain: true,
       domainVerifiedAt: true,
       landingEnabled: true,
+      isSuspended: true,
       categories: { select: { items: { select: { id: true }, take: 1 } }, take: 1 },
     },
   });
@@ -37,8 +38,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
   // A restaurant that hasn't added any menu items yet has nothing worth
   // indexing — keep thin/empty signup pages out of search results so they
-  // don't dilute the domain's overall search quality.
+  // don't dilute the domain's overall search quality. A suspended restaurant
+  // shouldn't be indexed either — its page won't render normally.
   const hasMenuItems = restaurant.categories.some((cat) => cat.items.length > 0);
+  const shouldIndex = hasMenuItems && !restaurant.isSuspended;
 
   const title = `${restaurant.name} Menu`;
   const description = `Browse the full menu at ${restaurant.name} in ${restaurant.city}. Order food and call your waiter directly from your phone.`;
@@ -49,7 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title,
     description,
     ...(logoUrl ? { icons: { icon: logoUrl, apple: logoUrl } } : {}),
-    robots: { index: hasMenuItems, follow: true },
+    robots: { index: shouldIndex, follow: true },
     alternates: { canonical: canonicalUrl },
     openGraph: {
       type: "website",
@@ -103,6 +106,17 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   });
 
   if (!restaurant) notFound();
+
+  if (restaurant.isSuspended) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center bg-gray-50">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Menu temporarily unavailable</h1>
+          <p className="text-gray-500">This restaurant&apos;s digital menu isn&apos;t available right now. Please check back later.</p>
+        </div>
+      </div>
+    );
+  }
 
   // A table number is only trusted when it carries a valid signed token —
   // otherwise it was hand-typed/edited in the URL bar, not scanned off this

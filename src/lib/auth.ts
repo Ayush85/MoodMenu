@@ -111,6 +111,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           token.restaurantIds = undefined;
         } else {
           token.role = dbUser.role;
+          // Opportunistic heartbeat — this callback already re-fetches the
+          // user on every request, so "online now" (admin stats) is just a
+          // recency filter on this timestamp rather than a separate system.
+          prisma.user.update({ where: { id: tokenId }, data: { lastActiveAt: new Date() } }).catch(() => {});
         }
       }
       return token;

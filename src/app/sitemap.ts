@@ -23,12 +23,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         domainVerifiedAt: true,
         landingEnabled: true,
         updatedAt: true,
+        isSuspended: true,
         categories: { select: { _count: { select: { items: true } } } },
       },
     });
     if (!restaurant || !hasVerifiedCustomDomain(restaurant)) return [];
-    // A restaurant with no menu items yet has nothing worth crawling.
-    if (!restaurant.categories.some((c) => c._count.items > 0)) return [];
+    // A restaurant with no menu items yet, or a suspended one, has nothing
+    // worth crawling.
+    if (restaurant.isSuspended || !restaurant.categories.some((c) => c._count.items > 0)) return [];
 
     const origin = `https://${hostname}`;
     if (restaurant.landingEnabled) {
@@ -49,6 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       domainVerifiedAt: true,
       updatedAt: true,
       landingEnabled: true,
+      isSuspended: true,
       categories: { select: { _count: { select: { items: true } } } },
     },
   });
@@ -57,9 +60,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (hasVerifiedCustomDomain(r)) {
       return [];
     }
-    // Skip fresh signups with no menu items yet — thin/empty content isn't
-    // worth advertising to crawlers.
-    if (!r.categories.some((c) => c._count.items > 0)) {
+    // Skip fresh signups with no menu items yet, and suspended restaurants —
+    // neither is worth advertising to crawlers.
+    if (r.isSuspended || !r.categories.some((c) => c._count.items > 0)) {
       return [];
     }
 

@@ -8,6 +8,7 @@ interface Stats {
   totalRestaurants: number;
   totalMenuItems: number;
   totalCategories: number;
+  onlineNow: number;
 }
 
 interface RecentUser {
@@ -54,6 +55,7 @@ export default function AdminDashboard() {
   }
 
   const statCards = [
+    { label: "Online Now", value: stats?.onlineNow ?? 0, color: "bg-emerald-500", icon: "M13 10V3L4 14h7v7l9-11h-7z" },
     { label: "Total Users", value: stats?.totalUsers ?? 0, color: "bg-blue-500", icon: "M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" },
     { label: "Restaurants", value: stats?.totalRestaurants ?? 0, color: "bg-orange-500", icon: "M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" },
     { label: "Menu Items", value: stats?.totalMenuItems ?? 0, color: "bg-green-500", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
@@ -65,7 +67,7 @@ export default function AdminDashboard() {
       <h1 className="page-title mb-6 sm:mb-8">Super Admin Dashboard</h1>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-10">
         {statCards.map((card) => (
           <div key={card.label} className="surface-card p-5 sm:p-6">
             <div className="flex items-center justify-between">

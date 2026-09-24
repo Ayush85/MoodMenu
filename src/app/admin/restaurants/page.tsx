@@ -11,6 +11,7 @@ interface Restaurant {
   slug: string;
   city: string;
   createdAt: string;
+  isSuspended: boolean;
   owner: { name: string; email: string };
   _count: { categories: number; moodRules: number };
   categories: { _count: { items: number } }[];
@@ -34,6 +35,20 @@ export default function AdminRestaurantsPage() {
   useEffect(() => {
     fetchRestaurants();
   }, []);
+
+  async function toggleSuspended(restaurantId: string, isSuspended: boolean) {
+    const res = await fetch("/api/admin/restaurants", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ restaurantId, isSuspended }),
+    });
+    if (res.ok) {
+      toast(isSuspended ? "Restaurant suspended" : "Restaurant reactivated");
+      fetchRestaurants();
+    } else {
+      toast("Failed to update restaurant", "error");
+    }
+  }
 
   function deleteRestaurant(restaurantId: string, name: string) {
     setConfirmAction({
@@ -75,11 +90,18 @@ export default function AdminRestaurantsPage() {
             return (
               <div
                 key={r.id}
-                className="surface-card p-4 sm:p-6 flex flex-col"
+                className={`surface-card p-4 sm:p-6 flex flex-col ${r.isSuspended ? "opacity-70 ring-1 ring-red-200" : ""}`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{r.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold text-gray-900">{r.name}</h3>
+                      {r.isSuspended && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 uppercase tracking-wide">
+                          Suspended
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">{r.city}</p>
                   </div>
                   <Link
@@ -109,12 +131,24 @@ export default function AdminRestaurantsPage() {
                   <span className="text-xs text-gray-400">
                     {new Date(r.createdAt).toLocaleDateString()}
                   </span>
-                  <button
-                    onClick={() => deleteRestaurant(r.id, r.name)}
-                    className="text-sm text-red-500 hover:text-red-600 font-medium"
-                  >
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => toggleSuspended(r.id, !r.isSuspended)}
+                      className={`text-sm font-medium ${
+                        r.isSuspended
+                          ? "text-green-600 hover:text-green-700"
+                          : "text-amber-600 hover:text-amber-700"
+                      }`}
+                    >
+                      {r.isSuspended ? "Reactivate" : "Suspend"}
+                    </button>
+                    <button
+                      onClick={() => deleteRestaurant(r.id, r.name)}
+                      className="text-sm text-red-500 hover:text-red-600 font-medium"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             );

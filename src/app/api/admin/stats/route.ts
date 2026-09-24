@@ -9,12 +9,15 @@ export const GET = withApiLogging(async function GET() {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const [totalUsers, totalRestaurants, totalMenuItems, totalCategories] =
+  const onlineSince = new Date(Date.now() - 5 * 60 * 1000);
+
+  const [totalUsers, totalRestaurants, totalMenuItems, totalCategories, onlineNow] =
     await Promise.all([
       prisma.user.count(),
       prisma.restaurant.count(),
       prisma.menuItem.count(),
       prisma.category.count(),
+      prisma.user.count({ where: { lastActiveAt: { gt: onlineSince } } }),
     ]);
 
   const recentUsers = await prisma.user.findMany({
@@ -33,7 +36,7 @@ export const GET = withApiLogging(async function GET() {
   });
 
   return NextResponse.json({
-    stats: { totalUsers, totalRestaurants, totalMenuItems, totalCategories },
+    stats: { totalUsers, totalRestaurants, totalMenuItems, totalCategories, onlineNow },
     recentUsers,
     recentRestaurants,
   });

@@ -1,0 +1,2 @@
+ALTER TABLE "User" ADD COLUMN "lastActiveAt" TIMESTAMP(3);
+ALTER TABLE "Restaurant" ADD COLUMN "isSuspended" BOOLEAN NOT NULL DEFAULT false;

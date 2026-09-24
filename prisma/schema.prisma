@@ -55,6 +55,7 @@ model User {
   isActive         Boolean      @default(true)
   resetToken       String?      @unique
   resetTokenExpiry DateTime?
+  lastActiveAt     DateTime?
   createdAt        DateTime     @default(now())
   restaurants      Restaurant[]
 }
@@ -77,6 +78,7 @@ model Restaurant {
   wifiSsid         String?
   wifiPassword     String?
   allowedIp        String?
+  isSuspended      Boolean           @default(false)
   ownerId          String
   owner            User              @relation(fields: [ownerId], references: [id])
   categories       Category[]

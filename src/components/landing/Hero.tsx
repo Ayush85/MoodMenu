@@ -47,7 +47,7 @@ export default function Hero() {
             Create Your Menu
             <ArrowRight className="w-4 h-4" />
           </Link>
-          <Link href="/menu/ayush-test-kitchen?table=1" className="btn-soft !text-base !px-8 !py-4 !rounded-2xl">
+          <Link href="/menu/kalash-food-cafe" className="btn-soft !text-base !px-8 !py-4 !rounded-2xl">
             <PlayCircle className="w-4 h-4" />
             See Demo
           </Link>

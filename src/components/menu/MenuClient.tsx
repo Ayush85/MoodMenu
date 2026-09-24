@@ -109,16 +109,27 @@ export default function MenuClient({
   // cannot accidentally carry items from another restaurant/table.
   const [cart, setCart] = useState<CartLine[]>([]);
   const [showOrderPanel, setShowOrderPanel] = useState(false);
-  const [activeOrder, setActiveOrder] = useState<CustomerOrder | null>(null);
+  // A table can have more than one order in flight (customer orders again
+  // while the first is still being prepared) — track all of them so placing
+  // a second order never silently loses visibility of the first.
+  const [activeOrders, setActiveOrders] = useState<CustomerOrder[]>([]);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const cartHydrated = useRef(false);
   const pendingOrderRequestKey = useRef<string | null>(null);
+  // Snapshot of the cart+note the pending key was generated for. If the
+  // customer edits their cart after a failed submit and resubmits, reusing
+  // the old key would silently hand back the stale order from the first
+  // attempt instead of creating one for the edited cart — so the key is
+  // only reused when the cart is unchanged from the attempt that made it.
+  const pendingOrderSnapshot = useRef<string | null>(null);
   const cartStorageKey = tableNumber ? `menuor-cart:${restaurant.slug}:${tableNumber}` : null;
-  const orderStorageKey = tableNumber ? `menuor-active-order:${restaurant.slug}:${tableNumber}` : null;
+  const orderStorageKey = tableNumber ? `menuor-active-orders:${restaurant.slug}:${tableNumber}` : null;
+  const MAX_TRACKED_ORDERS = 5;
 
   useEffect(() => {
     pendingOrderRequestKey.current = null;
+    pendingOrderSnapshot.current = null;
   }, [tableNumber, tableToken]);
 
   // Filtered items for search
@@ -175,33 +186,72 @@ export default function MenuClient({
     else localStorage.setItem(cartStorageKey, JSON.stringify(cart));
   }, [cart, cartStorageKey]);
 
+  function readTrackedOrderIds(): string[] {
+    if (!orderStorageKey) return [];
+    try {
+      const stored = JSON.parse(localStorage.getItem(orderStorageKey) || "[]");
+      return Array.isArray(stored) ? stored.filter((id): id is string => typeof id === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeTrackedOrderIds(ids: string[]) {
+    if (!orderStorageKey) return;
+    const trimmed = ids.slice(0, MAX_TRACKED_ORDERS);
+    if (trimmed.length === 0) localStorage.removeItem(orderStorageKey);
+    else localStorage.setItem(orderStorageKey, JSON.stringify(trimmed));
+  }
+
+  // Restore every order this table was tracking (not just the latest) so a
+  // second order placed while the first was still being prepared doesn't
+  // orphan the first from the customer's view after a page reload.
   useEffect(() => {
     if (!orderStorageKey || !tableNumber || !tableToken) return;
-    const storedOrderId = localStorage.getItem(orderStorageKey);
-    if (!storedOrderId) return;
+    const storedIds = readTrackedOrderIds();
+    if (storedIds.length === 0) return;
     let cancelled = false;
 
-    fetch(`/api/menu/${restaurant.slug}/orders/${storedOrderId}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Order unavailable");
-        return res.json() as Promise<CustomerOrder>;
-      })
-      .then((order) => { if (!cancelled) setActiveOrder(order); })
-      .catch(() => localStorage.removeItem(orderStorageKey));
+    Promise.all(
+      storedIds.map((id) =>
+        fetch(`/api/menu/${restaurant.slug}/orders/${id}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
+          .then((res) => (res.ok ? (res.json() as Promise<CustomerOrder>) : null))
+          .catch(() => null),
+      ),
+    ).then((results) => {
+      if (cancelled) return;
+      const orders = results.filter((order): order is CustomerOrder => order !== null);
+      setActiveOrders(orders);
+      // Prune ids that no longer resolve (deleted, or belonged to a stale
+      // table token) so they don't get retried forever.
+      writeTrackedOrderIds(orders.map((order) => order.id));
+    });
 
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderStorageKey, restaurant.slug, tableNumber, tableToken]);
 
   useEffect(() => {
-    if (!activeOrder || !tableNumber || !tableToken || ["PAID", "CANCELED"].includes(activeOrder.status)) return;
+    const trackedIds = activeOrders.filter((order) => !["PAID", "CANCELED"].includes(order.status)).map((order) => order.id);
+    if (trackedIds.length === 0 || !tableNumber || !tableToken) return;
+
     const refresh = () => {
-      fetch(`/api/menu/${restaurant.slug}/orders/${activeOrder.id}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
-        .then((res) => res.ok ? res.json() as Promise<CustomerOrder> : null)
-        .then((order) => { if (order) setActiveOrder(order); });
+      Promise.all(
+        trackedIds.map((id) =>
+          fetch(`/api/menu/${restaurant.slug}/orders/${id}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
+            .then((res) => (res.ok ? (res.json() as Promise<CustomerOrder>) : null))
+            .catch(() => null),
+        ),
+      ).then((results) => {
+        const updates = new Map(results.filter((order): order is CustomerOrder => order !== null).map((order) => [order.id, order]));
+        if (updates.size === 0) return;
+        setActiveOrders((current) => current.map((order) => updates.get(order.id) || order));
+      });
     };
     const interval = setInterval(refresh, 8000);
     return () => clearInterval(interval);
-  }, [activeOrder, restaurant.slug, tableNumber, tableToken]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOrders, restaurant.slug, tableNumber, tableToken]);
 
   const handleCategoryChange = useCallback((id: string) => {
     setActiveCategory(id);
@@ -289,10 +339,22 @@ export default function MenuClient({
     if (!tableNumber || !tableToken || cart.length === 0) return;
     setIsSubmittingOrder(true);
     setOrderError(null);
+
+    // Only reuse the in-flight idempotency key if the cart is exactly what
+    // it was when that key was generated. If the customer edited their cart
+    // after an earlier failed attempt, reusing the old key would silently
+    // hand back the stale order from that attempt instead of one for the
+    // cart they're looking at now.
+    const snapshot = JSON.stringify({ items: cart.map((item) => [item.itemId, item.quantity]), note });
+    if (pendingOrderRequestKey.current && pendingOrderSnapshot.current !== snapshot) {
+      pendingOrderRequestKey.current = null;
+    }
     if (!pendingOrderRequestKey.current) {
       pendingOrderRequestKey.current = globalThis.crypto?.randomUUID?.()
         || `order-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      pendingOrderSnapshot.current = snapshot;
     }
+
     try {
       const response = await fetch(`/api/menu/${restaurant.slug}/orders`, {
         method: "POST",
@@ -306,15 +368,39 @@ export default function MenuClient({
         }),
       });
       const data = await response.json().catch(() => ({}));
+
+      if (response.status === 403) {
+        // Same "prove you're at the restaurant" gate as calling a waiter —
+        // give it the same dedicated recovery UI instead of a dead-end
+        // inline error string.
+        setShowWifiRequired(true);
+        return;
+      }
+
       if (!response.ok) {
+        // The cart is about to change (customer must remove the flagged
+        // items), so the pending key must not be reused for that edited
+        // cart — clear it now rather than waiting for the snapshot compare
+        // above, since we're pruning the cart programmatically here.
+        pendingOrderRequestKey.current = null;
+        pendingOrderSnapshot.current = null;
+        const unavailableIds = Array.isArray(data.unavailableItemIds) ? (data.unavailableItemIds as string[]) : [];
+        if (unavailableIds.length > 0) {
+          setCart((current) => current.filter((line) => !unavailableIds.includes(line.itemId)));
+        }
         setOrderError(data.error || "We could not place your order. Please try again.");
         return;
       }
+
       const order = data as CustomerOrder;
-      setActiveOrder(order);
       setCart([]);
       pendingOrderRequestKey.current = null;
-      if (orderStorageKey) localStorage.setItem(orderStorageKey, order.id);
+      pendingOrderSnapshot.current = null;
+      setActiveOrders((current) => {
+        const next = [order, ...current.filter((existing) => existing.id !== order.id)].slice(0, MAX_TRACKED_ORDERS);
+        writeTrackedOrderIds(next.map((o) => o.id));
+        return next;
+      });
     } catch {
       setOrderError("You appear to be offline. Check your connection and try again.");
     } finally {
@@ -322,10 +408,12 @@ export default function MenuClient({
     }
   }
 
-  function startNewOrder() {
-    setActiveOrder(null);
-    setOrderError(null);
-    if (orderStorageKey) localStorage.removeItem(orderStorageKey);
+  function dismissTrackedOrder(orderId: string) {
+    setActiveOrders((current) => {
+      const next = current.filter((order) => order.id !== orderId);
+      writeTrackedOrderIds(next.map((order) => order.id));
+      return next;
+    });
   }
 
   return (
@@ -523,18 +611,17 @@ export default function MenuClient({
 
       {/* Bottom Bar */}
       <OrderPanel
-        key={activeOrder?.id ?? "cart"}
         open={showOrderPanel}
         theme={theme}
         cart={cart}
-        activeOrder={cart.length === 0 ? activeOrder : null}
+        activeOrders={activeOrders}
         isSubmitting={isSubmittingOrder}
         error={orderError}
         onClose={() => setShowOrderPanel(false)}
         onSubmit={submitCustomerOrder}
         onSetQuantity={setCartQuantity}
         onRemove={(itemId) => setCartQuantity(itemId, 0)}
-        onStartNewOrder={startNewOrder}
+        onDismissOrder={dismissTrackedOrder}
       />
 
       <BottomBar
@@ -545,7 +632,7 @@ export default function MenuClient({
         onToggleWifi={() => setShowWifiModal((v) => !v)}
         cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
         cartTotal={cart.reduce((sum, item) => sum + item.price * item.quantity, 0)}
-        hasActiveOrder={!!activeOrder}
+        hasActiveOrder={activeOrders.length > 0}
         onOpenOrder={() => { setOrderError(null); setShowOrderPanel(true); }}
         theme={theme}
       />

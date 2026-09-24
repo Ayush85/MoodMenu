@@ -127,7 +127,23 @@ export const POST = withApiLogging(async function POST(
   });
 
   if (menuItems.length !== quantities.size) {
-    return NextResponse.json({ error: "One or more items are no longer available. Please review your cart." }, { status: 409 });
+    const foundIds = new Set(menuItems.map((item) => item.id));
+    const missingIds = Array.from(quantities.keys()).filter((id) => !foundIds.has(id));
+    const missingItems = await prisma.menuItem.findMany({
+      where: { id: { in: missingIds }, category: { restaurantId: restaurant.id } },
+      select: { id: true, name: true },
+    });
+    const missingNames = missingItems.map((item) => item.name);
+    const unavailableItemIds = missingIds;
+    const label = missingNames.length > 0 ? missingNames.join(", ") : "One or more items";
+    const isPlural = missingNames.length !== 1;
+    return NextResponse.json(
+      {
+        error: `${label} ${isPlural ? "are" : "is"} no longer available. Please remove ${isPlural ? "them" : "it"} from your cart and try again.`,
+        unavailableItemIds,
+      },
+      { status: 409 },
+    );
   }
 
   const lineItems = menuItems.map((item) => {

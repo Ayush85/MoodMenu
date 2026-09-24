@@ -16,7 +16,6 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:orders",
     "test:orders": "node --import tsx --test src/components/dashboard/orders/permissions.test.ts",
-    "postinstall": "prisma generate",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx tsx prisma/seed.ts",
     "db:reset": "npx prisma migrate reset",

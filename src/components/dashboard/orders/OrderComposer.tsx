@@ -240,7 +240,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
                             <p className="text-xs text-gray-500">Rs. {fmt(item.price)}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <button onClick={() => decrementItem(item.id)} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-lg text-gray-700">−</button>
+                            <button onClick={() => decrementItem(item.id)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200 text-lg font-bold text-gray-700">−</button>
                             <span className="w-5 text-center text-sm font-extrabold">{quantity}</span>
                             <button onClick={() => incrementItem(item.id)} className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-900 text-lg text-white">+</button>
                           </div>

@@ -217,13 +217,13 @@ export default function StaffManagement({ restaurantId, canManageStaff }: Props)
           <span className="text-xs text-gray-500">New accounts can sign in immediately.</span>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <div><label className="field-label">Name</label><input value={newStaffName} onChange={(event) => setNewStaffName(event.target.value)} placeholder="Full name" className="control-input mt-1 w-full" /></div>
-          <div><label className="field-label">Email</label><input type="email" value={newStaffEmail} onChange={(event) => setNewStaffEmail(event.target.value)} placeholder="staff@restaurant.com" className="control-input mt-1 w-full" /></div>
-          <div><label className="field-label">Phone <span className="font-normal normal-case text-gray-400">(optional)</span></label><input value={newStaffPhone} onChange={(event) => setNewStaffPhone(event.target.value)} placeholder="98XXXXXXXX" className="control-input mt-1 w-full" /></div>
+          <div><label className="field-label">Name</label><input name="staff-name" autoComplete="off" value={newStaffName} onChange={(event) => setNewStaffName(event.target.value)} placeholder="Full name" className="control-input mt-1 w-full" /></div>
+          <div><label className="field-label">Email</label><input type="email" name="staff-email" autoComplete="off" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={newStaffEmail} onChange={(event) => setNewStaffEmail(event.target.value)} placeholder="staff@restaurant.com" className="control-input mt-1 w-full" /></div>
+          <div><label className="field-label">Phone <span className="font-normal normal-case text-gray-400">(optional)</span></label><input type="tel" name="staff-phone" autoComplete="off" inputMode="tel" value={newStaffPhone} onChange={(event) => setNewStaffPhone(event.target.value)} placeholder="98XXXXXXXX" className="control-input mt-1 w-full" /></div>
           <div>
             <label className="field-label">Password</label>
             <div className="relative mt-1">
-              <input type={showNewStaffPassword ? "text" : "password"} value={newStaffPassword} onChange={(event) => setNewStaffPassword(event.target.value)} placeholder="Min. 8 characters" className="control-input w-full pr-10" />
+              <input type={showNewStaffPassword ? "text" : "password"} name="staff-password" autoComplete="new-password" value={newStaffPassword} onChange={(event) => setNewStaffPassword(event.target.value)} placeholder="Min. 8 characters" className="control-input w-full pr-10" />
               <button type="button" onClick={() => setShowNewStaffPassword((value) => !value)} aria-label={showNewStaffPassword ? "Hide password" : "Show password"} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
                 {showNewStaffPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
@@ -256,7 +256,7 @@ export default function StaffManagement({ restaurantId, canManageStaff }: Props)
                     {member.phone && <p className="text-xs text-gray-400">{member.phone}</p>}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex flex-wrap shrink-0 items-center gap-2">
                   <select value={member.role} onChange={(event) => void updateStaffMember(member.id, { role: event.target.value as StaffRole })} className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"><option value="WAITER">Waiter</option><option value="COOK">Cook</option><option value="CHEF">Chef</option></select>
                   <button onClick={() => void updateStaffMember(member.id, { isActive: !member.isActive })} className={`min-h-9 rounded-lg px-3 text-xs font-semibold transition ${member.isActive ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>{member.isActive ? "Deactivate" : "Activate"}</button>
                   <button onClick={() => { setResetPasswordStaff(member); setResetPasswordValue(""); }} aria-label={`Reset password for ${member.name}`} title="Reset password" className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100"><KeyRound className="h-4 w-4" /></button>
@@ -275,7 +275,7 @@ export default function StaffManagement({ restaurantId, canManageStaff }: Props)
             <h3 className="mb-1 text-lg font-bold text-gray-900">Reset password</h3>
             <p className="mb-4 text-sm text-gray-500">Set a new password for {resetPasswordStaff.name}.</p>
             <label className="field-label">New password</label>
-            <input type="text" autoFocus value={resetPasswordValue} onChange={(event) => setResetPasswordValue(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void submitPasswordReset()} placeholder="Min. 8 characters, upper/lower/number/symbol" className="control-input mt-1 w-full" />
+            <input type="text" name="staff-reset-password" autoComplete="new-password" autoFocus value={resetPasswordValue} onChange={(event) => setResetPasswordValue(event.target.value)} onKeyDown={(event) => event.key === "Enter" && void submitPasswordReset()} placeholder="Min. 8 characters, upper/lower/number/symbol" className="control-input mt-1 w-full" />
             <div className="mt-5 flex gap-3"><button onClick={() => setResetPasswordStaff(null)} className="btn-soft flex-1">Cancel</button><button onClick={() => void submitPasswordReset()} disabled={resettingPassword || !resetPasswordValue} className="btn-primary flex-1">{resettingPassword ? "Saving…" : "Update Password"}</button></div>
           </div>
         </div>

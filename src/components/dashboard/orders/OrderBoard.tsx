@@ -276,7 +276,11 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
         </div>
         <div className="rounded-xl border border-violet-200 bg-violet-50 px-2.5 py-2.5 sm:px-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-violet-600 sm:text-[11px]">Paid Revenue</p>
-          <p className="mt-1 truncate text-xl font-extrabold leading-none text-violet-900 sm:text-2xl">Rs. {fmt(paidRevenue)}</p>
+          {/* A currency amount runs longer than a plain count, so it gets its
+              own (smaller) size — `truncate` used to hide part of the actual
+              revenue number behind an ellipsis, which is worse than a
+              slightly smaller font for a figure like this. */}
+          <p className="mt-1 text-base font-extrabold leading-tight text-violet-900 sm:text-2xl">Rs. {fmt(paidRevenue)}</p>
         </div>
       </div>
 
@@ -291,8 +295,13 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
       {/* Status tab strip — mobile only. The column scroller below shows one
           full-width lane per swipe with no partial neighbor peeking in, so
           without this strip there'd be no way to tell how many lanes exist
-          or which one is currently in view. */}
-      <div className="flex gap-1.5 overflow-x-auto xl:hidden">
+          or which one is currently in view. The mask fades the right edge
+          instead of hard-cropping the last pill, so a partially-visible tab
+          reads as "scroll for more" rather than looking clipped/broken. */}
+      <div
+        className="flex gap-1.5 overflow-x-auto xl:hidden"
+        style={{ WebkitMaskImage: "linear-gradient(to right, black calc(100% - 28px), transparent 100%)", maskImage: "linear-gradient(to right, black calc(100% - 28px), transparent 100%)" }}
+      >
         {ORDER_COLUMNS.map((column, index) => {
           const count = filteredOrders.filter((order) => order.status === column.status).length;
           const isActive = activeColumn === index;

@@ -29,3 +29,28 @@ test("scrollFocusedElementIntoView centers only the active field", () => {
   assert.equal(scrollFocusedElementIntoView(target, null), false);
   assert.deepEqual(options, { block: "center", behavior: "auto" });
 });
+
+test("order composer makes table selection fast to scan and search", () => {
+  assert.match(composerSource, /tableSearch/);
+  assert.match(composerSource, /Search table number or name/);
+  assert.match(composerSource, /filteredTables/);
+  assert.match(composerSource, /Choose a table/);
+});
+
+test("order composer waits to focus item search until a table is selected", () => {
+  assert.match(composerSource, /if \(!open \|\| !selectedTableId\) return;/);
+  assert.match(composerSource, /\}, \[open, selectedTableId\]\);/);
+});
+
+test("order composer supports category-first item discovery and tap to add", () => {
+  assert.match(composerSource, /selectedCategoryId/);
+  assert.match(composerSource, /All items/);
+  assert.match(composerSource, /Add \$\{item\.name\}/);
+  assert.match(composerSource, /Tap to add more/);
+});
+
+test("order composer keeps the selected table and cart visible in the footer", () => {
+  assert.match(composerSource, /sticky bottom-0/);
+  assert.match(composerSource, /selectedTable \?/);
+  assert.match(composerSource, /itemCount/);
+});

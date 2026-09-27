@@ -44,10 +44,11 @@ export class PrismaTableService implements TableService {
 
   async closeIfAllOrdersTerminal(sessionId: string, now: Date): Promise<void> {
     let closed = false;
+    let restaurantId: string | undefined;
     await prisma.$transaction(async (tx) => {
       const session = await tx.tableSession.findUnique({
         where: { id: sessionId },
-        select: { id: true, status: true },
+        select: { id: true, status: true, restaurantId: true },
       });
       if (!session || session.status === "CLOSED") return;
 
@@ -64,10 +65,12 @@ export class PrismaTableService implements TableService {
           data: { status: "CLOSED", endedAt: now, lastActivityAt: now },
         });
         closed = true;
+        restaurantId = session.restaurantId;
       }
     });
     if (closed && this.auditLog) {
       await this.auditLog.record({
+        restaurantId,
         action: "table_session.closed",
         entityType: "TableSession",
         entityId: sessionId,

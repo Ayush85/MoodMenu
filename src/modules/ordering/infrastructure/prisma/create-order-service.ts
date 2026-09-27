@@ -5,11 +5,12 @@ import { PrismaTableService } from "@/modules/table-service/infrastructure/prism
 import { PrismaAuditLog } from "@/modules/shared/infrastructure/prisma/PrismaAuditLog";
 
 export function createPrismaOrderService(): OrderService {
+  const auditLog = new PrismaAuditLog();
   return new OrderService({
     menuCatalog: new PrismaMenuCatalog(),
-    tableService: new PrismaTableService(),
+    tableService: new PrismaTableService(auditLog),
     orderRepository: new PrismaOrderRepository(),
     clock: { now: () => new Date() },
-    auditLog: new PrismaAuditLog(),
+    auditLog,
   });
 }

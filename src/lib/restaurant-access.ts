@@ -1,8 +1,9 @@
-import { prisma } from "./db";
+import { PrismaAccessRepository } from "@/modules/identity-access/infrastructure/prisma/PrismaAccessRepository";
+import type { RestaurantAccess } from "@/modules/identity-access/domain/access";
 
-export type RestaurantAccess =
-  | { kind: "OWNER" }
-  | { kind: "STAFF"; role: "WAITER" | "COOK" | "CHEF" };
+export type { RestaurantAccess } from "@/modules/identity-access/domain/access";
+
+const accessRepository = new PrismaAccessRepository();
 
 /**
  * Resolves whether a session user (owner or staff) may act on a given
@@ -16,19 +17,8 @@ export async function getRestaurantAccess(
   restaurantId: string,
   sessionUser: { id: string; actorType?: "USER" | "STAFF" },
 ): Promise<RestaurantAccess | null> {
-  if (sessionUser.actorType === "STAFF") {
-    const staffRecord = await prisma.restaurantStaff.findFirst({
-      where: { id: sessionUser.id, restaurantId, isActive: true },
-      select: { id: true, role: true },
-    });
-    if (!staffRecord) return null;
-    return { kind: "STAFF", role: staffRecord.role as "WAITER" | "COOK" | "CHEF" };
-  }
-
-  const ownerRecord = await prisma.restaurant.findFirst({
-    where: { id: restaurantId, ownerId: sessionUser.id },
-    select: { id: true },
+  return accessRepository.findForActor(restaurantId, {
+    id: sessionUser.id,
+    type: sessionUser.actorType === "STAFF" ? "STAFF" : "OWNER",
   });
-  if (!ownerRecord) return null;
-  return { kind: "OWNER" };
 }

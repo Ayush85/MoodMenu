@@ -3,32 +3,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendPush } from "@/lib/push";
 import { withApiLogging } from "@/lib/api-handler";
+import { can } from "@/modules/identity-access/domain/access";
+import { getRestaurantAccess } from "@/lib/restaurant-access";
 
 interface CreateOrderItem {
   itemId?: unknown;
   quantity?: unknown;
-}
-
-type AccessInfo =
-  | { kind: "OWNER" }
-  | { kind: "STAFF"; role: "WAITER" | "COOK" | "CHEF" };
-
-async function getRestaurantAccess(restaurantId: string, sessionUser: { id: string; actorType?: "USER" | "STAFF" }): Promise<AccessInfo | null> {
-  if (sessionUser.actorType === "STAFF") {
-    const staffRecord = await prisma.restaurantStaff.findFirst({
-      where: { id: sessionUser.id, restaurantId, isActive: true },
-      select: { id: true, role: true },
-    });
-    if (!staffRecord) return null;
-    return { kind: "STAFF", role: staffRecord.role as "WAITER" | "COOK" | "CHEF" };
-  }
-
-  const ownerRecord = await prisma.restaurant.findFirst({
-    where: { id: restaurantId, ownerId: sessionUser.id },
-    select: { id: true },
-  });
-  if (!ownerRecord) return null;
-  return { kind: "OWNER" };
 }
 
 export const GET = withApiLogging(async function GET(
@@ -93,7 +73,7 @@ export const POST = withApiLogging(async function POST(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  if (access.kind === "STAFF" && access.role !== "WAITER") {
+  if (!can(access, "create_staff_order")) {
     return NextResponse.json({ error: "Only waiters can take new orders" }, { status: 403 });
   }
 

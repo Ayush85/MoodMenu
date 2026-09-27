@@ -3,19 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
 import { signTableToken } from "@/lib/table-token";
-
-async function verifyAccess(restaurantId: string, userId: string, actorType?: string) {
-  if (actorType === "STAFF") {
-    const staff = await prisma.restaurantStaff.findFirst({
-      where: { id: userId, restaurantId, isActive: true },
-    });
-    return !!staff;
-  }
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id: restaurantId, ownerId: userId },
-  });
-  return !!restaurant;
-}
+import { getRestaurantAccess } from "@/lib/restaurant-access";
 
 export const GET = withApiLogging(async function GET(
   _req: NextRequest,
@@ -27,7 +15,10 @@ export const GET = withApiLogging(async function GET(
   }
 
   const { id } = await params;
-  if (!(await verifyAccess(id, session.user.id, session.user.actorType))) {
+  if (!(await getRestaurantAccess(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
+  }))) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -59,12 +50,14 @@ export const POST = withApiLogging(async function POST(
   }
 
   const { id } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const access = await getRestaurantAccess(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) {
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (access.kind !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { count } = await req.json();
   const tableCount = Math.min(Math.max(parseInt(count) || 1, 1), 100);
@@ -118,12 +111,14 @@ export const PATCH = withApiLogging(async function PATCH(
   }
 
   const { id } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const access = await getRestaurantAccess(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) {
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (access.kind !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { tableId, action } = await req.json();
   if (action !== "regenerateQr" || typeof tableId !== "string") {
@@ -151,12 +146,14 @@ export const DELETE = withApiLogging(async function DELETE(
   }
 
   const { id } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const access = await getRestaurantAccess(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) {
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (access.kind !== "OWNER") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { tableId } = await req.json();
   await prisma.restaurantTable.delete({ where: { id: tableId, restaurantId: id } });

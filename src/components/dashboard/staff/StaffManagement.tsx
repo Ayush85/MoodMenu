@@ -256,8 +256,8 @@ export default function StaffManagement({ restaurantId, canManageStaff }: Props)
                     {member.phone && <p className="text-xs text-gray-400">{member.phone}</p>}
                   </div>
                 </div>
-                <div className="flex flex-wrap shrink-0 items-center gap-2">
-                  <select value={member.role} onChange={(event) => void updateStaffMember(member.id, { role: event.target.value as StaffRole })} className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm"><option value="WAITER">Waiter</option><option value="COOK">Cook</option><option value="CHEF">Chef</option></select>
+                <div className="flex w-full flex-wrap items-center gap-2 border-t border-gray-100 pt-3 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0">
+                  <select value={member.role} onChange={(event) => void updateStaffMember(member.id, { role: event.target.value as StaffRole })} className="min-h-9 min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm sm:flex-none"><option value="WAITER">Waiter</option><option value="COOK">Cook</option><option value="CHEF">Chef</option></select>
                   <button onClick={() => void updateStaffMember(member.id, { isActive: !member.isActive })} className={`min-h-9 rounded-lg px-3 text-xs font-semibold transition ${member.isActive ? "bg-gray-100 text-gray-600 hover:bg-gray-200" : "bg-green-100 text-green-700 hover:bg-green-200"}`}>{member.isActive ? "Deactivate" : "Activate"}</button>
                   <button onClick={() => { setResetPasswordStaff(member); setResetPasswordValue(""); }} aria-label={`Reset password for ${member.name}`} title="Reset password" className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 transition hover:bg-indigo-100"><KeyRound className="h-4 w-4" /></button>
                   <button onClick={() => confirmDeleteStaff(member)} aria-label={`Remove ${member.name}`} title="Remove staff member" className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-red-600 transition hover:bg-red-100"><Trash2 className="h-4 w-4" /></button>

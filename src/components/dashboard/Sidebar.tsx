@@ -122,6 +122,13 @@ export default function Sidebar() {
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const isStaff = session?.user?.actorType === "STAFF";
   const primaryRestaurantId = session?.user?.restaurantId || session?.user?.restaurantIds?.[0];
+  const mobileQuickNav = isStaff
+    ? [{ label: "Orders", suffix: "orders", active: pathname.includes("/orders"), icon: ClipboardList }]
+    : [
+        { label: "Orders", suffix: "orders", active: pathname.includes("/orders"), icon: ClipboardList },
+        { label: "Menu", suffix: "menu", active: pathname.includes("/menu"), icon: BookOpen },
+        { label: "Staff", suffix: "staff", active: pathname.includes("/staff"), icon: Users },
+      ];
 
   useEffect(() => {
     fetch("/api/restaurants")
@@ -360,6 +367,9 @@ export default function Sidebar() {
           )}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-expanded={mobileOpen}
+            aria-controls="mobile-dashboard-drawer"
+            aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
             className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-100 transition"
           >
             {mobileOpen ? (
@@ -379,31 +389,20 @@ export default function Sidebar() {
       {mobileOpen && (
         <>
           <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={close} />
-          <aside className="fixed top-0 left-0 bottom-0 z-50 w-64 bg-white md:hidden animate-slide-in-right shadow-xl">
+          <aside id="mobile-dashboard-drawer" className="fixed top-0 left-0 bottom-0 z-50 w-[min(18rem,86vw)] bg-white md:hidden animate-slide-in-right shadow-xl">
             {sidebarContent}
           </aside>
         </>
       )}
 
-      {/* Mobile quick navigation keeps the four daily actions one tap away. */}
-      {insideRestaurant && currentRestaurantId && <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-gray-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
-        {(
-          (isStaff
-            ? [
-                { label: "Orders", href: `/dashboard/restaurant/${currentRestaurantId}/orders`, active: pathname.includes("/orders"), icon: ClipboardList },
-              ]
-            : [
-                { label: "Orders", href: `/dashboard/restaurant/${currentRestaurantId}/orders`, active: pathname.includes("/orders"), icon: ClipboardList },
-                { label: "Menu", href: `/dashboard/restaurant/${currentRestaurantId}/menu`, active: pathname.includes("/menu"), icon: BookOpen },
-                { label: "Staff", href: `/dashboard/restaurant/${currentRestaurantId}/staff`, active: pathname.includes("/staff"), icon: Users },
-              ]
-          ).map((item) => (
-            <Link key={item.href} href={item.href} onClick={close} className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold ${item.active ? "bg-orange-50 text-orange-600" : "text-gray-500"}`}>
+      {/* Mobile quick navigation keeps the daily actions one tap away. */}
+      {insideRestaurant && currentRestaurantId && <nav className={`fixed inset-x-0 bottom-0 z-30 grid ${mobileQuickNav.length === 1 ? "grid-cols-2" : "grid-cols-4"} border-t border-gray-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden`} aria-label="Quick navigation">
+        {mobileQuickNav.map((item) => (
+            <Link key={item.suffix} href={`/dashboard/restaurant/${currentRestaurantId}/${item.suffix}`} onClick={close} className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold ${item.active ? "bg-orange-50 text-orange-600" : "text-gray-500"}`}>
               <item.icon className="mb-0.5 h-4 w-4" />
               {item.label}
             </Link>
-          ))
-        )}
+        ))}
         <button onClick={() => setMobileOpen(true)} className="flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold text-gray-500"><MoreHorizontal className="mb-0.5 h-4 w-4" />More</button>
       </nav>}
 

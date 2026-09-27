@@ -29,7 +29,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen md:flex" style={{ background: "linear-gradient(135deg, #f8fafc, #f1f5f9)" }}>
       <Sidebar />
-      <main className="flex-1 overflow-x-hidden p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 lg:pb-8">{children}</main>
+      <main className="min-w-0 flex-1 overflow-x-hidden p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-8 lg:p-8">{children}</main>
       <FcmInit />
       <PwaInstallPrompt />
     </div>

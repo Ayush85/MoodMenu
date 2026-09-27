@@ -3,7 +3,7 @@
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface MenuItemData {
   id: string;
@@ -34,6 +34,14 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
   const initial = item.name.charAt(0).toUpperCase();
   const [quantity, setQuantity] = useState(1);
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div
@@ -42,7 +50,7 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-lg rounded-t-3xl overflow-hidden animate-slide-up"
+        className="relative max-h-[min(92dvh,48rem)] w-full max-w-lg overflow-y-auto rounded-t-3xl animate-slide-up"
         style={{
           backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
           color: isDark ? "#fff" : "#000",
@@ -96,7 +104,7 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
         )}
 
         {/* Content */}
-        <div className="p-5 pb-8">
+        <div className="p-5 pb-[calc(2rem+env(safe-area-inset-bottom))]">
           {/* Name + Price */}
           <div className="flex items-start justify-between gap-3 mb-3">
             <h2 className="text-xl font-bold leading-snug">{item.name}</h2>

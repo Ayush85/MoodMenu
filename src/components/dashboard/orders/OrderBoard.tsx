@@ -299,7 +299,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
           instead of hard-cropping the last pill, so a partially-visible tab
           reads as "scroll for more" rather than looking clipped/broken. */}
       <div
-        className="flex gap-1.5 overflow-x-auto xl:hidden"
+        className="sticky top-14 z-20 -mx-1 flex gap-1.5 overflow-x-auto bg-slate-50/95 py-1 backdrop-blur md:top-0 xl:static xl:hidden"
         style={{ WebkitMaskImage: "linear-gradient(to right, black calc(100% - 28px), transparent 100%)", maskImage: "linear-gradient(to right, black calc(100% - 28px), transparent 100%)" }}
       >
         {ORDER_COLUMNS.map((column, index) => {
@@ -309,6 +309,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
             <button
               key={column.status}
               onClick={() => scrollToColumn(index)}
+              aria-pressed={isActive}
               className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-semibold transition ${
                 isActive ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-600"
               }`}

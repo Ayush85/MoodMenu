@@ -35,7 +35,7 @@ export default function BottomBar({
 
   return (
     <>
-      <div className="h-24" />
+      <div className="h-[calc(5.5rem+env(safe-area-inset-bottom))]" />
 
       <div className="fixed bottom-0 left-0 right-0 z-50">
         <div
@@ -49,12 +49,11 @@ export default function BottomBar({
         >
           {/* WiFi button */}
           {hasWifi && (
-            <div
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={onToggleWifi}
-              onKeyDown={(e) => e.key === "Enter" && onToggleWifi()}
-              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 cursor-pointer"
+              aria-label="Show WiFi details"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
               style={{
                 backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
                 touchAction: "manipulation",
@@ -62,7 +61,7 @@ export default function BottomBar({
               }}
             >
               <Wifi className="w-5 h-5" style={{ opacity: 0.7 }} />
-            </div>
+            </button>
           )}
 
           {/* Ordering is the primary table action. */}
@@ -103,12 +102,11 @@ export default function BottomBar({
 
           {/* Scroll to top */}
           {!tableNumber && (
-            <div
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-              onKeyDown={(e) => e.key === "Enter" && window.scrollTo({ top: 0, behavior: "smooth" })}
-              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 cursor-pointer"
+              aria-label="Scroll to top"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
               style={{
                 backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)",
                 touchAction: "manipulation",
@@ -116,7 +114,7 @@ export default function BottomBar({
               }}
             >
               <ChevronUp className="w-5 h-5" style={{ opacity: 0.5 }} />
-            </div>
+            </button>
           )}
         </div>
       </div>

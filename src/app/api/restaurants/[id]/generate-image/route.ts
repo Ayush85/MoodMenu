@@ -5,46 +5,24 @@ import { detectImageContentType, uploadImage } from "@/lib/storage";
 import OpenAI from "openai";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { getStockSearchQuery, searchPexelsPhotos } from "@/lib/stock-photos";
+import { buildFoodImagePrompt } from "@/lib/image-prompts";
 import { withApiLogging } from "@/lib/api-handler";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
-function buildPrompt(name: string, description?: string | null) {
-  return `A photorealistic professional product photograph of "${name}"${
-    description ? `, ${description}` : ""
-  }, exactly as it would appear listed on a restaurant/bar menu.
-If this is a food or beverage dish, present it freshly plated or poured with appropriate garnish, natural steam if served hot, on a simple ceramic plate, bowl, or glass, 45-degree or top-down angle, editorial food-magazine quality.
-If this is a packaged or retail product (e.g. cigarettes, snacks, bottled goods), photograph the actual product/packaging as it is normally sold, on a clean neutral background — do not turn it into a food dish.
-Tight close-up framing: the dish or product fills most of the frame and is the unmistakable subject. Minimal visible background, table, or negative space — crop in close rather than showing a wide tabletop scene.
-Captured on a DSLR camera with a macro lens, soft natural lighting, shallow depth of field with the subject in sharp focus and any background softly blurred, realistic specular highlights, true-to-life textures and colors. This must look like an actual camera photograph, not digital art — do not render it as an illustration, cartoon, anime, 3D render, CGI, painting, sketch, or plastic-looking/artificial image. No watermark, no hands.`;
-}
-
-async function searchStockPhoto(name: string, description: string | null, city: string | null): Promise<Buffer | null> {
-  const query = await getStockSearchQuery(name, description, city);
-  if (!query) return null; // Claude wasn't confident what this item is — go straight to AI
+async function searchStockPhoto(
+  name: string,
+  description: string | null,
+  city: string | null,
+  interpretedDish: string | null,
+): Promise<Buffer | null> {
+  const query = interpretedDish ?? await getStockSearchQuery(name, description, city);
+  if (!query) return null;
 
   const candidates = await searchPexelsPhotos(query, 8);
   if (candidates.length === 0) return null;
 
-  // Pexels returns its "closest" match even when nothing is actually relevant
-  // (e.g. searching "Buff Tass" once returned an unrelated portrait). Only
-  // trust a result whose own description shares a real word with the query.
-  const queryWords = query
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((w) => w.length > 2);
-
-  const relevantPhotos = candidates.filter((p) => {
-    const alt = p.alt.toLowerCase();
-    return queryWords.some((w) => alt.includes(w));
-  });
-
-  // Among relevant matches, prefer one explicitly described as a close-up —
-  // otherwise take whichever relevant match ranked highest.
-  const relevantPhoto =
-    relevantPhotos.find((p) => /close[\s-]?up/i.test(p.alt)) ?? relevantPhotos[0];
-
-  if (!relevantPhoto) return null;
+  const relevantPhoto = candidates[0];
 
   const imgRes = await fetch(relevantPhoto.url);
   if (!imgRes.ok) return null;
@@ -117,18 +95,20 @@ export const POST = withApiLogging(async function POST(
 
   const trimmedName = name.trim();
   const trimmedDescription = typeof description === "string" ? description.trim() || null : null;
-  const prompt = buildPrompt(trimmedName, trimmedDescription);
 
   try {
+    const interpretedDish = await getStockSearchQuery(trimmedName, trimmedDescription, restaurant.city ?? null);
     let buffer: Buffer | null = null;
-    let usedSource: "stock" | "ai" = "ai";
 
     if (source === "stock") {
-      buffer = await searchStockPhoto(trimmedName, trimmedDescription, restaurant.city ?? null);
-      if (buffer) usedSource = "stock";
-    }
-
-    if (!buffer) {
+      buffer = await searchStockPhoto(trimmedName, trimmedDescription, restaurant.city ?? null, interpretedDish);
+      if (!buffer) {
+        return NextResponse.json(
+          { error: "No relevant stock photo found. Try a more specific description or choose AI image generation." },
+          { status: 422 },
+        );
+      }
+    } else {
       const provider = process.env.AI_IMAGE_PROVIDER?.toLowerCase();
       if (!provider || (provider !== "openai" && provider !== "gemini")) {
         return NextResponse.json(
@@ -136,14 +116,14 @@ export const POST = withApiLogging(async function POST(
           { status: 503 }
         );
       }
+      const prompt = buildFoodImagePrompt(trimmedName, trimmedDescription, interpretedDish);
       buffer = provider === "openai" ? await generateWithOpenAI(prompt) : await generateWithGemini(prompt);
-      usedSource = "ai";
     }
 
     const contentType = detectImageContentType(buffer);
     if (!contentType) throw new Error("AI provider returned an unsupported image format");
     const url = await uploadImage(buffer, contentType);
-    return NextResponse.json({ url, source: usedSource });
+    return NextResponse.json({ url, source: source === "stock" ? "stock" : "ai" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to generate image";
     logger.error("restaurant.generate_image_failed", {

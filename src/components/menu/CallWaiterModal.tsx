@@ -1,6 +1,7 @@
 "use client";
 
 import { MoodTheme } from "@/types";
+import { useEffect } from "react";
 
 interface Props {
   tableNumber: number;
@@ -15,6 +16,14 @@ interface Props {
 export default function CallWaiterModal({ tableNumber, callMessage, callStatus, onMessageChange, onCall, onClose, theme }: Props) {
   const isDark = theme.mode === "dark";
 
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div
@@ -23,7 +32,7 @@ export default function CallWaiterModal({ tableNumber, callMessage, callStatus, 
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-lg rounded-t-3xl p-6 pb-10 animate-slide-up"
+        className="relative max-h-[min(92dvh,48rem)] w-full max-w-lg overflow-y-auto rounded-t-3xl p-6 pb-[calc(2.5rem+env(safe-area-inset-bottom))] animate-slide-up"
         style={{
           backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
           color: isDark ? "#fff" : "#000",

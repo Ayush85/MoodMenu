@@ -65,6 +65,15 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
   }, [onClose, open]);
 
   useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  useEffect(() => {
     // Auto-focusing search is a nice shortcut with a keyboard already
     // attached, but on a touch device it pops the on-screen keyboard the
     // instant the sheet opens, before the table has even been picked —
@@ -186,7 +195,8 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <button aria-label="Close order composer" onClick={onClose} className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" />
-      <section role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+      <section role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex max-h-[min(92dvh,48rem)] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-gray-200 sm:hidden" />
         <header className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-500">Staff order</p>

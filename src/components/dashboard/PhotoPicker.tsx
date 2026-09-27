@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, X, ImageIcon } from "lucide-react";
 
 interface PhotoOption {
@@ -22,6 +22,15 @@ export default function PhotoPicker({ restaurantId, name, description, onSelect,
   const [results, setResults] = useState<PhotoOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
 
   async function runSearch(body: { name?: string; description?: string; query?: string }) {
     setLoading(true);
@@ -67,7 +76,7 @@ export default function PhotoPicker({ restaurantId, name, description, onSelect,
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setOpen(false)} />
-          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-5 max-h-[85vh] overflow-y-auto">
+          <div className="relative w-full max-w-sm max-h-[min(85dvh,40rem)] overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
             <div className="flex items-center justify-between mb-4">
               <h4 className="text-base font-bold text-gray-900">Find a photo</h4>
               <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -106,7 +115,7 @@ export default function PhotoPicker({ restaurantId, name, description, onSelect,
                 ))}
               </div>
             ) : searched ? (
-              <p className="text-sm text-gray-400 text-center py-10">No results — try a different search term</p>
+              <p className="text-sm text-gray-400 text-center py-10">No relevant food photos found — try adding the main ingredient or preparation method</p>
             ) : null}
           </div>
         </div>

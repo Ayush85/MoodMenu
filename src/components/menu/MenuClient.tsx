@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { MoodTheme, WeatherData } from "@/types";
 import QRCode from "qrcode";
+import { useDialog } from "@/components/ui/use-dialog";
+import { recoverOrders } from "./order-recovery";
 import MenuHero from "./MenuHero";
 import MenuItemCard from "./MenuItemCard";
 import FeaturedSection from "./FeaturedSection";
@@ -91,10 +93,20 @@ export default function MenuClient({
   const [callMessage, setCallMessage] = useState("");
   const [showCallModal, setShowCallModal] = useState(false);
   const [showWifiRequired, setShowWifiRequired] = useState(false);
+  const [wifiAction, setWifiAction] = useState<"order" | "waiter">("waiter");
+  const [trackingError, setTrackingError] = useState<string | null>(null);
+  const [trackingRetry, setTrackingRetry] = useState(0);
+  const wifiRequiredRef = useDialog(showWifiRequired, () => setShowWifiRequired(false));
   const [wifiVerified, setWifiVerified] = useState(false);
 
   // WiFi panel
   const [showWifiModal, setShowWifiModal] = useState(false);
+  const wifiModalRef = useDialog(showWifiModal, () => setShowWifiModal(false));
+  const [copyMessage, setCopyMessage] = useState("");
+  async function copyWifi(value: string) {
+    try { await navigator.clipboard.writeText(value); setCopyMessage("Copied to clipboard"); }
+    catch { setCopyMessage("Could not copy. Please select and copy the details."); }
+  }
   const [wifiQR, setWifiQR] = useState<string | null>(null);
 
   // Item detail
@@ -203,55 +215,41 @@ export default function MenuClient({
     else localStorage.setItem(orderStorageKey, JSON.stringify(trimmed));
   }
 
-  // Restore every order this table was tracking (not just the latest) so a
-  // second order placed while the first was still being prepared doesn't
-  // orphan the first from the customer's view after a page reload.
+  // Preserve saved IDs through network failures; only definitive missing responses prune them.
   useEffect(() => {
     if (!orderStorageKey || !tableNumber || !tableToken) return;
-    const storedIds = readTrackedOrderIds();
-    if (storedIds.length === 0) return;
     let cancelled = false;
-
-    Promise.all(
-      storedIds.map((id) =>
-        fetch(`/api/menu/${restaurant.slug}/orders/${id}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
-          .then((res) => (res.ok ? (res.json() as Promise<CustomerOrder>) : null))
-          .catch(() => null),
-      ),
-    ).then((results) => {
+    let running = false;
+    async function refresh() {
+      if (running) return;
+      const ids = readTrackedOrderIds();
+      if (!ids.length) return;
+      running = true;
+      const result = await recoverOrders<CustomerOrder>(ids, id =>
+        fetch(`/api/menu/${restaurant.slug}/orders/${id}?table=${tableNumber}&t=${encodeURIComponent(tableToken!)}`)
+      );
+      running = false;
       if (cancelled) return;
-      const orders = results.filter((order): order is CustomerOrder => order !== null);
-      setActiveOrders(orders);
-      // Prune ids that no longer resolve (deleted, or belonged to a stale
-      // table token) so they don't get retried forever.
-      writeTrackedOrderIds(orders.map((order) => order.id));
-    });
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderStorageKey, restaurant.slug, tableNumber, tableToken]);
-
-  useEffect(() => {
-    const trackedIds = activeOrders.filter((order) => !["PAID", "CANCELED"].includes(order.status)).map((order) => order.id);
-    if (trackedIds.length === 0 || !tableNumber || !tableToken) return;
-
-    const refresh = () => {
-      Promise.all(
-        trackedIds.map((id) =>
-          fetch(`/api/menu/${restaurant.slug}/orders/${id}?table=${tableNumber}&t=${encodeURIComponent(tableToken)}`)
-            .then((res) => (res.ok ? (res.json() as Promise<CustomerOrder>) : null))
-            .catch(() => null),
-        ),
-      ).then((results) => {
-        const updates = new Map(results.filter((order): order is CustomerOrder => order !== null).map((order) => [order.id, order]));
-        if (updates.size === 0) return;
-        setActiveOrders((current) => current.map((order) => updates.get(order.id) || order));
+      setTrackingError(result.failed ? "Order updates are unavailable. Your saved orders are safe; we’ll keep trying." : null);
+      // Merge against current storage so an order placed during refresh is retained.
+      const currentIds = readTrackedOrderIds();
+      const removed = ids.filter(id => !result.retainedIds.includes(id));
+      writeTrackedOrderIds(currentIds.filter(id => !removed.includes(id)));
+      setActiveOrders(current => {
+        const updates = new Map(result.orders.map(order => [order.id, order]));
+        const retained = current.filter(order => !removed.includes(order.id) && currentIds.includes(order.id));
+        return [
+          ...retained.map(order => updates.get(order.id) || order),
+          ...result.orders.filter(order => currentIds.includes(order.id) && !retained.some(existing => existing.id === order.id)),
+        ];
       });
-    };
-    const interval = setInterval(refresh, 8000);
-    return () => clearInterval(interval);
+    }
+    void refresh();
+    const interval = setInterval(() => void refresh(), 8000);
+    window.addEventListener("online", refresh);
+    return () => { cancelled = true; clearInterval(interval); window.removeEventListener("online", refresh); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeOrders, restaurant.slug, tableNumber, tableToken]);
+  }, [orderStorageKey, restaurant.slug, tableNumber, tableToken, trackingRetry]);
 
   const handleCategoryChange = useCallback((id: string) => {
     setActiveCategory((current) => current === id ? current : id);
@@ -259,6 +257,7 @@ export default function MenuClient({
 
   // Check WiFi first, then open call modal
   async function handleCallWaiterTap() {
+    setWifiAction("waiter");
     if (!tableNumber) return;
     if (wifiVerified) {
       setShowCallModal(true);
@@ -285,6 +284,7 @@ export default function MenuClient({
   }
 
   async function callWaiter() {
+    setWifiAction("waiter");
     if (!tableNumber) return;
     setCallStatus("calling");
 
@@ -336,7 +336,8 @@ export default function MenuClient({
   }
 
   async function submitCustomerOrder(note: string) {
-    if (!tableNumber || !tableToken || cart.length === 0) return;
+    if (!tableNumber || !tableToken || cart.length === 0 || isSubmittingOrder) return;
+    setWifiAction("order");
     setIsSubmittingOrder(true);
     setOrderError(null);
 
@@ -462,6 +463,7 @@ export default function MenuClient({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search menu items"
                   placeholder="Search menu items..."
                   autoFocus
                   className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
@@ -545,6 +547,7 @@ export default function MenuClient({
             onClick={() => setShowWifiModal(false)}
           />
           <div
+            ref={wifiModalRef} aria-label="WiFi details"
             className="relative w-full max-w-lg rounded-t-3xl animate-slide-up overflow-y-auto"
             style={{
               backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
@@ -562,7 +565,9 @@ export default function MenuClient({
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Free WiFi</h3>
+                  <h3 className="text-base font-bold">WiFi details</h3>
+                  <button type="button" className="min-h-11 underline" onClick={() => setShowWifiModal(false)}>Close</button>
+                  <p role="status" className="text-sm">{copyMessage}</p>
                   <p className="text-[11px] opacity-40">Scan QR or enter manually</p>
                 </div>
               </div>
@@ -582,12 +587,11 @@ export default function MenuClient({
                     <p className="text-[9px] uppercase tracking-wider font-semibold opacity-40">Network</p>
                     <p className="font-mono font-bold text-sm">{restaurant.wifiSsid}</p>
                   </div>
-                  <div
-                    role="button" tabIndex={0}
-                    onClick={() => { navigator.clipboard?.writeText(restaurant.wifiSsid!).then(() => alert("Copied")); }}
+                  <button type="button"
+                    onClick={() => void copyWifi(restaurant.wifiSsid!)}
                     className="text-[11px] px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
                     style={{ backgroundColor: theme.primary + "15", color: theme.primary, touchAction: "manipulation" }}
-                  >Copy</div>
+                  >Copy</button>
                 </div>
                 {restaurant.wifiPassword && (
                   <div className="flex items-center justify-between p-2.5 rounded-xl" style={{ backgroundColor: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)" }}>
@@ -595,12 +599,11 @@ export default function MenuClient({
                       <p className="text-[9px] uppercase tracking-wider font-semibold opacity-40">Password</p>
                       <p className="font-mono font-bold text-sm">{restaurant.wifiPassword}</p>
                     </div>
-                    <div
-                      role="button" tabIndex={0}
-                      onClick={() => { navigator.clipboard?.writeText(restaurant.wifiPassword!).then(() => alert("Copied")); }}
+                    <button type="button"
+                      onClick={() => void copyWifi(restaurant.wifiPassword!)}
                       className="text-[11px] px-2.5 py-1 rounded-lg font-semibold cursor-pointer"
                       style={{ backgroundColor: theme.primary + "15", color: theme.primary, touchAction: "manipulation" }}
-                    >Copy</div>
+                    >Copy</button>
                   </div>
                 )}
               </div>
@@ -611,6 +614,8 @@ export default function MenuClient({
 
       {/* Bottom Bar */}
       <OrderPanel
+        trackingError={trackingError}
+        onRetryTracking={() => setTrackingRetry(value => value + 1)}
         open={showOrderPanel}
         theme={theme}
         cart={cart}
@@ -663,13 +668,14 @@ export default function MenuClient({
 
       {/* WiFi Required Modal */}
       {showWifiRequired && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
+        <div className="fixed inset-0 z-[70] flex items-center justify-center px-6">
           <div
             className="absolute inset-0"
             style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(6px)" }}
             onClick={() => setShowWifiRequired(false)}
           />
           <div
+            ref={wifiRequiredRef} aria-label="Connect to restaurant WiFi"
             className="relative w-full max-w-sm rounded-3xl p-6 text-center animate-fade-in"
             style={{ backgroundColor: isDark ? "#1a1a1f" : "#ffffff", color: isDark ? "#fff" : "#000" }}
           >
@@ -684,7 +690,7 @@ export default function MenuClient({
 
             <h3 className="text-lg font-bold mb-2">Connect to WiFi</h3>
             <p className="text-sm opacity-50 mb-5 leading-relaxed">
-              Please connect to the restaurant&apos;s WiFi network to call a waiter. This ensures you&apos;re at the restaurant.
+              Connect to the restaurant&apos;s WiFi to {wifiAction === "order" ? "place your order" : "call a waiter"}. {wifiAction === "order" ? "Your cart is saved. Return to it when connected and tap Place order to retry." : "Then try your waiter request again."}
             </p>
 
             {restaurant.wifiSsid && (
@@ -714,22 +720,20 @@ export default function MenuClient({
             )}
 
             <div className="flex gap-2">
-              <div
-                role="button" tabIndex={0}
+              <button type="button"
                 onClick={() => setShowWifiRequired(false)}
                 className="flex-1 py-2.5 rounded-xl font-semibold text-sm text-center cursor-pointer"
                 style={{ backgroundColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)", touchAction: "manipulation" }}
               >
                 Close
-              </div>
-              <div
-                role="button" tabIndex={0}
-                onClick={() => { setShowWifiRequired(false); setWifiVerified(false); handleCallWaiterTap(); }}
+              </button>
+              <button type="button"
+                onClick={() => { setShowWifiRequired(false); if (wifiAction === "order") { setShowOrderPanel(true); setOrderError(null); } else { setWifiVerified(false); void handleCallWaiterTap(); } }}
                 className="flex-1 py-2.5 rounded-xl font-bold text-sm text-white text-center cursor-pointer"
                 style={{ backgroundColor: theme.primary, touchAction: "manipulation" }}
               >
-                Try Again
-              </div>
+                {wifiAction === "order" ? "Return to order" : "Try again"}
+              </button>
             </div>
           </div>
         </div>

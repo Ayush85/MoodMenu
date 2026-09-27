@@ -54,14 +54,11 @@ export default function MenuItemCard({ item, theme, onTap, onAdd, layout = "list
   if (layout === "grid") {
     return (
       <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onTap(item)}
-        onKeyDown={(e) => e.key === "Enter" && onTap(item)}
-        className="w-full flex flex-col rounded-2xl p-2.5 cursor-pointer"
+        className="relative w-full flex flex-col rounded-2xl p-2.5"
         style={cardStyle}
       >
-        <div className="relative w-full aspect-square rounded-xl overflow-hidden">
+        <button type="button" onClick={() => onTap(item)} aria-label={`View ${item.name} details`} className="absolute inset-0 rounded-2xl focus-visible:ring-2 focus-visible:ring-orange-500" />
+        <div className="pointer-events-none relative w-full aspect-square rounded-xl overflow-hidden">
           {image}
         </div>
         <div className="pt-2 flex-1 min-w-0">
@@ -74,7 +71,7 @@ export default function MenuItemCard({ item, theme, onTap, onAdd, layout = "list
           {formatPrice(item.price)}
         </span>
         {onAdd && (
-          <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(item); }} className="mt-2 flex h-8 w-full items-center justify-center gap-1 rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: theme.primary }}>
+          <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(item); }} className="relative z-10 mt-2 flex h-11 w-full items-center justify-center gap-1 rounded-lg text-xs font-extrabold text-white" style={{ backgroundColor: theme.primary }}>
             <Plus className="h-3.5 w-3.5" /> Add
           </button>
         )}
@@ -84,15 +81,12 @@ export default function MenuItemCard({ item, theme, onTap, onAdd, layout = "list
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onTap(item)}
-      onKeyDown={(e) => e.key === "Enter" && onTap(item)}
-      className="w-full flex items-center gap-3 rounded-2xl p-2.5 cursor-pointer"
+      className="relative w-full flex items-center gap-3 rounded-2xl p-2.5"
       style={cardStyle}
     >
+      <button type="button" onClick={() => onTap(item)} aria-label={`View ${item.name} details`} className="absolute inset-0 rounded-2xl focus-visible:ring-2 focus-visible:ring-orange-500" />
       {/* Image */}
-      <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
+      <div className="pointer-events-none relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
         {image}
       </div>
 
@@ -107,7 +101,7 @@ export default function MenuItemCard({ item, theme, onTap, onAdd, layout = "list
         </span>
       </div>
       {onAdd && (
-        <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(item); }} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: theme.primary }} aria-label={`Add ${item.name} to order`}>
+        <button type="button" onClick={(event) => { event.stopPropagation(); onAdd(item); }} className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white" style={{ backgroundColor: theme.primary }} aria-label={`Add ${item.name} to order`}>
           <Plus className="h-4 w-4" />
         </button>
       )}

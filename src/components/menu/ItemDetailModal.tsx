@@ -3,7 +3,8 @@
 import { MoodTheme } from "@/types";
 import { formatPrice } from "@/lib/format";
 import { Minus, Plus, ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useDialog } from "@/components/ui/use-dialog";
 
 interface MenuItemData {
   id: string;
@@ -34,13 +35,7 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
   const initial = item.name.charAt(0).toUpperCase();
   const [quantity, setQuantity] = useState(1);
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
+  const dialogRef = useDialog(true, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -50,6 +45,7 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
         onClick={onClose}
       />
       <div
+        ref={dialogRef} aria-label={item.name}
         className="relative max-h-[min(92dvh,48rem)] w-full max-w-lg overflow-y-auto rounded-t-3xl animate-slide-up"
         style={{
           backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
@@ -69,8 +65,10 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
               style={{ background: "linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 50%)" }}
             />
             <button
+              type="button"
+              aria-label="Close item details"
               onClick={onClose}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-white"
+              className="absolute top-3 right-3 w-11 h-11 rounded-full flex items-center justify-center text-white"
               style={{ backgroundColor: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,8 +87,10 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
               </span>
             </div>
             <button
+              type="button"
+              aria-label="Close item details"
               onClick={onClose}
-              className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center"
+              className="absolute top-3 right-3 w-11 h-11 rounded-full flex items-center justify-center"
               style={{
                 backgroundColor: isDark ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.1)",
                 backdropFilter: "blur(8px)",
@@ -145,9 +145,9 @@ export default function ItemDetailModal({ item, onClose, theme, canOrder = false
           {onAddToOrder && (
             <div className="mt-5 flex items-center gap-3">
               <div className="flex items-center gap-2 rounded-xl p-1" style={{ backgroundColor: `${theme.text}0b` }}>
-                <button type="button" onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-9 w-9 items-center justify-center rounded-lg" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
+                <button type="button" disabled={quantity <= 1} onClick={() => setQuantity((value) => Math.max(1, value - 1))} className="flex h-11 w-11 items-center justify-center rounded-lg" aria-label="Decrease quantity"><Minus className="h-4 w-4" /></button>
                 <span className="w-5 text-center text-sm font-bold">{quantity}</span>
-                <button type="button" onClick={() => setQuantity((value) => Math.min(20, value + 1))} className="flex h-9 w-9 items-center justify-center rounded-lg text-white" style={{ backgroundColor: theme.primary }} aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
+                <button type="button" disabled={quantity >= 20} onClick={() => setQuantity((value) => Math.min(20, value + 1))} className="flex h-11 w-11 items-center justify-center rounded-lg text-white" style={{ backgroundColor: theme.primary }} aria-label="Increase quantity"><Plus className="h-4 w-4" /></button>
               </div>
               <button type="button" disabled={!canOrder} onClick={() => { onAddToOrder(quantity); onClose(); }} className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-45" style={{ backgroundColor: theme.primary }}>
                 <ShoppingBag className="h-4 w-4" />

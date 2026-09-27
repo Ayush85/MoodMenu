@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/read-json";
 import type { ChangeEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -117,6 +118,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
+  const [restaurantError, setRestaurantError] = useState(false);
+  const [retryRestaurants, setRetryRestaurants] = useState(0);
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
@@ -132,15 +135,16 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetch("/api/restaurants")
-      .then((res) => (res.ok ? res.json() : []))
+      .then(readJson<RestaurantOption[]>)
       .then((data) => {
         const list = Array.isArray(data)
           ? data.map((r) => ({ id: r.id as string, name: r.name as string, slug: r.slug as string }))
           : [];
         setRestaurants(list);
+        setRestaurantError(false);
       })
-      .catch(() => setRestaurants([]));
-  }, []);
+      .catch(() => setRestaurantError(true));
+  }, [retryRestaurants]);
 
   const currentRestaurantId = useMemo(() => {
     const match = pathname.match(/\/dashboard\/restaurant\/([^/]+)/);
@@ -172,21 +176,24 @@ export default function Sidebar() {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+        {restaurantError && <div role="status" className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900">Restaurant list unavailable.<button className="min-h-11 underline" onClick={() => setRetryRestaurants(value => value + 1)}>Retry</button></div>}
         {/* Restaurant context navigation */}
         {insideRestaurant && !isStaff && (
           <div>
             {/* Restaurant switcher */}
             {restaurants.length > 1 ? (
               <div className="mb-3">
-                <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 mb-1.5">
+                <label htmlFor="restaurant-switcher" className="block text-xs font-bold uppercase tracking-widest text-gray-500 px-2 mb-1.5">
                   Restaurant
                 </label>
-                <select
+                <select id="restaurant-switcher"
                   value={currentRestaurantId}
                   onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                     const nextId = e.target.value;
                     if (!nextId) return;
-                    router.push(`/dashboard/restaurant/${nextId}/menu`);
+                    const workspace = pathname.split("/")[4];
+                    const supported = RESTAURANT_NAV.some(item => item.suffix === "/" + workspace);
+                    router.push(`/dashboard/restaurant/${nextId}/${supported ? workspace : "orders"}`);
                   }}
                   className="w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition"
                 >
@@ -209,16 +216,17 @@ export default function Sidebar() {
 
             {/* Restaurant sub-nav */}
             <nav className="space-y-0.5">
-              {RESTAURANT_NAV.map((item) => (
-                <NavLink
-                  key={item.key}
-                  href={`/dashboard/restaurant/${currentRestaurantId}${item.suffix}`}
-                  pathname={pathname}
-                  label={item.label}
-                  icon={item.icon}
-                  onClick={close}
-                />
-              ))}
+              {[
+                { label: "Daily operations", keys: ["orders", "tables", "staff"] },
+                { label: "Menu & guest experience", keys: ["menu", "offers", "qr", "design", "mood"] },
+                { label: "Business", keys: ["analytics", "expenses"] },
+              ].map(group => <div key={group.label} className="mb-4">
+                <p className="px-2 py-2 text-xs font-semibold text-gray-500">{group.label}</p>
+                {group.keys.map(key => {
+                  const item = RESTAURANT_NAV.find(item => item.key === key)!;
+                  return <NavLink key={item.key} href={`/dashboard/restaurant/${currentRestaurantId}${item.suffix}`} pathname={pathname} label={item.label} icon={item.icon} onClick={close} />;
+                })}
+              </div>)}
 
               {/* View Menu external link */}
               {(() => {

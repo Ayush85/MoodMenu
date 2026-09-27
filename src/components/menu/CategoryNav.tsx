@@ -21,6 +21,8 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
   const isDark = theme.mode === "dark";
   const navRef = useRef<HTMLDivElement>(null);
   const scrollFrameRef = useRef<number | null>(null);
+  const navigationTarget = useRef<string | null>(null);
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestedCategoryRef = useRef<string | null>(null);
 
   const stableOnChange = useCallback((id: string) => {
@@ -29,14 +31,15 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
 
   const updateActiveCategory = useCallback(() => {
     const nav = navRef.current;
-    if (!nav) return;
+    if (!nav || navigationTarget.current) return;
 
     const sections = categories.flatMap((category) => {
       const section = document.getElementById(`cat-${category.id}`);
       return section ? [{ id: category.id, top: section.getBoundingClientRect().top }] : [];
     });
-    const activationPoint = nav.parentElement?.getBoundingClientRect().bottom ?? 0;
-    const categoryId = getActiveCategoryId(sections, activationPoint);
+    const activationPoint = (nav.parentElement?.getBoundingClientRect().bottom ?? 0) + 9;
+    const atBottom = window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2;
+    const categoryId = getActiveCategoryId(sections, activationPoint, atBottom);
     if (categoryId) stableOnChange(categoryId);
   }, [categories, stableOnChange]);
 
@@ -52,12 +55,37 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
   }, [updateActiveCategory]);
 
   useEffect(() => {
+    function finishNavigation() {
+      navigationTarget.current = null;
+      if (navigationTimer.current) clearTimeout(navigationTimer.current);
+      scheduleActiveCategoryUpdate();
+    }
+    function interrupt(event: Event) {
+      if (event instanceof KeyboardEvent && !["ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) return;
+      if (navigationTarget.current) window.scrollTo({ top: window.scrollY, behavior: "instant" });
+      finishNavigation();
+    }
+    function onScroll() {
+      if (navigationTarget.current) {
+        if (navigationTimer.current) clearTimeout(navigationTimer.current);
+        navigationTimer.current = setTimeout(finishNavigation, 150);
+      }
+      scheduleActiveCategoryUpdate();
+    }
     scheduleActiveCategoryUpdate();
-    window.addEventListener("scroll", scheduleActiveCategoryUpdate, { passive: true });
+    window.addEventListener("wheel", interrupt, { passive: true });
+    window.addEventListener("touchstart", interrupt, { passive: true });
+    window.addEventListener("keydown", interrupt);
+    window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", scheduleActiveCategoryUpdate);
 
     return () => {
-      window.removeEventListener("scroll", scheduleActiveCategoryUpdate);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("wheel", interrupt);
+      window.removeEventListener("touchstart", interrupt);
+      window.removeEventListener("keydown", interrupt);
+      if (navigationTimer.current) clearTimeout(navigationTimer.current);
+      navigationTarget.current = null;
       window.removeEventListener("resize", scheduleActiveCategoryUpdate);
       if (scrollFrameRef.current !== null) {
         window.cancelAnimationFrame(scrollFrameRef.current);
@@ -73,18 +101,19 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
     const pill = Array.from(nav.children).find((child) => child.getAttribute("data-cat") === categoryId);
     if (!(pill instanceof HTMLElement)) return;
 
+    const pillLeft = pill.getBoundingClientRect().left - nav.getBoundingClientRect().left + nav.scrollLeft;
     const maxScrollLeft = Math.max(0, nav.scrollWidth - nav.clientWidth);
     const desiredScrollLeft = center
-      ? pill.offsetLeft - (nav.clientWidth - pill.offsetWidth) / 2
-      : pill.offsetLeft < nav.scrollLeft
-        ? pill.offsetLeft - 8
-        : pill.offsetLeft + pill.offsetWidth > nav.scrollLeft + nav.clientWidth
-          ? pill.offsetLeft + pill.offsetWidth - nav.clientWidth + 8
+      ? pillLeft - (nav.clientWidth - pill.offsetWidth) / 2
+      : pillLeft < nav.scrollLeft
+        ? pillLeft - 8
+        : pillLeft + pill.offsetWidth > nav.scrollLeft + nav.clientWidth
+          ? pillLeft + pill.offsetWidth - nav.clientWidth + 8
           : nav.scrollLeft;
     const targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, desiredScrollLeft));
 
     if (Math.abs(nav.scrollLeft - targetScrollLeft) > 1) {
-      nav.scrollTo({ left: targetScrollLeft, behavior });
+      nav.scrollTo({ left: targetScrollLeft, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : behavior });
     }
   }, []);
 
@@ -101,6 +130,9 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
   if (categories.length <= 1) return null;
 
   function handleClick(catId: string) {
+    navigationTarget.current = catId;
+    if (navigationTimer.current) clearTimeout(navigationTimer.current);
+    navigationTimer.current = setTimeout(() => { navigationTarget.current = null; scheduleActiveCategoryUpdate(); }, 1500);
     if (catId === activeCategory) {
       scrollPillIntoView(catId, "smooth", true);
     } else {
@@ -111,7 +143,7 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
     if (el) {
       const stickyHeight = navRef.current?.parentElement?.getBoundingClientRect().height ?? 56;
       const top = el.getBoundingClientRect().top + window.scrollY - stickyHeight - 8;
-      window.scrollTo({ top, behavior: "smooth" });
+      window.scrollTo({ top, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     }
   }
 
@@ -133,6 +165,7 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
               key={cat.id}
               type="button"
               data-cat={cat.id}
+              aria-pressed={isActive}
               onClick={() => handleClick(cat.id)}
               className="shrink-0 flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full transition-all duration-200"
               style={{

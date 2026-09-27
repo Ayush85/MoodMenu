@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/read-json";
+import { useDialog } from "@/components/ui/use-dialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { scrollFocusedElementIntoView } from "./order-composer-mobile";
@@ -15,6 +17,8 @@ interface Props {
 
 export default function OrderComposer({ restaurantId, canTakeOrders, open, onClose, onCreated }: Props) {
   const { toast } = useToast();
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadRetry, setLoadRetry] = useState(0);
   const [tables, setTables] = useState<RestaurantTableData[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItemOption[]>([]);
   const [selectedTableId, setSelectedTableId] = useState("");
@@ -30,8 +34,9 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
     if (!open || !canTakeOrders) return;
 
     fetch(`/api/restaurants/${restaurantId}`)
-      .then((response) => response.json())
+      .then(readJson<{ tables: RestaurantTableData[]; categories: Array<{id: string; name: string; items: Array<{id: string; name: string; price: number; isAvailable: boolean}>}> }>)
       .then((data) => {
+        setLoadError(null);
         const tableData = (data?.tables || []) as RestaurantTableData[];
         const categoryData = (data?.categories || []) as Array<{
           id: string;
@@ -52,11 +57,8 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
         setTables(tableData.sort((a, b) => a.number - b.number));
         setMenuItems(itemData);
       })
-      .catch(() => {
-        setTables([]);
-        setMenuItems([]);
-      });
-  }, [canTakeOrders, open, restaurantId]);
+      .catch(() => { setLoadError("Unable to load tables and menu items. Your draft is preserved."); });
+  }, [canTakeOrders, open, restaurantId, loadRetry]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,14 +69,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+  const dialogRef = useDialog(open && canTakeOrders, onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -207,6 +202,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
   }
 
   async function submitOrder() {
+    if (savingOrder) return;
     if (!selectedTableId) {
       toast("Please select a table", "error");
       return;
@@ -243,6 +239,8 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
       clearDraft();
       onClose();
       toast("Order created");
+    } catch {
+      toast("Unable to create the order. Your draft is kept here; please retry.", "error");
     } finally {
       setSavingOrder(false);
     }
@@ -253,7 +251,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <button aria-label="Close order composer" onClick={onClose} className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" />
-      <section role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex h-[100dvh] min-h-0 max-h-none w-full max-w-none flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[min(92dvh,48rem)] sm:max-w-xl sm:rounded-3xl">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex h-[100dvh] min-h-0 max-h-none w-full max-w-none flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[min(92dvh,48rem)] sm:max-w-xl sm:rounded-3xl">
         <header className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-500">Staff order</p>
@@ -267,6 +265,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
 
         <div className="min-h-0 flex-1 overscroll-contain overflow-y-auto p-5 sm:p-6">
           <div className="space-y-4">
+            {loadError && <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{loadError}<button className="ml-2 min-h-11 underline" onClick={() => setLoadRetry(value => value + 1)}>Retry</button></div>}
             <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-3 sm:p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2.5">
@@ -430,7 +429,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
             </button>
           </div>
         </footer>
-      </section>
+      </div>
     </div>
   );
 }

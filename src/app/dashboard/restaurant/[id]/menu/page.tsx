@@ -1,5 +1,7 @@
 "use client";
 
+import { readJson } from "@/lib/read-json";
+import { useDialog } from "@/components/ui/use-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useToast } from "@/components/Toast";
@@ -108,6 +110,8 @@ export default function MenuManagePage() {
   const id = params.id as string;
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
 
   // Category add
@@ -167,16 +171,22 @@ export default function MenuManagePage() {
   const [csvSaving, setCsvSaving] = useState(false);
   const [csvFileName, setCsvFileName] = useState<string | null>(null);
 
+  const editDialogRef = useDialog(!!editingItem, () => setEditingItem(null));
+  const moveDialogRef = useDialog(!!movingItem, () => setMovingItem(null));
+  const importDialogRef = useDialog(showImportModal, () => { if (!importLoading && !importSaving && !csvSaving && !bulkGenActive) resetImportModal(); });
+
   // Menu search/filter
   const [menuSearch, setMenuSearch] = useState("");
 
-  function fetchRestaurant() {
-    fetch(`/api/restaurants/${id}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setRestaurant(data);
-        setLoading(false);
-      });
+  async function fetchRestaurant() {
+    try {
+      const data = await fetch(`/api/restaurants/${id}`).then(readJson<Restaurant>);
+      if (!Array.isArray(data.categories)) throw new Error("Invalid menu response. Please retry.");
+      setRestaurant(data);
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Unable to load your menu.");
+    } finally { setLoading(false); }
   }
 
   useEffect(() => {
@@ -191,17 +201,24 @@ export default function MenuManagePage() {
 
   // ─── Category CRUD ────────────────────────────────────────────────────────
   async function addCategory() {
-    if (!newCategory.trim()) return;
+    if (!newCategory.trim() || savingCategory) return;
     setSavingCategory(true);
-    await fetch(`/api/restaurants/${id}/categories`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newCategory }),
-    });
-    setNewCategory("");
-    setSavingCategory(false);
-    toast("Category added");
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/categories`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCategory }),
+      }).then(readJson);
+      setNewCategory("");
+      setSavingCategory(false);
+      toast("Category added");
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    } finally { setSavingCategory(false); }
   }
 
   function startRename(cat: Category) {
@@ -211,14 +228,21 @@ export default function MenuManagePage() {
 
   async function saveRename(catId: string) {
     if (!renameValue.trim()) { setRenamingCat(null); return; }
-    await fetch(`/api/restaurants/${id}/categories`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId: catId, name: renameValue }),
-    });
-    setRenamingCat(null);
-    toast("Category renamed");
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/categories`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: catId, name: renameValue }),
+      }).then(readJson);
+      setRenamingCat(null);
+      toast("Category renamed");
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    }
   }
 
   function deleteCategory(categoryId: string) {
@@ -226,36 +250,47 @@ export default function MenuManagePage() {
       title: "Delete Category",
       message: "This will delete the category and all its items. Are you sure?",
       onConfirm: async () => {
-        await fetch(`/api/restaurants/${id}/categories`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ categoryId }),
-        });
-        setConfirmAction(null);
-        toast("Category deleted");
-        fetchRestaurant();
+        try {
+          await fetch(`/api/restaurants/${id}/categories`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ categoryId }),
+          }).then(readJson);
+          setConfirmAction(null);
+          toast("Category deleted");
+          fetchRestaurant();
+        } catch (error) {
+          toast(error instanceof Error ? error.message : "Unable to delete. Please retry.", "error");
+        }
       },
     });
   }
 
   // ─── Item CRUD ────────────────────────────────────────────────────────────
   async function addItem(categoryId: string) {
-    if (!itemForm.name || !itemForm.price) return;
+    if (!itemForm.name || !itemForm.price || savingItem) return;
     setSavingItem(true);
-    await fetch(`/api/restaurants/${id}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...itemForm,
-        tags: itemForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        categoryId,
-      }),
-    });
-    setItemForm({ name: "", description: "", price: "", tags: "", image: "" });
-    setAddingItem(null);
-    setSavingItem(false);
-    toast("Item added");
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...itemForm,
+          tags: itemForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
+          categoryId,
+        }),
+      }).then(readJson);
+      setItemForm({ name: "", description: "", price: "", tags: "", image: "" });
+      setAddingItem(null);
+      setSavingItem(false);
+      toast("Item added");
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    } finally { setSavingItem(false); }
   }
 
   function deleteItem(itemId: string) {
@@ -263,30 +298,48 @@ export default function MenuManagePage() {
       title: "Delete Item",
       message: "This item will be permanently removed from your menu.",
       onConfirm: async () => {
-        await fetch(`/api/restaurants/${id}/items/${itemId}`, { method: "DELETE" });
-        setConfirmAction(null);
-        toast("Item deleted");
-        fetchRestaurant();
+        try {
+          await fetch(`/api/restaurants/${id}/items/${itemId}`, { method: "DELETE" }).then(readJson);
+          setConfirmAction(null);
+          toast("Item deleted");
+          fetchRestaurant();
+        } catch (error) {
+          toast(error instanceof Error ? error.message : "Unable to delete. Please retry.", "error");
+        }
       },
     });
   }
 
   async function toggleAvailability(item: MenuItem) {
-    await fetch(`/api/restaurants/${id}/items/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isAvailable: !item.isAvailable }),
-    });
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isAvailable: !item.isAvailable }),
+      }).then(readJson);
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    }
   }
 
   async function toggleSpecial(item: MenuItem) {
-    await fetch(`/api/restaurants/${id}/items/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isSpecial: !item.isSpecial }),
-    });
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isSpecial: !item.isSpecial }),
+      }).then(readJson);
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    }
   }
 
   function openEdit(item: MenuItem) {
@@ -301,34 +354,48 @@ export default function MenuManagePage() {
   }
 
   async function saveEdit() {
-    if (!editingItem) return;
+    if (!editingItem || savingEdit) return;
     setSavingEdit(true);
-    await fetch(`/api/restaurants/${id}/items/${editingItem.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: editForm.name,
-        description: editForm.description || null,
-        price: editForm.price,
-        tags: editForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
-        image: editForm.image || null,
-      }),
-    });
-    setSavingEdit(false);
-    setEditingItem(null);
-    toast("Item updated");
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/items/${editingItem.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editForm.name,
+          description: editForm.description || null,
+          price: editForm.price,
+          tags: editForm.tags.split(",").map((t) => t.trim()).filter(Boolean),
+          image: editForm.image || null,
+        }),
+      }).then(readJson);
+      setSavingEdit(false);
+      setEditingItem(null);
+      toast("Item updated");
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    } finally { setSavingEdit(false); }
   }
 
   async function moveItem(itemId: string, newCategoryId: string) {
-    await fetch(`/api/restaurants/${id}/items/${itemId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categoryId: newCategoryId }),
-    });
-    setMovingItem(null);
-    toast("Item moved");
-    fetchRestaurant();
+    setActionError(null);
+    try {
+      await fetch(`/api/restaurants/${id}/items/${itemId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ categoryId: newCategoryId }),
+      }).then(readJson);
+      setMovingItem(null);
+      toast("Item moved");
+      fetchRestaurant();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to save changes.";
+      setActionError(message);
+      toast(message, "error");
+    }
   }
 
   // ─── Image uploads ────────────────────────────────────────────────────────
@@ -810,10 +877,11 @@ export default function MenuManagePage() {
     );
   }
 
-  if (!restaurant) return <div>Restaurant not found</div>;
+  if (!restaurant) return <div role="alert" className="surface-card p-6"><h1 className="page-title">Unable to load menu</h1><p className="my-3">{loadError || "Restaurant not found"}</p><button className="btn-primary" onClick={() => { setLoading(true); void fetchRestaurant(); }}>Retry</button></div>;
 
   return (
     <div className="page-shell animate-fade-in">
+      {(loadError || actionError) && <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{loadError || actionError}<button className="ml-3 min-h-11 underline" onClick={() => void fetchRestaurant()}>Refresh menu</button></div>}
       {/* ── Header ── */}
       <div className="flex items-center gap-4 mb-6">
         <label className="relative group cursor-pointer shrink-0">
@@ -860,11 +928,12 @@ export default function MenuManagePage() {
 
       {/* ── Toolbar: add category + search + import ── */}
       <div className="flex flex-col sm:flex-row gap-3 mb-5">
-        <input
+        <label htmlFor="new-category-name" className="sr-only">New category name</label>
+        <input id="new-category-name"
           type="text"
           value={newCategory}
           onChange={(e) => setNewCategory(e.target.value)}
-          placeholder="New category name (e.g., Appetizers)"
+          aria-label="New category name" placeholder="New category name (e.g., Appetizers)"
           className="control-input flex-1 !py-3"
           onKeyDown={(e) => e.key === "Enter" && addCategory()}
         />
@@ -941,7 +1010,7 @@ export default function MenuManagePage() {
             type="text"
             value={menuSearch}
             onChange={(e) => setMenuSearch(e.target.value)}
-            placeholder="Search items by name, tag or description…"
+            aria-label="Search menu items" placeholder="Search items by name, tag or description…"
             className="control-input !pl-9 w-full"
           />
           {menuSearch && (
@@ -1060,20 +1129,20 @@ export default function MenuManagePage() {
               {addingItem === cat.id && (
                 <div className="px-5 sm:px-6 py-5 bg-orange-50/50 border-b border-orange-100 space-y-3 animate-fade-in">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input type="text" placeholder="Item name *" value={itemForm.name}
+                    <div><label htmlFor="new-item-name" className="block text-sm font-semibold mb-1">Item name</label><input id="new-item-name" type="text" placeholder="Item name *" value={itemForm.name}
                       onChange={(e) => setItemForm((p) => ({ ...p, name: e.target.value }))}
                       className="control-input !bg-white"
                     />
-                    <input type="number" placeholder="Price (NPR) *" value={itemForm.price}
+                    </div><div><label htmlFor="new-item-price" className="block text-sm font-semibold mb-1">Price (NPR)</label><input id="new-item-price" type="number" placeholder="Price (NPR) *" value={itemForm.price}
                       onChange={(e) => setItemForm((p) => ({ ...p, price: e.target.value }))}
                       className="control-input !bg-white"
                     />
-                  </div>
-                  <input type="text" placeholder="Description (optional)" value={itemForm.description}
+                  </div></div>
+                  <label htmlFor="new-item-description" className="block text-sm font-semibold mb-1">Description (optional)</label><input id="new-item-description" type="text" placeholder="Description (optional)" value={itemForm.description}
                     onChange={(e) => setItemForm((p) => ({ ...p, description: e.target.value }))}
                     className="control-input w-full !bg-white"
                   />
-                  <input type="text" placeholder="Tags (comma separated: hot, spicy, vegan)" value={itemForm.tags}
+                  <label htmlFor="new-item-tags" className="block text-sm font-semibold mb-1">Tags (comma separated)</label><input id="new-item-tags" type="text" placeholder="Tags (comma separated: hot, spicy, vegan)" value={itemForm.tags}
                     onChange={(e) => setItemForm((p) => ({ ...p, tags: e.target.value }))}
                     className="control-input w-full !bg-white"
                   />
@@ -1202,10 +1271,11 @@ export default function MenuManagePage() {
       {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setEditingItem(null)} />
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+          <div ref={editDialogRef} aria-label="Edit menu item" className="relative w-full max-w-md bg-white rounded-2xl shadow-xl p-6 max-h-[90vh] overflow-y-auto">
+            {actionError && <p role="alert" className="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-800">{actionError}</p>}
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-gray-900">Edit Item</h3>
-              <button onClick={() => setEditingItem(null)} className="text-gray-400 hover:text-gray-600">
+              <button aria-label="Close item editor" onClick={() => setEditingItem(null)} className="min-h-11 min-w-11 text-gray-400 hover:text-gray-600">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1213,20 +1283,20 @@ export default function MenuManagePage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                <input value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} className="control-input" />
+                <label htmlFor="edit-name" className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
+                <input id="edit-name" value={editForm.name} onChange={(e) => setEditForm((p) => ({ ...p, name: e.target.value }))} className="control-input" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Price (NPR)</label>
-                <input type="number" value={editForm.price} onChange={(e) => setEditForm((p) => ({ ...p, price: e.target.value }))} className="control-input" />
+                <label htmlFor="edit-price" className="block text-sm font-semibold text-gray-700 mb-1">Price (NPR)</label>
+                <input type="number" id="edit-price" value={editForm.price} onChange={(e) => setEditForm((p) => ({ ...p, price: e.target.value }))} className="control-input" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
-                <textarea value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} rows={2} className="control-input" />
+                <label htmlFor="edit-description" className="block text-sm font-semibold text-gray-700 mb-1">Description</label>
+                <textarea id="edit-description" value={editForm.description} onChange={(e) => setEditForm((p) => ({ ...p, description: e.target.value }))} rows={2} className="control-input" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Tags (comma separated)</label>
-                <input value={editForm.tags} onChange={(e) => setEditForm((p) => ({ ...p, tags: e.target.value }))} className="control-input" placeholder="hot, spicy, popular" />
+                <label htmlFor="edit-tags" className="block text-sm font-semibold text-gray-700 mb-1">Tags (comma separated)</label>
+                <input id="edit-tags" value={editForm.tags} onChange={(e) => setEditForm((p) => ({ ...p, tags: e.target.value }))} className="control-input" placeholder="hot, spicy, popular" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-1">Image</label>
@@ -1272,7 +1342,7 @@ export default function MenuManagePage() {
       {movingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMovingItem(null)} />
-          <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
+          <div ref={moveDialogRef} aria-label="Move menu item" className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-1">Move Item</h3>
             <p className="text-sm text-gray-500 mb-4">
               Move <span className="font-semibold text-gray-800">{movingItem.item.name}</span> to:
@@ -1303,14 +1373,14 @@ export default function MenuManagePage() {
       {showImportModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => { if (!importLoading && !importSaving && !csvSaving && !bulkGenActive) resetImportModal(); }} />
-          <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
+          <div ref={importDialogRef} aria-label="Import menu" className="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white z-10">
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Bulk Import Menu</h3>
                 <p className="text-xs text-gray-500 mt-0.5">Import via CSV file or photo scan</p>
               </div>
-              <button onClick={resetImportModal} disabled={bulkGenActive} className="text-gray-400 hover:text-gray-600 ml-4 disabled:opacity-30">
+              <button aria-label="Close import" onClick={resetImportModal} disabled={importLoading || importSaving || csvSaving || bulkGenActive} className="min-h-11 min-w-11 text-gray-400 hover:text-gray-600 ml-4 disabled:opacity-30">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>

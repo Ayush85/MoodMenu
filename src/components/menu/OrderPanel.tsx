@@ -3,7 +3,9 @@
 import { Check, Clock3, Minus, Plus, ShoppingBag, X } from "lucide-react";
 import { formatPrice } from "@/lib/format";
 import { MoodTheme } from "@/types";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+
+import { useDialog } from "@/components/ui/use-dialog";
 
 export interface CartLine {
   itemId: string;
@@ -35,6 +37,8 @@ interface Props {
   activeOrders: CustomerOrder[];
   isSubmitting: boolean;
   error: string | null;
+  trackingError?: string | null;
+  onRetryTracking?: () => void;
   onClose: () => void;
   onSubmit: (note: string) => void;
   onSetQuantity: (itemId: string, quantity: number) => void;
@@ -76,7 +80,7 @@ function OrderStatusCard({ order, theme, onDismiss }: { order: CustomerOrder; th
               <h3 className="mt-1 text-base font-extrabold">{STATUS_LABEL[order.status]}</h3>
             </div>
             {isTerminal && (
-              <button type="button" onClick={onDismiss} aria-label="Dismiss order" className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg opacity-50 hover:opacity-100">
+              <button type="button" onClick={onDismiss} aria-label="Dismiss order" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg opacity-50 hover:opacity-100">
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
@@ -115,17 +119,10 @@ function OrderStatusCard({ order, theme, onDismiss }: { order: CustomerOrder; th
   );
 }
 
-export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitting, error, onClose, onSubmit, onSetQuantity, onRemove, onDismissOrder }: Props) {
+export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitting, error, trackingError, onRetryTracking, onClose, onSubmit, onSetQuantity, onRemove, onDismissOrder }: Props) {
   const isDark = theme.mode === "dark";
   const [note, setNote] = useState("");
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
+  const dialogRef = useDialog(open, onClose);
 
   if (!open) return null;
 
@@ -137,19 +134,20 @@ export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitti
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center sm:px-4">
       <button type="button" aria-label="Close order panel" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
-      <section role="dialog" aria-modal="true" aria-labelledby="order-panel-title" className="relative flex max-h-[min(92dvh,48rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl shadow-2xl sm:rounded-3xl" style={{ backgroundColor: isDark ? "#1a1a1f" : "#fff", color: theme.text }}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="order-panel-title" className="relative flex max-h-[min(92dvh,48rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl shadow-2xl sm:rounded-3xl" style={{ backgroundColor: isDark ? "#1a1a1f" : "#fff", color: theme.text }}>
         <div className="mx-auto mt-2 h-1 w-10 rounded-full opacity-20 sm:hidden" style={{ backgroundColor: theme.text }} />
         <header className="flex shrink-0 items-center justify-between border-b px-5 py-4" style={{ borderColor: `${theme.text}12` }}>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: theme.primary }}>{showingCart ? "Your order" : "Orders"}</p>
             <h2 id="order-panel-title" className="mt-0.5 text-xl font-extrabold">{showingCart ? "Build your order" : "Track your orders"}</h2>
           </div>
-          <button type="button" onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: `${theme.text}0c` }} aria-label="Close">
+          <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: `${theme.text}0c` }} aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {trackingError && <div role="status" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">{trackingError}<button type="button" className="ml-2 min-h-11 underline font-semibold" onClick={onRetryTracking}>Retry refresh</button></div>}
           {/* A second order can be placed while an earlier one is still being
               prepared. Surfacing it here — rather than hiding it while the
               cart is non-empty — is what keeps that earlier order from
@@ -172,12 +170,12 @@ export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitti
                       <p className="truncate text-sm font-bold">{item.itemName}</p>
                       <p className="mt-0.5 text-xs opacity-55">{formatPrice(item.price)} each</p>
                     </div>
-                    <button type="button" onClick={() => onRemove(item.itemId)} className="col-start-2 row-start-1 flex h-8 w-8 items-center justify-center rounded-lg opacity-45 hover:opacity-100 sm:order-4" aria-label={`Remove ${item.itemName}`}><X className="h-3.5 w-3.5" /></button>
+                    <button type="button" disabled={isSubmitting} onClick={() => onRemove(item.itemId)} className="col-start-2 row-start-1 flex h-11 w-11 items-center justify-center rounded-lg opacity-45 hover:opacity-100 sm:order-4" aria-label={`Remove ${item.itemName}`}><X className="h-3.5 w-3.5" /></button>
                     <div className="col-span-2 flex items-center justify-between gap-3 sm:contents">
                       <div className="flex items-center gap-2 rounded-xl p-1" style={{ backgroundColor: `${theme.text}0b` }}>
-                        <button type="button" onClick={() => onSetQuantity(item.itemId, item.quantity - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg" aria-label={`Decrease ${item.itemName}`}><Minus className="h-3.5 w-3.5" /></button>
+                        <button type="button" disabled={isSubmitting} onClick={() => onSetQuantity(item.itemId, item.quantity - 1)} className="flex h-11 w-11 items-center justify-center rounded-lg" aria-label={`Decrease ${item.itemName}`}><Minus className="h-3.5 w-3.5" /></button>
                         <span className="w-5 text-center text-sm font-bold">{item.quantity}</span>
-                        <button type="button" onClick={() => onSetQuantity(item.itemId, item.quantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg text-white" style={{ backgroundColor: theme.primary }} aria-label={`Increase ${item.itemName}`}><Plus className="h-3.5 w-3.5" /></button>
+                        <button type="button" disabled={isSubmitting || item.quantity >= 20} onClick={() => onSetQuantity(item.itemId, item.quantity + 1)} className="flex h-11 w-11 items-center justify-center rounded-lg text-white" style={{ backgroundColor: theme.primary }} aria-label={`Increase ${item.itemName}`}><Plus className="h-3.5 w-3.5" /></button>
                       </div>
                       <p className="w-20 text-right text-sm font-extrabold">{formatPrice(item.price * item.quantity)}</p>
                     </div>
@@ -187,7 +185,7 @@ export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitti
 
               <div className="mt-5">
                 <label htmlFor="order-note" className="text-xs font-bold uppercase tracking-wider opacity-55">Kitchen note <span className="font-normal normal-case tracking-normal">(optional)</span></label>
-                <textarea id="order-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder="Allergies, preferences, or special requests" className="mt-2 min-h-20 w-full resize-none rounded-xl border bg-transparent px-3 py-2.5 text-sm outline-none" style={{ borderColor: `${theme.text}18`, color: theme.text }} />
+                <textarea disabled={isSubmitting} id="order-note" value={note} onChange={(event) => setNote(event.target.value)} maxLength={240} placeholder="Allergies, preferences, or special requests" className="mt-2 min-h-20 w-full resize-none rounded-xl border bg-transparent px-3 py-2.5 text-sm outline-none" style={{ borderColor: `${theme.text}18`, color: theme.text }} />
               </div>
 
             </>
@@ -209,7 +207,7 @@ export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitti
 
         {showingCart && (
           <footer className="shrink-0 border-t p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]" style={{ borderColor: `${theme.text}12`, backgroundColor: isDark ? "#1a1a1f" : "#fff" }}>
-            {error && <p className="mb-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-semibold text-red-500">{error}</p>}
+            {error && <p role="alert" className="mb-3 rounded-xl bg-red-500/10 px-3 py-2.5 text-xs font-semibold text-red-500">{error}</p>}
             <div className="flex items-end justify-between">
               <div><p className="text-xs opacity-55">{count} item{count !== 1 ? "s" : ""}</p><p className="mt-0.5 text-xl font-extrabold">Total</p></div>
               <p className="text-2xl font-extrabold" style={{ color: theme.primary }}>{formatPrice(total)}</p>
@@ -221,7 +219,7 @@ export default function OrderPanel({ open, theme, cart, activeOrders, isSubmitti
             <p className="mt-2 text-center text-[11px] opacity-45">You can track the kitchen status here after placing your order.</p>
           </footer>
         )}
-      </section>
+      </div>
     </div>
   );
 }

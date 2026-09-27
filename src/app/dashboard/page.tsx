@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { readJson } from "@/lib/read-json";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { PartyPopper, Rocket, Store, ClipboardList, Wifi, Smartphone } from "lucide-react";
@@ -18,16 +19,22 @@ export default function DashboardPage() {
   const { data: session } = useSession();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const isStaff = session?.user?.actorType === "STAFF";
 
   useEffect(() => {
-    fetch("/api/restaurants")
-      .then((res) => res.json())
-      .then((data) => {
-        setRestaurants(data);
-        setLoading(false);
-      });
-  }, []);
+    const controller = new AbortController();
+    fetch("/api/restaurants", { signal: controller.signal })
+      .then(readJson<Restaurant[]>)
+      .then(data => {
+        if (!Array.isArray(data)) throw new Error("Invalid restaurant response.");
+        setRestaurants(data); setLoadError(null);
+      })
+      .catch(error => { if (!controller.signal.aborted) setLoadError(error instanceof Error ? error.message : "Unable to load restaurants."); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [retry]);
 
   function getGreeting() {
     const hour = new Date().getHours();
@@ -58,6 +65,8 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  if (loadError) return <div role="alert" className="surface-card p-6"><h1 className="page-title">Unable to load your restaurants</h1><p className="my-3">{loadError}</p><button className="btn-primary" onClick={() => { setLoading(true); setRetry(value => value + 1); }}>Retry</button></div>;
 
   return (
     <div className="page-shell animate-fade-in">
@@ -165,7 +174,7 @@ export default function DashboardPage() {
                   <Rocket className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">Set up your first restaurant</h2>
-                <p className="text-gray-500 text-sm">Go live in minutes — follow these 4 steps</p>
+                <p className="text-gray-500 text-sm">Follow these steps to prepare for your first service</p>
               </div>
 
               <div className="max-w-lg mx-auto space-y-3">
@@ -174,7 +183,7 @@ export default function DashboardPage() {
                     step: "1",
                     icon: <Store className="w-4 h-4" />,
                     title: "Create your restaurant",
-                    desc: "Add name, city, and a unique URL slug",
+                    desc: "Add your restaurant name, city, and menu web address",
                     href: "/dashboard/restaurant/new",
                     btn: "Create Restaurant",
                     active: true,
@@ -215,6 +224,18 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {!isStaff && restaurants.some(r => !r.categories.some(c => c.items.length)) && <section className="surface-card mb-6 p-5">
+            <h2 className="text-lg font-bold text-gray-900">Continue your restaurant setup</h2>
+            <p className="mt-1 text-sm text-gray-600">Add your first dishes, set up tables, then preview and print your QR codes.</p>
+            {restaurants.filter(r => !r.categories.some(c => c.items.length)).map(r => <div key={r.id} className="mt-4">
+              <h3 className="font-semibold">{r.name}</h3>
+              <div className="mt-2 flex flex-wrap gap-3">
+                <Link className="btn-primary" href={`/dashboard/restaurant/${r.id}/menu`}>1. Add menu items</Link>
+                <Link className="btn-soft" href={`/dashboard/restaurant/${r.id}/tables`}>2. Set up tables</Link>
+                <Link className="btn-soft" href={`/dashboard/restaurant/${r.id}/qr`}>3. Preview QR codes</Link>
+              </div>
+            </div>)}
+          </section>}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-gray-800">Your Restaurants</h2>
             <span className="text-xs text-gray-400">{restaurants.length} total</span>
@@ -225,7 +246,7 @@ export default function DashboardPage() {
               return (
                 <Link
                   key={r.id}
-                  href={`/dashboard/restaurant/${r.id}/menu`}
+                  href={`/dashboard/restaurant/${r.id}/${isStaff ? "orders" : "menu"}`}
                   className={`surface-card p-5 group hover:-translate-y-0.5 transition-all duration-200 animate-fade-in-up stagger-${Math.min(i + 1, 5)}`}
                 >
                   {/* Top bar */}

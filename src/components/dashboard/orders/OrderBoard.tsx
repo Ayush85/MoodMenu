@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
 import ConfirmModal from "@/components/ConfirmModal";
+import { readJson } from "@/lib/read-json";
 import OrderComposer from "./OrderComposer";
 import WaiterCallQueue from "./WaiterCallQueue";
 import { getAllowedOrderStatuses, getNextSuggestedStatus } from "./permissions";
@@ -64,6 +65,13 @@ function fmt(value: number) {
 
 export default function OrderBoard({ restaurantId, actorType, staffRole, canTakeOrders, canUseCalls }: Props) {
   const { toast } = useToast();
+  const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const pendingRef = useRef(new Set<string>());
+  const refreshController = useRef<AbortController | null>(null);
+  const revision = useRef(0);
   const [orders, setOrders] = useState<OrderTicket[]>([]);
   const [orderTableFilter, setOrderTableFilter] = useState("");
   const [showComposer, setShowComposer] = useState(false);
@@ -81,26 +89,33 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
   const scrollerRef = useRef<HTMLDivElement>(null);
   const scrollRafRef = useRef<number | null>(null);
 
-  const fetchOrders = useCallback(() => {
-    fetch(`/api/restaurants/${restaurantId}/orders`)
-      .then((response) => response.json())
-      .then((data) => {
-        const list: OrderTicket[] = Array.isArray(data) ? data : [];
-        const currentNewIds = new Set(list.filter((order) => order.status === "NEW").map((order) => order.id));
-        if (previousNewOrderIds.current) {
-          const hasNewOrder = [...currentNewIds].some((id) => !previousNewOrderIds.current!.has(id));
-          if (hasNewOrder) playOrderChime();
-        }
-        previousNewOrderIds.current = currentNewIds;
-        setOrders(list);
-      })
-      .catch(() => {});
+  const fetchOrders = useCallback(async () => {
+    refreshController.current?.abort();
+    const controller = new AbortController();
+    refreshController.current = controller;
+    const startedAtRevision = revision.current;
+    try {
+      const list = await fetch(`/api/restaurants/${restaurantId}/orders`, { signal: controller.signal }).then(readJson<OrderTicket[]>);
+      if (!Array.isArray(list)) throw new Error("Invalid order response. Please retry.");
+      if (controller.signal.aborted || startedAtRevision !== revision.current) return;
+      const currentNewIds = new Set(list.filter(order => order.status === "NEW").map(order => order.id));
+      if (previousNewOrderIds.current && [...currentNewIds].some(id => !previousNewOrderIds.current!.has(id))) playOrderChime();
+      previousNewOrderIds.current = currentNewIds;
+      setOrders(current => list.map(order => pendingRef.current.has(order.id) ? current.find(item => item.id === order.id) || order : order));
+      setRefreshError(null);
+      setLastUpdated(Date.now());
+    } catch (error) {
+      if (!controller.signal.aborted) setRefreshError(error instanceof Error ? error.message : "Unable to refresh orders.");
+    } finally {
+      if (!controller.signal.aborted) setLoadingOrders(false);
+    }
   }, [restaurantId]);
 
   useEffect(() => {
-    fetchOrders();
-    const interval = setInterval(fetchOrders, 8000);
-    return () => clearInterval(interval);
+    void fetchOrders();
+    const interval = setInterval(() => void fetchOrders(), 8000);
+    window.addEventListener("online", fetchOrders);
+    return () => { clearInterval(interval); refreshController.current?.abort(); window.removeEventListener("online", fetchOrders); };
   }, [fetchOrders, orderPollKey]);
 
   useEffect(() => {
@@ -175,6 +190,10 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
   }
 
   async function updateOrderStatus(orderId: string, status: OrderStatus) {
+    if (pendingRef.current.has(orderId)) return;
+    pendingRef.current.add(orderId);
+    setPendingIds(new Set(pendingRef.current));
+    revision.current += 1;
     try {
       const response = await fetch(`/api/restaurants/${restaurantId}/orders/${orderId}`, {
         method: "PATCH",
@@ -189,9 +208,13 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
       }
 
       const updated = (await response.json()) as OrderTicket;
+      revision.current += 1;
       setOrders((previous) => previous.map((order) => (order.id === updated.id ? updated : order)));
     } catch {
       toast("Could not update order", "error");
+    } finally {
+      pendingRef.current.delete(orderId);
+      setPendingIds(new Set(pendingRef.current));
     }
   }
 
@@ -214,6 +237,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
   }
 
   function renderOrderCard(order: OrderTicket) {
+    const saving = pendingIds.has(order.id);
     const actionStatuses = getAllowedOrderStatuses(actorType, staffRole).filter((status) => status !== order.status);
     const suggestedStatus = getNextSuggestedStatus(actorType, staffRole, order.status);
     const isStale = (order.status === "NEW" || order.status === "PREPARING") &&
@@ -246,18 +270,21 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
 
         <div className="flex flex-wrap gap-1.5">
           {suggestedStatus && canUpdateStatus(suggestedStatus) && (
-            <button onClick={() => handleOrderStatusClick(order, suggestedStatus)} className="flex min-h-10 items-center gap-1 rounded-lg bg-orange-500 px-3.5 text-xs font-bold text-white transition hover:bg-orange-600">
+            <button disabled={saving} aria-busy={saving} onClick={() => handleOrderStatusClick(order, suggestedStatus)} className="flex min-h-10 items-center gap-1 rounded-lg bg-orange-500 px-3.5 text-xs font-bold text-white transition hover:bg-orange-600">
               <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
               </svg>
-              {STATUS_META[suggestedStatus].label}
+              {saving ? "Saving…" : ({ NEW: "Reopen order", PREPARING: "Start preparing", SERVED: "Mark served", PAID: "Mark paid", CANCELED: "Cancel order" }[suggestedStatus])}
             </button>
           )}
+          {actionStatuses.some(status => status !== suggestedStatus) && <details className="relative"><summary className="min-h-11 cursor-pointer rounded-lg border border-gray-300 px-3 py-2 text-xs font-semibold">More actions</summary><div className="mt-2 flex flex-wrap gap-2">
           {actionStatuses.filter((status) => status !== suggestedStatus).map((status) => (
-            <button key={status} onClick={() => handleOrderStatusClick(order, status)} className={`min-h-10 rounded-lg border px-3 text-xs font-medium transition ${status === "CANCELED" ? "border-red-200 bg-red-50 text-red-500 hover:bg-red-100" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
+            <button disabled={saving} key={status} onClick={() => handleOrderStatusClick(order, status)} className={`min-h-10 rounded-lg border px-3 text-xs font-medium transition ${status === "CANCELED" ? "border-red-200 bg-red-50 text-red-500 hover:bg-red-100" : "border-gray-300 bg-white text-gray-600 hover:bg-gray-50"}`}>
               {STATUS_META[status].label}
             </button>
           ))}
+          </div></details>}
+          {saving && <span role="status" className="text-xs text-gray-600">Updating order…</span>}
         </div>
       </div>
     );
@@ -265,6 +292,11 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
 
   return (
     <div className="space-y-4 sm:space-y-5">
+      <div role="status" className={`rounded-xl border p-3 text-sm ${refreshError ? "border-amber-300 bg-amber-50 text-amber-900" : "border-gray-200 text-gray-600"}`}>
+        {loadingOrders ? "Loading orders…" : refreshError ? `${refreshError} ${lastUpdated ? "Showing the last saved queue." : "Your order queue could not be loaded."}` : "Orders are up to date."}
+        {lastUpdated && <span className="ml-2">Last updated {new Date(lastUpdated).toLocaleTimeString()}</span>}
+        <button type="button" className="ml-3 min-h-11 underline font-semibold" onClick={() => void fetchOrders()}>Refresh orders</button>
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-2.5 py-2.5 sm:px-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-600 sm:text-[11px]">Active Queue</p>
@@ -285,7 +317,8 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
       </div>
 
       <section className="surface-card flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:p-4">
-        <input value={orderTableFilter} onChange={(event) => setOrderTableFilter(event.target.value)} placeholder="Filter by table name or number" className="control-input flex-1" />
+        <label htmlFor="order-table-filter" className="text-sm font-semibold">Find a table</label>
+        <input id="order-table-filter" value={orderTableFilter} onChange={(event) => setOrderTableFilter(event.target.value)} placeholder="Filter by table name or number" className="control-input flex-1" />
         <div className="flex items-center justify-between gap-3 sm:contents">
           <span className="text-xs text-gray-500">{filteredOrders.length} order{filteredOrders.length === 1 ? "" : "s"}</span>
           {canTakeOrders && <button onClick={() => setShowComposer(true)} className="btn-primary shrink-0 py-3 sm:w-auto">+ Create new order</button>}
@@ -345,8 +378,8 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
                 <h2 className="text-sm font-bold text-gray-900">{column.label}</h2>
                 <span className="ml-auto text-xs font-bold text-gray-400">{columnOrders.length}</span>
               </div>
-              <div className="max-h-[70vh] space-y-2.5 overflow-y-auto p-2.5">
-                {columnOrders.length === 0 ? <p className="py-8 text-center text-xs text-gray-400">Nothing here</p> : columnOrders.map(renderOrderCard)}
+              <div className="space-y-2.5 xl:max-h-[70vh] xl:overflow-y-auto p-2.5">
+                {columnOrders.length === 0 ? <p className="py-8 text-center text-xs text-gray-400">{loadingOrders ? "Loading orders…" : refreshError && !lastUpdated ? "Refresh to load orders" : orderTableFilter ? "No matching orders" : `No ${column.label.toLowerCase()} orders`}</p> : columnOrders.map(renderOrderCard)}
               </div>
             </div>
           );
@@ -360,6 +393,7 @@ export default function OrderBoard({ restaurantId, actorType, staffRole, canTake
         open={showComposer}
         onClose={() => setShowComposer(false)}
         onCreated={(createdOrder) => {
+          revision.current += 1;
           setOrders((previous) => [createdOrder, ...previous]);
           setOrderPollKey((value) => value + 1);
         }}

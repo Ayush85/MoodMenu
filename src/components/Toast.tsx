@@ -48,6 +48,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           const { bg, icon: Icon } = TOAST_STYLES[t.type];
           return (
             <div
+              role={t.type === "error" ? "alert" : "status"}
               key={t.id}
               className="pointer-events-auto animate-fade-in-up flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-white shadow-lg"
               style={{ backgroundColor: bg }}

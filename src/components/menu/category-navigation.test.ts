@@ -24,3 +24,12 @@ test("uses the first category before its heading reaches the activation point", 
 
   assert.equal(getActiveCategoryId(sections, 100), "breakfast");
 });
+
+test("activates a short final category at the bottom of the page", () => {
+  assert.equal(getActiveCategoryId([{ id: "a", top: -400 }, { id: "b", top: 300 }], 65, true), "b");
+  assert.equal(getActiveCategoryId([], 65, true), null);
+});
+
+test("selects the destination at the heading offset used by category taps", () => {
+  assert.equal(getActiveCategoryId([{ id: "a", top: -400 }, { id: "b", top: 64 }], 65), "b");
+});

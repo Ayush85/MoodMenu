@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   async function doLogin() {
+    if (loading) return;
     if (!email || !password) {
       setError("Please enter email and password");
       return;
@@ -80,17 +81,19 @@ export default function LoginPage() {
           </p>
 
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-3 rounded-xl mb-5 text-sm animate-fade-in">
+            <div id="login-error" role="alert" className="bg-red-500/10 border border-red-500/20 text-red-300 px-4 py-3 rounded-xl mb-5 text-sm animate-fade-in">
               {error}
             </div>
           )}
 
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium text-gray-300 mb-1.5">
                 Email
               </label>
               <input
+                id="login-email"
+                aria-describedby={error ? "login-error" : undefined}
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -102,7 +105,7 @@ export default function LoginPage() {
             </div>
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-medium text-gray-300">
+                <label htmlFor="login-password" className="block text-sm font-medium text-gray-300">
                   Password
                 </label>
                 <Link href="/forgot-password" className="text-xs text-orange-400 hover:text-orange-300 font-medium transition">
@@ -111,6 +114,8 @@ export default function LoginPage() {
               </div>
               <div className="relative">
                 <input
+                  id="login-password"
+                  aria-describedby={error ? "login-error" : undefined}
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -122,7 +127,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
+                  className="absolute right-1 flex min-h-11 min-w-11 items-center justify-center top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

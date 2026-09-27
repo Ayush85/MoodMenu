@@ -10,8 +10,10 @@ export interface CategorySectionPosition {
 export function getActiveCategoryId(
   sections: readonly CategorySectionPosition[],
   activationPoint: number,
+  atBottom = false,
 ): string | null {
   if (sections.length === 0) return null;
+  if (atBottom) return sections[sections.length - 1].id;
 
   let activeCategoryId = sections[0].id;
   for (const section of sections) {

@@ -1,7 +1,7 @@
 "use client";
 
 import { MoodTheme } from "@/types";
-import { useEffect } from "react";
+import { useDialog } from "@/components/ui/use-dialog";
 
 interface Props {
   tableNumber: number;
@@ -16,13 +16,7 @@ interface Props {
 export default function CallWaiterModal({ tableNumber, callMessage, callStatus, onMessageChange, onCall, onClose, theme }: Props) {
   const isDark = theme.mode === "dark";
 
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
+  const dialogRef = useDialog(true, onClose);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -32,6 +26,7 @@ export default function CallWaiterModal({ tableNumber, callMessage, callStatus, 
         onClick={onClose}
       />
       <div
+        ref={dialogRef} aria-label="Call waiter"
         className="relative max-h-[min(92dvh,48rem)] w-full max-w-lg overflow-y-auto rounded-t-3xl p-6 pb-[calc(2.5rem+env(safe-area-inset-bottom))] animate-slide-up"
         style={{
           backgroundColor: isDark ? "#1a1a1f" : "#ffffff",
@@ -47,7 +42,8 @@ export default function CallWaiterModal({ tableNumber, callMessage, callStatus, 
           Table {tableNumber} — a staff member will come to your table
         </p>
 
-        <textarea
+        <label htmlFor="waiter-note" className="block text-sm font-semibold mb-2">Request (optional)</label>
+        <textarea id="waiter-note"
           value={callMessage}
           onChange={(e) => onMessageChange(e.target.value)}
           placeholder="Any special request? (optional)"

@@ -1,5 +1,6 @@
 "use client";
 
+import { readJson } from "@/lib/read-json";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
 import type { RawWaiterCall, WaiterCall } from "./types";
@@ -51,6 +52,7 @@ interface Props {
 
 export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
   const { toast } = useToast();
+  const [refreshError, setRefreshError] = useState(false);
   const [pendingCalls, setPendingCalls] = useState<WaiterCall[]>([]);
   const [callHistory, setCallHistory] = useState<RawWaiterCall[]>([]);
   const [showCallHistory, setShowCallHistory] = useState(false);
@@ -66,9 +68,11 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
     if (!canUseCalls) return;
 
     fetch(`/api/restaurants/${restaurantId}/waiter-calls`)
-      .then((response) => response.json())
+      .then(readJson<RawWaiterCall[]>)
       .then((data: RawWaiterCall[]) => {
-        const raw = Array.isArray(data) ? data : [];
+        if (!Array.isArray(data)) throw new Error("Invalid call response");
+        const raw = data;
+        setRefreshError(false);
         setCallHistory(raw);
 
         const active = raw
@@ -108,7 +112,7 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
         previousPendingCallIds.current = pendingIds;
         setPendingCalls(active);
       })
-      .catch(() => {});
+      .catch(() => setRefreshError(true));
   }, [canUseCalls, restaurantId]);
 
   useEffect(() => {
@@ -137,6 +141,8 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
         return;
       }
       await fetchCalls();
+    } catch {
+      toast("Unable to update the waiter call. Please retry.", "error");
     } finally {
       setUpdatingCallId(null);
     }
@@ -157,6 +163,7 @@ export default function WaiterCallQueue({ restaurantId, canUseCalls }: Props) {
 
   return (
     <section className="space-y-3">
+      {refreshError && <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Waiter calls could not refresh. Showing the last available information.<button className="ml-2 min-h-11 underline" onClick={fetchCalls}>Retry</button></div>}
       <div className="surface-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-gray-500">Front-of-house calls</p>

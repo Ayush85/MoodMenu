@@ -6,6 +6,7 @@ import { useState } from "react";
 export default function NewRestaurantPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [slugEdited, setSlugEdited] = useState(false);
   const [error, setError] = useState("");
 
   function generateSlug(name: string) {
@@ -57,7 +58,7 @@ export default function NewRestaurantPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-5 text-sm animate-fade-in">
+        <div role="alert" className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl mb-5 text-sm animate-fade-in">
           {error}
         </div>
       )}
@@ -71,12 +72,12 @@ export default function NewRestaurantPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          <label htmlFor="restaurant-name" className="block text-sm font-semibold text-gray-700 mb-1.5">
             Restaurant Name
           </label>
           <input
             type="text"
-            name="name"
+            id="restaurant-name" name="name"
             required
             className="control-input !py-3"
             placeholder="Momo House Manthali"
@@ -84,17 +85,17 @@ export default function NewRestaurantPage() {
               const slugInput = e.currentTarget.form?.querySelector(
                 'input[name="slug"]'
               ) as HTMLInputElement;
-              if (slugInput) slugInput.value = generateSlug(e.target.value);
+              if (slugInput && !slugEdited) slugInput.value = generateSlug(e.target.value);
             }}
           />
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+          <label htmlFor="restaurant-city" className="block text-sm font-semibold text-gray-700 mb-1.5">
             City
           </label>
           <input
             type="text"
-            name="city"
+            id="restaurant-city" name="city"
             required
             className="control-input !py-3"
             placeholder="Kathmandu"
@@ -104,14 +105,14 @@ export default function NewRestaurantPage() {
           </p>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-            URL Slug
+          <label htmlFor="restaurant-slug" className="block text-sm font-semibold text-gray-700 mb-1.5">
+            Menu web address
           </label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400 font-mono bg-gray-50 px-3 py-2.5 rounded-lg border border-gray-100">/menu/</span>
             <input
               type="text"
-              name="slug"
+              id="restaurant-slug" name="slug" onChange={() => setSlugEdited(true)}
               required
               pattern="[a-z0-9\-]+"
               className="control-input flex-1 font-mono !py-3"

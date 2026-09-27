@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { AuditLogPort } from "@/modules/shared/application/ports";
 import { DomainError } from "@/modules/shared/domain/errors";
 import { TableSession } from "../../domain/table-session";
 import type {
@@ -12,6 +13,8 @@ function notFound(message: string): DomainError {
 }
 
 export class PrismaTableService implements TableService {
+  constructor(private readonly auditLog?: AuditLogPort) {}
+
   async findTable(restaurantId: string, tableId: string): Promise<TableReference | null> {
     const table = await prisma.restaurantTable.findFirst({
       where: { id: tableId, restaurantId },
@@ -40,6 +43,7 @@ export class PrismaTableService implements TableService {
   }
 
   async closeIfAllOrdersTerminal(sessionId: string, now: Date): Promise<void> {
+    let closed = false;
     await prisma.$transaction(async (tx) => {
       const session = await tx.tableSession.findUnique({
         where: { id: sessionId },
@@ -59,8 +63,17 @@ export class PrismaTableService implements TableService {
           where: { id: sessionId },
           data: { status: "CLOSED", endedAt: now, lastActivityAt: now },
         });
+        closed = true;
       }
     });
+    if (closed && this.auditLog) {
+      await this.auditLog.record({
+        action: "table_session.closed",
+        entityType: "TableSession",
+        entityId: sessionId,
+        occurredAt: now,
+      });
+    }
   }
 
   async listSessions(
@@ -125,6 +138,15 @@ export class PrismaTableService implements TableService {
         data: { status: "CLOSED", endedAt: now, lastActivityAt: now },
       });
     });
+    if (this.auditLog) {
+      await this.auditLog.record({
+        restaurantId,
+        action: "table_session.closed",
+        entityType: "TableSession",
+        entityId: sessionId,
+        occurredAt: now,
+      });
+    }
   }
 
   private mapSession(session: {
@@ -140,4 +162,3 @@ export class PrismaTableService implements TableService {
     return TableSession.fromPersistence(session);
   }
 }
-

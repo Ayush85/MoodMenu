@@ -5,9 +5,10 @@ import { actorCan } from "@/modules/shared/application/actor";
 import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
 import { PrismaWaiterCallRepository } from "@/modules/table-service/infrastructure/prisma/PrismaWaiterCallRepository";
 import { resolveOrderActor } from "@/modules/ordering/infrastructure/http/order-actor";
+import { PrismaAuditLog } from "@/modules/shared/infrastructure/prisma/PrismaAuditLog";
 import type { WaiterCallStatus } from "@/modules/table-service/domain/waiter-call";
 
-const waiterCalls = new PrismaWaiterCallRepository();
+const waiterCalls = new PrismaWaiterCallRepository(new PrismaAuditLog());
 const clock = { now: () => new Date() };
 const validStatuses: WaiterCallStatus[] = ["PENDING", "ACKNOWLEDGED", "RESOLVED"];
 

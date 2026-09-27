@@ -10,6 +10,7 @@ import {
   type MenuManagement,
 } from "../domain/menu";
 import { actorCan, type ActorContext } from "../../shared/application/actor";
+import type { AuditLogPort } from "../../shared/application/ports";
 import { DomainError } from "../../shared/domain/errors";
 import type { MenuCatalog } from "../ports/menu-catalog";
 import type { MenuRepository } from "../ports/menu-repository";
@@ -24,6 +25,7 @@ export class MenuService {
   constructor(
     private readonly repository: MenuRepository,
     private readonly catalog: MenuCatalog,
+    private readonly auditLog?: AuditLogPort,
   ) {}
 
   async createCategory(
@@ -33,7 +35,9 @@ export class MenuService {
   ) {
     assertCanManageMenu(actor, restaurantId);
     const name = validateMenuName(input.name);
-    return this.repository.createCategory({ restaurantId, name, order: input.order });
+    const category = await this.repository.createCategory({ restaurantId, name, order: input.order });
+    await this.recordAudit(actor, restaurantId, "menu.category.created", "MenuCategory", category.id);
+    return category;
   }
 
   async renameCategory(
@@ -44,9 +48,11 @@ export class MenuService {
   ) {
     assertCanManageMenu(actor, restaurantId);
     await this.requireCategory(restaurantId, categoryId);
-    return this.repository.updateCategory(restaurantId, categoryId, {
+    const category = await this.repository.updateCategory(restaurantId, categoryId, {
       name: validateMenuName(name),
     });
+    await this.recordAudit(actor, restaurantId, "menu.category.renamed", "MenuCategory", category.id);
+    return category;
   }
 
   async reorderCategories(
@@ -57,13 +63,17 @@ export class MenuService {
     assertCanManageMenu(actor, restaurantId);
     await Promise.all(entries.map((entry) => this.requireCategory(restaurantId, entry.id)));
     this.validateOrderEntries(entries);
-    return this.repository.reorderCategories(restaurantId, entries);
+    await this.repository.reorderCategories(restaurantId, entries);
+    await this.recordAudit(actor, restaurantId, "menu.categories.reordered", "MenuCategory", undefined, {
+      count: entries.length,
+    });
   }
 
   async deleteCategory(actor: ActorContext, restaurantId: string, categoryId: string) {
     assertCanManageMenu(actor, restaurantId);
     await this.requireCategory(restaurantId, categoryId);
-    return this.repository.deleteCategory(restaurantId, categoryId);
+    await this.repository.deleteCategory(restaurantId, categoryId);
+    await this.recordAudit(actor, restaurantId, "menu.category.deleted", "MenuCategory", categoryId);
   }
 
   async createItem(
@@ -83,7 +93,7 @@ export class MenuService {
   ) {
     assertCanManageMenu(actor, restaurantId);
     await this.requireCategory(restaurantId, input.categoryId);
-    return this.repository.createItem({
+    const item = await this.repository.createItem({
       restaurantId,
       categoryId: input.categoryId,
       name: validateMenuName(input.name),
@@ -95,6 +105,8 @@ export class MenuService {
       isSpecial: input.isSpecial ?? false,
       order: input.order,
     });
+    await this.recordAudit(actor, restaurantId, "menu.item.created", "MenuItem", item.id);
+    return item;
   }
 
   async updateItem(
@@ -113,11 +125,16 @@ export class MenuService {
       const remaining = { ...validated };
       delete remaining.categoryId;
       const moved = await this.repository.moveItem(restaurantId, itemId, input.categoryId);
-      return Object.keys(remaining).length > 0
+      const item = Object.keys(remaining).length > 0
         ? this.repository.updateItem(restaurantId, itemId, remaining)
         : moved;
+      const updated = await item;
+      await this.recordAudit(actor, restaurantId, "menu.item.updated", "MenuItem", updated.id);
+      return updated;
     }
-    return this.repository.updateItem(restaurantId, itemId, validated);
+    const item = await this.repository.updateItem(restaurantId, itemId, validated);
+    await this.recordAudit(actor, restaurantId, "menu.item.updated", "MenuItem", item.id);
+    return item;
   }
 
   async moveItem(
@@ -129,7 +146,11 @@ export class MenuService {
     assertCanManageMenu(actor, restaurantId);
     await this.requireItem(restaurantId, itemId);
     await this.requireCategory(restaurantId, targetCategoryId);
-    return this.repository.moveItem(restaurantId, itemId, targetCategoryId);
+    const item = await this.repository.moveItem(restaurantId, itemId, targetCategoryId);
+    await this.recordAudit(actor, restaurantId, "menu.item.moved", "MenuItem", item.id, {
+      categoryId: targetCategoryId,
+    });
+    return item;
   }
 
   async reorderItems(
@@ -140,7 +161,10 @@ export class MenuService {
     assertCanManageMenu(actor, restaurantId);
     await Promise.all(entries.map((entry) => this.requireItem(restaurantId, entry.id)));
     this.validateOrderEntries(entries);
-    return this.repository.reorderItems(restaurantId, entries);
+    await this.repository.reorderItems(restaurantId, entries);
+    await this.recordAudit(actor, restaurantId, "menu.items.reordered", "MenuItem", undefined, {
+      count: entries.length,
+    });
   }
 
   async setAvailability(
@@ -151,13 +175,18 @@ export class MenuService {
   ) {
     assertCanManageMenu(actor, restaurantId);
     await this.requireItem(restaurantId, itemId);
-    return this.repository.updateItem(restaurantId, itemId, { isAvailable });
+    const item = await this.repository.updateItem(restaurantId, itemId, { isAvailable });
+    await this.recordAudit(actor, restaurantId, "menu.item.availability_changed", "MenuItem", item.id, {
+      isAvailable,
+    });
+    return item;
   }
 
   async deleteItem(actor: ActorContext, restaurantId: string, itemId: string) {
     assertCanManageMenu(actor, restaurantId);
     await this.requireItem(restaurantId, itemId);
-    return this.repository.deleteItem(restaurantId, itemId);
+    await this.repository.deleteItem(restaurantId, itemId);
+    await this.recordAudit(actor, restaurantId, "menu.item.deleted", "MenuItem", itemId);
   }
 
   async importMenu(
@@ -167,7 +196,12 @@ export class MenuService {
   ) {
     assertCanManageMenu(actor, restaurantId);
     const validated = validateMenuImport(input);
-    return this.repository.importMenu(restaurantId, validated);
+    const result = await this.repository.importMenu(restaurantId, validated);
+    await this.recordAudit(actor, restaurantId, "menu.imported", "Menu", undefined, {
+      categoriesCreated: result.categoriesCreated,
+      itemsCreated: result.itemsCreated,
+    });
+    return result;
   }
 
   async getManagementMenu(restaurantId: string): Promise<MenuManagement> {
@@ -197,6 +231,27 @@ export class MenuService {
       throw new DomainError("NOT_FOUND", "Item not found");
     }
     return item;
+  }
+
+  private async recordAudit(
+    actor: ActorContext,
+    restaurantId: string,
+    action: string,
+    entityType: string,
+    entityId?: string,
+    metadata?: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    if (!this.auditLog) return;
+    await this.auditLog.record({
+      restaurantId,
+      actorId: actor.id,
+      actorType: actor.type,
+      action,
+      entityType,
+      entityId,
+      metadata,
+      occurredAt: new Date(),
+    });
   }
 
   private validateOrderEntries(entries: Array<{ id: string; order: number }>) {

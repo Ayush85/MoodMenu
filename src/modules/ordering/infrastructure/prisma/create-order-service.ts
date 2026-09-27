@@ -2,6 +2,7 @@ import { PrismaMenuCatalog } from "@/modules/menu-management/infrastructure/pris
 import { OrderService } from "../../application/order-service";
 import { PrismaOrderRepository } from "./PrismaOrderRepository";
 import { PrismaTableService } from "@/modules/table-service/infrastructure/prisma/PrismaTableService";
+import { PrismaAuditLog } from "@/modules/shared/infrastructure/prisma/PrismaAuditLog";
 
 export function createPrismaOrderService(): OrderService {
   return new OrderService({
@@ -9,6 +10,6 @@ export function createPrismaOrderService(): OrderService {
     tableService: new PrismaTableService(),
     orderRepository: new PrismaOrderRepository(),
     clock: { now: () => new Date() },
+    auditLog: new PrismaAuditLog(),
   });
 }
-

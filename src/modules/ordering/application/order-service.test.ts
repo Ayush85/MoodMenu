@@ -8,17 +8,18 @@ import type { TableService } from "../../table-service/ports/table-service";
 import { TableSession } from "../../table-service/domain/table-session";
 import type { OrderRepository } from "../ports/order-repository";
 import type { Order } from "../domain/order";
-import { OrderService } from "./order-service";
+import { OrderService, type CustomerOrderActor } from "./order-service";
 
 const owner: ActorContext = {
   id: "owner-1",
   type: "OWNER",
   restaurantId: "restaurant-1",
 };
-const customer: ActorContext = {
+const customer: CustomerOrderActor = {
   id: "table-token-1",
   type: "CUSTOMER",
   restaurantId: "restaurant-1",
+  tableId: "table-1",
 };
 const snapshots = [
   { itemId: "item-1", itemName: "Momo", unitPrice: 180 },

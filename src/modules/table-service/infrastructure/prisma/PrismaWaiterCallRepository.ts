@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { AuditLogPort } from "@/modules/shared/application/ports";
 import { DomainError } from "@/modules/shared/domain/errors";
 import {
   WaiterCall,
@@ -8,6 +9,8 @@ import {
 import type { WaiterCallRepository } from "../../ports/table-service";
 
 export class PrismaWaiterCallRepository implements WaiterCallRepository {
+  constructor(private readonly auditLog?: AuditLogPort) {}
+
   async hasRecentPending(tableId: string, since: Date): Promise<boolean> {
     const call = await prisma.waiterCall.findFirst({
       where: { tableId, status: "PENDING", createdAt: { gte: since } },
@@ -27,7 +30,18 @@ export class PrismaWaiterCallRepository implements WaiterCallRepository {
       },
       include: { table: { select: { number: true, label: true } } },
     });
-    return this.map(created);
+    const result = this.map(created);
+    if (this.auditLog) {
+      await this.auditLog.record({
+        restaurantId: result.restaurantId,
+        action: "waiter_call.created",
+        entityType: "WaiterCall",
+        entityId: result.id,
+        metadata: { tableId: result.tableId },
+        occurredAt: result.createdAt,
+      });
+    }
+    return result;
   }
 
   async findById(restaurantId: string, callId: string): Promise<WaiterCall | null> {
@@ -62,7 +76,19 @@ export class PrismaWaiterCallRepository implements WaiterCallRepository {
       },
       include: { table: { select: { number: true, label: true } } },
     });
-    return this.map(updated);
+    const result = this.map(updated);
+    if (this.auditLog) {
+      await this.auditLog.record({
+        restaurantId: result.restaurantId,
+        action: "waiter_call.status_changed",
+        entityType: "WaiterCall",
+        entityId: result.id,
+        actorId: result.handledBy ?? undefined,
+        metadata: { status: result.status },
+        occurredAt: new Date(),
+      });
+    }
+    return result;
   }
 
   private map(record: {
@@ -92,4 +118,3 @@ export class PrismaWaiterCallRepository implements WaiterCallRepository {
     return WaiterCall.fromPersistence(props);
   }
 }
-

@@ -246,6 +246,21 @@ model PushToken {
   @@index([ownerId])
 }
 
+model AuditEvent {
+  id           String   @id @default(cuid())
+  restaurantId String?
+  actorId      String?
+  actorType    String?
+  action       String
+  entityType   String
+  entityId     String?
+  metadata     Json?
+  occurredAt   DateTime @default(now())
+
+  @@index([restaurantId, occurredAt])
+  @@index([entityType, entityId])
+}
+
 model MoodRule {
   id           String     @id @default(cuid())
   name         String

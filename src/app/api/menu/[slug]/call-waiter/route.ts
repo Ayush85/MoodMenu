@@ -9,9 +9,10 @@ import { domainErrorToHttp } from "@/modules/shared/application/domain-error-htt
 import { WaiterCall } from "@/modules/table-service/domain/waiter-call";
 import { PrismaWaiterCallRepository } from "@/modules/table-service/infrastructure/prisma/PrismaWaiterCallRepository";
 import { createCustomerTableActorService } from "@/modules/table-service/infrastructure/http/create-customer-table-actor-service";
+import { PrismaAuditLog } from "@/modules/shared/infrastructure/prisma/PrismaAuditLog";
 
 const customerTableActorService = createCustomerTableActorService();
-const waiterCalls = new PrismaWaiterCallRepository();
+const waiterCalls = new PrismaWaiterCallRepository(new PrismaAuditLog());
 const notifications = new PushNotificationPort();
 
 export const POST = withApiLogging(async function POST(

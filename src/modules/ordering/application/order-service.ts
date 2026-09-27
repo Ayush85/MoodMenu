@@ -1,5 +1,5 @@
 import { actorCan, type ActorContext } from "../../shared/application/actor";
-import type { Clock } from "../../shared/application/ports";
+import type { AuditLogPort, Clock } from "../../shared/application/ports";
 import { DomainError } from "../../shared/domain/errors";
 import type { MenuCatalog } from "../../menu-management/ports/menu-catalog";
 import { Order, type OrderStatus } from "../domain/order";
@@ -36,6 +36,7 @@ export class OrderService {
     tableService: TableService;
     orderRepository: OrderRepository;
     clock: Clock;
+    auditLog?: AuditLogPort;
   }) {
     this.clock = dependencies.clock;
   }
@@ -45,7 +46,7 @@ export class OrderService {
     input: CreateOrderInput,
   ): Promise<{ order: Order; duplicate: false; notification: OrderNotificationIntent }> {
     this.assertActor(actor, input.restaurantId, "create_staff_order");
-    return this.createOrder(input, false);
+    return this.createOrder(input, false, actor);
   }
 
   async createCustomerOrder(
@@ -73,7 +74,7 @@ export class OrderService {
       }
     }
 
-    return this.createOrder(input, true);
+    return this.createOrder(input, true, actor);
   }
 
   async changeStatus(
@@ -95,6 +96,9 @@ export class OrderService {
         this.clock.now(),
       );
     }
+    await this.recordAudit(actor, input.restaurantId, "order.status_changed", "Order", saved.id, {
+      status: saved.status,
+    });
 
     return {
       order: saved,
@@ -140,6 +144,7 @@ export class OrderService {
   private async createOrder(
     input: CreateOrderInput,
     customerOrder: boolean,
+    actor: ActorContext,
   ): Promise<{ order: Order; duplicate: false; notification: OrderNotificationIntent }> {
     const table = await this.dependencies.tableService.findTable(input.restaurantId, input.tableId);
     if (!table) throw new DomainError("NOT_FOUND", "Table not found");
@@ -180,6 +185,11 @@ export class OrderService {
         table,
       }),
     );
+    await this.recordAudit(actor, input.restaurantId, "order.created", "Order", saved.id, {
+      itemCount: saved.lines.length,
+      total: saved.total,
+      source: customerOrder ? "CUSTOMER" : "STAFF",
+    });
     return {
       order: saved,
       duplicate: false,
@@ -236,5 +246,26 @@ export class OrderService {
       orderId: order.id ?? "",
       status: order.status,
     };
+  }
+
+  private async recordAudit(
+    actor: ActorContext,
+    restaurantId: string,
+    action: string,
+    entityType: string,
+    entityId: string | undefined,
+    metadata?: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    if (!this.dependencies.auditLog) return;
+    await this.dependencies.auditLog.record({
+      restaurantId,
+      actorId: actor.type === "CUSTOMER" ? undefined : actor.id,
+      actorType: actor.type,
+      action,
+      entityType,
+      entityId,
+      metadata,
+      occurredAt: this.clock.now(),
+    });
   }
 }

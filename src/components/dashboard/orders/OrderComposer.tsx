@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
+import { scrollFocusedElementIntoView } from "./order-composer-mobile";
 import type { MenuItemOption, OrderTicket, RestaurantTableData } from "./types";
 
 interface Props {
@@ -83,6 +84,33 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
       searchInputRef.current?.focus();
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !window.visualViewport) return;
+
+    const viewport = window.visualViewport;
+    let frame = 0;
+    const keepSearchVisible = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        scrollFocusedElementIntoView(searchInputRef.current, document.activeElement);
+      });
+    };
+
+    viewport.addEventListener("resize", keepSearchVisible);
+    viewport.addEventListener("scroll", keepSearchVisible);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      viewport.removeEventListener("resize", keepSearchVisible);
+      viewport.removeEventListener("scroll", keepSearchVisible);
+    };
+  }, [open]);
+
+  function revealSearchInput() {
+    window.requestAnimationFrame(() => {
+      scrollFocusedElementIntoView(searchInputRef.current, document.activeElement, "smooth");
+    });
+  }
 
   function incrementItem(itemId: string) {
     setSelectedItems((previous) => ({ ...previous, [itemId]: (previous[itemId] || 0) + 1 }));
@@ -195,9 +223,8 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-6">
       <button aria-label="Close order composer" onClick={onClose} className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" />
-      <section role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex max-h-[min(92dvh,48rem)] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
-        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-gray-200 sm:hidden" />
-        <header className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4 sm:px-6">
+      <section role="dialog" aria-modal="true" aria-labelledby="new-order-title" className="relative flex h-[100dvh] min-h-0 max-h-none w-full max-w-none flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[min(92dvh,48rem)] sm:max-w-xl sm:rounded-3xl">
+        <header className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 pb-4 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 sm:py-4">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-500">Staff order</p>
             <h2 id="new-order-title" className="mt-1 text-xl font-extrabold text-gray-900">Create new order</h2>
@@ -208,7 +235,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-6">
+        <div className="min-h-0 flex-1 overscroll-contain overflow-y-auto p-5 sm:p-6">
           <div className="space-y-4">
             <div>
               <label className="field-label">Table</label>
@@ -228,7 +255,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
 
             <div>
               <label className="field-label">Add menu items</label>
-              <input ref={searchInputRef} value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} placeholder="Search by item name" className="control-input mt-1 w-full" />
+              <input ref={searchInputRef} onFocus={revealSearchInput} value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} placeholder="Search by item name" className="control-input mt-1 w-full scroll-mt-4" />
             </div>
 
             {/* No inner scroll on mobile — a scroll region nested inside the
@@ -296,7 +323,7 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
           </div>
         </div>
 
-        <footer className="flex shrink-0 flex-col gap-2.5 border-t border-gray-100 bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6">
+        <footer className="flex shrink-0 flex-col gap-2.5 border-t border-gray-100 bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-6 sm:pb-5">
           {orderDraft.length > 0 && (
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>{orderDraft.reduce((sum, row) => sum + row.quantity, 0)} item{orderDraft.reduce((sum, row) => sum + row.quantity, 0) !== 1 ? "s" : ""}</span>

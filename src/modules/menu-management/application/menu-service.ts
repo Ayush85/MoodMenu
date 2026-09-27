@@ -104,15 +104,20 @@ export class MenuService {
     input: MenuItemPatch,
   ) {
     assertCanManageMenu(actor, restaurantId);
-    await this.requireItem(restaurantId, itemId);
+    const currentItem = await this.requireItem(restaurantId, itemId);
     if (input.categoryId !== undefined) {
       await this.requireCategory(restaurantId, input.categoryId);
     }
-    return this.repository.updateItem(
-      restaurantId,
-      itemId,
-      validateMenuItemPatch(input),
-    );
+    const validated = validateMenuItemPatch(input);
+    if (input.categoryId !== undefined && input.categoryId !== currentItem.categoryId) {
+      const remaining = { ...validated };
+      delete remaining.categoryId;
+      const moved = await this.repository.moveItem(restaurantId, itemId, input.categoryId);
+      return Object.keys(remaining).length > 0
+        ? this.repository.updateItem(restaurantId, itemId, remaining)
+        : moved;
+    }
+    return this.repository.updateItem(restaurantId, itemId, validated);
   }
 
   async moveItem(

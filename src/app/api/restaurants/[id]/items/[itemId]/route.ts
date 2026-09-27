@@ -1,102 +1,70 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import { createPrismaMenuService } from "@/modules/menu-management/infrastructure/prisma/create-menu-service";
+import { resolveMenuActor } from "@/modules/menu-management/infrastructure/http/menu-actor";
+
+const menuService = createPrismaMenuService();
+
+function errorResponse(error: unknown) {
+  const mapped = domainErrorToHttp(error);
+  return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+}
 
 export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; itemId: string }> }
+  { params }: { params: Promise<{ id: string; itemId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (session.user.actorType === "STAFF") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const { id, itemId } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Verify item belongs to this restaurant
-  const item = await prisma.menuItem.findFirst({
-    where: { id: itemId, category: { restaurantId: id } },
-  });
-  if (!item) {
-    return NextResponse.json({ error: "Item not found" }, { status: 404 });
-  }
-
-  const data = await req.json();
-
-  // If moving to another category, validate the target belongs to this restaurant
-  // and append to the end of its order so it doesn't collide with existing items there.
-  let newOrder: number | undefined;
-  if (data.categoryId && data.categoryId !== item.categoryId) {
-    const targetCat = await prisma.category.findFirst({
-      where: { id: data.categoryId, restaurantId: id },
-    });
-    if (!targetCat) {
-      return NextResponse.json({ error: "Target category not found" }, { status: 404 });
-    }
-    const maxOrder = await prisma.menuItem.aggregate({
-      where: { categoryId: data.categoryId },
-      _max: { order: true },
-    });
-    newOrder = (maxOrder._max.order ?? -1) + 1;
-  }
-
-  const updated = await prisma.menuItem.update({
-    where: { id: itemId },
-    data: {
+  try {
+    const data = await req.json();
+    const updated = await menuService.updateItem(actor, id, itemId, {
       name: data.name,
       description: data.description,
-      price: data.price !== undefined ? parseFloat(data.price) : undefined,
+      price: data.price !== undefined ? Number.parseFloat(data.price) : undefined,
       image: data.image,
       tags: data.tags,
       isAvailable: data.isAvailable,
       isSpecial: data.isSpecial,
       categoryId: data.categoryId,
-      order: newOrder,
-    },
-  });
-
-  return NextResponse.json(updated);
+    });
+    return NextResponse.json(updated);
+  } catch (error) {
+    return errorResponse(error);
+  }
 });
-
 export const DELETE = withApiLogging(async function DELETE(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string; itemId: string }> }
+  { params }: { params: Promise<{ id: string; itemId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (session.user.actorType === "STAFF") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
 
   const { id, itemId } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  try {
+    await menuService.deleteItem(actor, id, itemId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  // Verify item belongs to this restaurant
-  const item = await prisma.menuItem.findFirst({
-    where: { id: itemId, category: { restaurantId: id } },
-  });
-  if (!item) {
-    return NextResponse.json({ error: "Item not found" }, { status: 404 });
-  }
-
-  await prisma.menuItem.delete({ where: { id: itemId } });
-
-  return NextResponse.json({ success: true });
 });

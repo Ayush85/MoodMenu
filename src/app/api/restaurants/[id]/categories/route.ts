@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import { createPrismaMenuService } from "@/modules/menu-management/infrastructure/prisma/create-menu-service";
+import { resolveMenuActor } from "@/modules/menu-management/infrastructure/http/menu-actor";
+
+const menuService = createPrismaMenuService();
+
+function errorResponse(error: unknown) {
+  const mapped = domainErrorToHttp(error);
+  return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+}
 
 export const POST = withApiLogging(async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -13,38 +22,25 @@ export const POST = withApiLogging(async function POST(
   }
 
   const { id } = await params;
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!restaurant) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const body = await req.json();
+    const category = await menuService.createCategory(actor, id, {
+      name: body?.name,
+    });
+    return NextResponse.json(category, { status: 201 });
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  const { name } = await req.json();
-  if (!name) {
-    return NextResponse.json({ error: "Name is required" }, { status: 400 });
-  }
-
-  const maxOrder = await prisma.category.aggregate({
-    where: { restaurantId: id },
-    _max: { order: true },
-  });
-
-  const category = await prisma.category.create({
-    data: {
-      name,
-      order: (maxOrder._max.order ?? -1) + 1,
-      restaurantId: id,
-    },
-  });
-
-  return NextResponse.json(category, { status: 201 });
 });
-
 export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -52,40 +48,33 @@ export const PATCH = withApiLogging(async function PATCH(
   }
 
   const { id } = await params;
-  const body = await req.json();
-
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  // Rename a single category
-  if (body.categoryId && body.name !== undefined) {
-    const updated = await prisma.category.update({
-      where: { id: body.categoryId },
-      data: { name: body.name.trim() },
-    });
-    return NextResponse.json(updated);
-  }
+  const body = await req.json();
+  try {
+    if (body?.categoryId && body.name !== undefined) {
+      const updated = await menuService.renameCategory(actor, id, body.categoryId, body.name);
+      return NextResponse.json(updated);
+    }
 
-  // Reorder categories: body.order = [{id, order}, ...]
-  if (Array.isArray(body.order)) {
-    await Promise.all(
-      body.order.map(({ id: catId, order }: { id: string; order: number }) =>
-        prisma.category.update({ where: { id: catId }, data: { order } })
-      )
-    );
-    return NextResponse.json({ success: true });
-  }
+    if (Array.isArray(body?.order)) {
+      await menuService.reorderCategories(actor, id, body.order);
+      return NextResponse.json({ success: true });
+    }
 
-  return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
+  } catch (error) {
+    return errorResponse(error);
+  }
 });
 
 export const DELETE = withApiLogging(async function DELETE(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -93,17 +82,17 @@ export const DELETE = withApiLogging(async function DELETE(
   }
 
   const { id } = await params;
-  const { categoryId } = await req.json();
-
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!restaurant) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const body = await req.json();
+    await menuService.deleteCategory(actor, id, body?.categoryId);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  await prisma.category.delete({ where: { id: categoryId } });
-
-  return NextResponse.json({ success: true });
 });

@@ -3,6 +3,7 @@ export type {
   MenuCategory,
   MenuCategoryWithItems,
   MenuImportInput,
+  MenuImportResult,
   MenuItem,
   MenuItemPatch,
   MenuManagement,
@@ -12,6 +13,7 @@ import type {
   CreateMenuItemInput,
   MenuCategory,
   MenuImportInput,
+  MenuImportResult,
   MenuItem,
   MenuItemPatch,
   MenuManagement,
@@ -51,7 +53,6 @@ export interface MenuRepository {
     entries: Array<{ id: string; order: number }>,
   ): Promise<void>;
   deleteItem(restaurantId: string, itemId: string): Promise<void>;
-  importMenu(restaurantId: string, input: MenuImportInput): Promise<void>;
+  importMenu(restaurantId: string, input: MenuImportInput): Promise<MenuImportResult>;
   getManagementMenu(restaurantId: string): Promise<MenuManagement>;
 }
-

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
@@ -10,6 +9,7 @@ import { withApiLogging } from "@/lib/api-handler";
 import { logger } from "@/lib/logger";
 import { detectImageContentType } from "@/lib/storage";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { resolveMenuActor } from "@/modules/menu-management/infrastructure/http/menu-actor";
 
 const PROMPT = `You are a menu parser. Extract all menu items from this menu image.
 Return ONLY valid JSON with this exact structure, no markdown, no explanation:
@@ -196,11 +196,14 @@ export const POST = withApiLogging(async function POST(
     return NextResponse.json({ error: "Restaurant ID required" }, { status: 400 });
   }
 
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
-    select: { id: true },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-  if (!restaurant) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (actor.type !== "OWNER") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const requestLimit = checkRateLimit(`ai:${session.user.id}`, 30, 60 * 60 * 1000);
   if (!requestLimit.allowed) {

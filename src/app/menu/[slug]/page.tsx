@@ -8,8 +8,11 @@ import MenuClient from "@/components/menu/MenuClient";
 import { isOfferCurrentlyValid } from "@/lib/offers";
 import { isValidTableToken } from "@/lib/table-token";
 import { serializeJsonLd } from "@/lib/structured-data";
+import { createPrismaMenuService } from "@/modules/menu-management/infrastructure/prisma/create-menu-service";
 
 export const dynamic = "force-dynamic";
+
+const menuService = createPrismaMenuService();
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -21,6 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
     select: {
+      id: true,
       name: true,
       city: true,
       logo: true,
@@ -28,7 +32,6 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       domainVerifiedAt: true,
       landingEnabled: true,
       isSuspended: true,
-      categories: { select: { items: { select: { id: true }, take: 1 } }, take: 1 },
     },
   });
 
@@ -40,7 +43,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // indexing — keep thin/empty signup pages out of search results so they
   // don't dilute the domain's overall search quality. A suspended restaurant
   // shouldn't be indexed either — its page won't render normally.
-  const hasMenuItems = restaurant.categories.some((cat) => cat.items.length > 0);
+  const menu = await menuService.getPublishedMenu(restaurant.id);
+  const hasMenuItems = menu.categories.some((cat) => cat.items.length > 0);
   const shouldIndex = hasMenuItems && !restaurant.isSuspended;
 
   const title = `${restaurant.name} Menu`;
@@ -91,15 +95,6 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const restaurant = await prisma.restaurant.findUnique({
     where: { slug },
     include: {
-      categories: {
-        orderBy: { order: "asc" },
-        include: {
-          items: {
-            where: { isAvailable: true },
-            orderBy: { order: "asc" },
-          },
-        },
-      },
       moodRules: { orderBy: { priority: "desc" } },
       offers: { where: { isActive: true }, orderBy: { createdAt: "desc" } },
     },
@@ -117,6 +112,8 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
       </div>
     );
   }
+
+  const menu = await menuService.getPublishedMenu(restaurant.id);
 
   // A table number is only trusted when it carries a valid signed token —
   // otherwise it was hand-typed/edited in the URL bar, not scanned off this
@@ -169,7 +166,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
   const greeting = getTimeGreetingFromHour(getRestaurantHour());
 
   // Identify featured items
-  const allItems = restaurant.categories.flatMap((cat) => cat.items);
+  const allItems = menu.categories.flatMap((cat) => cat.items);
 
   const moodMatches = allItems
     .filter((item) =>
@@ -198,7 +195,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     landingEnabled: restaurant.landingEnabled,
   });
 
-  const menuItems = restaurant.categories.flatMap((cat) =>
+  const menuItems = menu.categories.flatMap((cat) =>
     cat.items.map((item) => ({
       "@type": "MenuItem",
       name: item.name,
@@ -226,7 +223,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
     servesCuisine: "Various",
     hasMenu: {
       "@type": "Menu",
-      hasMenuSection: restaurant.categories.map((cat) => ({
+      hasMenuSection: menu.categories.map((cat) => ({
         "@type": "MenuSection",
         name: cat.name,
         hasMenuItem: cat.items.map((item) => ({
@@ -266,7 +263,7 @@ export default async function PublicMenuPage({ params, searchParams }: Props) {
         wifiSsid: restaurant.wifiSsid,
         wifiPassword: restaurant.wifiPassword,
       }}
-      categories={restaurant.categories.map((cat) => ({
+      categories={menu.categories.map((cat) => ({
         id: cat.id,
         name: cat.name,
         items: cat.items.map((item) => ({

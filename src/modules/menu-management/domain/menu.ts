@@ -80,6 +80,16 @@ export type MenuImportInput = {
   categories: MenuImportCategoryInput[];
 };
 
+export type MenuImportResult = {
+  categoriesCreated: number;
+  itemsCreated: number;
+  items: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+  }>;
+};
+
 function validationError(message: string, field?: string): DomainError {
   return new DomainError(
     "VALIDATION_FAILED",

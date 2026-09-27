@@ -120,6 +120,7 @@ class InMemoryMenuRepository implements MenuRepository {
     void restaurantId;
     void input;
     this.importCalls += 1;
+    return { categoriesCreated: 0, itemsCreated: 0, items: [] };
   }
 
   async getManagementMenu(restaurantId: string): Promise<MenuManagement> {

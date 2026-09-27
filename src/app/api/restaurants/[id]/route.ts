@@ -7,6 +7,9 @@ import { isPlatformHost } from "@/lib/site-host";
 import { requestDomainProvisioning } from "@/lib/domain-provision";
 import { Prisma } from "@/generated/prisma/client";
 import { withApiLogging } from "@/lib/api-handler";
+import { createPrismaMenuService } from "@/modules/menu-management/infrastructure/prisma/create-menu-service";
+
+const menuService = createPrismaMenuService();
 
 export const GET = withApiLogging(async function GET(
   _req: NextRequest,
@@ -27,10 +30,6 @@ export const GET = withApiLogging(async function GET(
     where: whereClause,
     include: {
       tables: { orderBy: { number: "asc" } },
-      categories: {
-        orderBy: { order: "asc" },
-        include: { items: { orderBy: { order: "asc" } } },
-      },
       moodRules: { orderBy: { priority: "desc" } },
     },
   });
@@ -39,7 +38,27 @@ export const GET = withApiLogging(async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(isStaff ? { ...restaurant, wifiPassword: null } : restaurant);
+  const menu = await menuService.getManagementMenu(id);
+  const categories = menu.categories.map((category) => ({
+    id: category.id,
+    name: category.name,
+    order: category.order,
+    items: category.items.map((item) => ({
+      id: item.id,
+      categoryId: item.categoryId,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      image: item.image,
+      tags: item.tags,
+      isAvailable: item.isAvailable,
+      isSpecial: item.isSpecial,
+      order: item.order,
+    })),
+  }));
+  const response = { ...restaurant, categories };
+
+  return NextResponse.json(isStaff ? { ...response, wifiPassword: null } : response);
 });
 
 export const PATCH = withApiLogging(async function PATCH(

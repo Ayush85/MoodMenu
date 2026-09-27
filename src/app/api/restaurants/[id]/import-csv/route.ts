@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
+import { createPrismaMenuService } from "@/modules/menu-management/infrastructure/prisma/create-menu-service";
+import { resolveMenuActor } from "@/modules/menu-management/infrastructure/http/menu-actor";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import type { MenuImportInput } from "@/modules/menu-management/ports/menu-repository";
 
-interface CsvRow {
-  category: string;
-  name: string;
-  description?: string;
-  price: number;
-  tags?: string[];
+const menuService = createPrismaMenuService();
+
+function errorResponse(error: unknown) {
+  const mapped = domainErrorToHttp(error);
+  return NextResponse.json({ error: mapped.message }, { status: mapped.status });
 }
 
 export const POST = withApiLogging(async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -21,110 +23,52 @@ export const POST = withApiLogging(async function POST(
   }
 
   const { id } = await params;
-
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { id, ownerId: session.user.id },
-    include: { categories: { select: { id: true, name: true } } },
+  const actor = await resolveMenuActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
   });
-
-  if (!restaurant) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
-  const rows: CsvRow[] = body.rows;
-
-  if (!Array.isArray(rows) || rows.length === 0) {
+  if (!Array.isArray(body?.rows) || body.rows.length === 0) {
     return NextResponse.json({ error: "No rows provided" }, { status: 400 });
   }
-
-  if (rows.length > 500) {
+  if (body.rows.length > 500) {
     return NextResponse.json({ error: "Maximum 500 items per import" }, { status: 400 });
   }
 
-  // Validate rows
-  for (const row of rows) {
-    if (!row.category?.trim()) return NextResponse.json({ error: `Missing category for item: ${row.name}` }, { status: 400 });
-    if (!row.name?.trim()) return NextResponse.json({ error: "All items must have a name" }, { status: 400 });
-    if (typeof row.price !== "number" || isNaN(row.price) || row.price < 0) {
-      return NextResponse.json({ error: `Invalid price for item: ${row.name}` }, { status: 400 });
-    }
-  }
-
-  // Group rows by category
-  const grouped: Record<string, CsvRow[]> = {};
-  for (const row of rows) {
-    const key = row.category.trim();
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(row);
-  }
-
-  // Resolve / create categories
-  const categoryMap: Record<string, string> = {}; // name → id
-  for (const existing of restaurant.categories) {
-    categoryMap[existing.name.toLowerCase()] = existing.id;
-  }
-
-  let categoriesCreated = 0;
-  const createdItems: { id: string; name: string; description: string | null }[] = [];
-
-  // Everything below runs in one transaction: a large import failing midway
-  // (a DB hiccup on row 300 of 500) used to leave whatever had already been
-  // created in place with no indication of which rows made it — now it's
-  // all-or-nothing. Raised timeout/maxWait since up to 500 rows run
-  // sequentially (order assignment per category needs it) rather than as a
-  // single batched write.
-  await prisma.$transaction(async (tx) => {
-    const maxOrderResult = await tx.category.aggregate({
-      where: { restaurantId: id },
-      _max: { order: true },
+  const grouped = new Map<string, MenuImportInput["categories"][number]>();
+  for (const rawRow of body.rows) {
+    const row = rawRow && typeof rawRow === "object"
+      ? rawRow as Record<string, unknown>
+      : {};
+    const category = typeof row.category === "string" ? row.category.trim() : "";
+    const name = typeof row.name === "string" ? row.name.trim() : "";
+    const key = category.toLowerCase();
+    const existing = grouped.get(key);
+    const target = existing ?? { name: category, items: [] };
+    target.items.push({
+      name,
+      description: typeof row.description === "string" ? row.description : null,
+      price: row.price as number,
+      tags: Array.isArray(row.tags)
+        ? row.tags.filter((tag): tag is string => typeof tag === "string")
+        : [],
     });
-    let nextOrder = (maxOrderResult._max.order ?? -1) + 1;
+    grouped.set(key, target);
+  }
 
-    for (const [catName, catRows] of Object.entries(grouped)) {
-      const key = catName.toLowerCase();
-      let categoryId = categoryMap[key];
-
-      if (!categoryId) {
-        const newCat = await tx.category.create({
-          data: {
-            name: catName,
-            order: nextOrder++,
-            restaurantId: id,
-          },
-        });
-        categoryId = newCat.id;
-        categoryMap[key] = categoryId;
-        categoriesCreated++;
-      }
-
-      const maxItemOrder = await tx.menuItem.aggregate({
-        where: { categoryId },
-        _max: { order: true },
-      });
-      let nextItemOrder = (maxItemOrder._max.order ?? -1) + 1;
-
-      for (const row of catRows) {
-        const item = await tx.menuItem.create({
-          data: {
-            name: row.name.trim(),
-            description: row.description?.trim() || null,
-            price: row.price,
-            tags: Array.isArray(row.tags) ? row.tags.filter(Boolean) : [],
-            order: nextItemOrder++,
-            categoryId,
-          },
-          select: { id: true, name: true, description: true },
-        });
-        createdItems.push(item);
-      }
-    }
-  }, { timeout: 30000, maxWait: 10000 });
-
-  return NextResponse.json({
-    ok: true,
-    itemsCreated: createdItems.length,
-    categoriesCreated,
-    items: createdItems,
-  });
+  try {
+    const result = await menuService.importMenu(actor, id, {
+      categories: Array.from(grouped.values()),
+    });
+    return NextResponse.json({
+      ok: true,
+      itemsCreated: result.itemsCreated,
+      categoriesCreated: result.categoriesCreated,
+      items: result.items,
+    });
+  } catch (error) {
+    return errorResponse(error);
+  }
 });

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import { DomainError } from "@/modules/shared/domain/errors";
 import { Order, type OrderProps, type OrderTable } from "../../domain/order";
 import type { OrderRepository } from "../../ports/order-repository";
@@ -26,7 +27,8 @@ type OrderRecord = {
 
 export class PrismaOrderRepository implements OrderRepository {
   async create(order: Order): Promise<Order> {
-    const created = await prisma.$transaction(async (tx) => {
+    try {
+      const created = await prisma.$transaction(async (tx) => {
       let session = await tx.tableSession.findFirst({
         where: { id: order.sessionId, restaurantId: order.restaurantId, tableId: order.tableId },
       });
@@ -69,14 +71,29 @@ export class PrismaOrderRepository implements OrderRepository {
         },
       });
 
-      return createdOrder;
-    });
+        return createdOrder;
+      });
 
-    return this.map({
-      ...created,
-      sessionId: order.sessionId,
-      customerRequestId: order.customerRequestId ?? null,
-    });
+      return this.map({
+        ...created,
+        sessionId: order.sessionId,
+        customerRequestId: order.customerRequestId ?? null,
+      });
+    } catch (error) {
+      if (
+        order.customerRequestId &&
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existing = await prisma.orderTicket.findUnique({
+          where: { customerRequestId: order.customerRequestId },
+          include: { table: true, items: true },
+        });
+        if (existing) return this.map(existing);
+        throw new DomainError("CONFLICT", "This order request key has already been used");
+      }
+      throw error;
+    }
   }
 
   async findById(restaurantId: string, orderId: string): Promise<Order | null> {
@@ -159,4 +176,3 @@ export class PrismaOrderRepository implements OrderRepository {
     return Order.fromPersistence(props);
   }
 }
-

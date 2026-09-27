@@ -8,6 +8,10 @@ import type { OrderRepository } from "../ports/order-repository";
 import type { TableService } from "../../table-service/ports/table-service";
 
 export type OrderItemRequest = { itemId: string; quantity: number };
+export type CustomerOrderActor = ActorContext & {
+  type: "CUSTOMER";
+  tableId: string;
+};
 
 type CreateOrderInput = {
   restaurantId: string;
@@ -45,30 +49,28 @@ export class OrderService {
   }
 
   async createCustomerOrder(
-    actor: ActorContext,
-    input: CreateOrderInput & { customerRequestId: string },
+    actor: CustomerOrderActor,
+    input: CreateOrderInput & { customerRequestId?: string | null },
   ): Promise<{ order: Order; duplicate: boolean; notification: OrderNotificationIntent }> {
     if (actor.type !== "CUSTOMER") {
       throw new DomainError("FORBIDDEN", "Only a table customer can create this order");
     }
     this.assertRestaurantScope(actor, input.restaurantId);
-    if (!input.customerRequestId) {
-      throw new DomainError("VALIDATION_FAILED", "Order request key is required", { field: "customerRequestId" });
-    }
-
-    const existing = await this.dependencies.orderRepository.findByCustomerRequestId(
-      input.restaurantId,
-      input.customerRequestId,
-    );
-    if (existing) {
-      if (existing.tableId !== input.tableId) {
-        throw new DomainError("CONFLICT", "This order request key has already been used");
+    if (input.customerRequestId) {
+      const existing = await this.dependencies.orderRepository.findByCustomerRequestId(
+        input.restaurantId,
+        input.customerRequestId,
+      );
+      if (existing) {
+        if (existing.tableId !== input.tableId) {
+          throw new DomainError("CONFLICT", "This order request key has already been used");
+        }
+        return {
+          order: existing,
+          duplicate: true,
+          notification: this.notification("ORDER_CREATED", existing),
+        };
       }
-      return {
-        order: existing,
-        duplicate: true,
-        notification: this.notification("ORDER_CREATED", existing),
-      };
     }
 
     return this.createOrder(input, true);
@@ -108,6 +110,33 @@ export class OrderService {
     return this.dependencies.orderRepository.listByRestaurant(restaurantId);
   }
 
+  async countRecentCustomerOrders(
+    actor: CustomerOrderActor,
+    tableId: string,
+    since: Date,
+  ): Promise<number> {
+    if (actor.type !== "CUSTOMER" || actor.tableId !== tableId) {
+      throw new DomainError("FORBIDDEN", "This table cannot access those orders");
+    }
+    return this.dependencies.orderRepository.countRecentNonCanceled(tableId, since);
+  }
+
+  async getCustomerOrder(
+    actor: CustomerOrderActor,
+    restaurantId: string,
+    orderId: string,
+  ): Promise<Order> {
+    if (actor.type !== "CUSTOMER") {
+      throw new DomainError("FORBIDDEN", "Only a table customer can view this order");
+    }
+    this.assertRestaurantScope(actor, restaurantId);
+    const order = await this.dependencies.orderRepository.findById(restaurantId, orderId);
+    if (!order || order.tableId !== actor.tableId) {
+      throw new DomainError("NOT_FOUND", "Order not found");
+    }
+    return order;
+  }
+
   private async createOrder(
     input: CreateOrderInput,
     customerOrder: boolean,
@@ -120,7 +149,12 @@ export class OrderService {
       Array.from(quantities.keys()),
     );
     if (snapshots.length !== quantities.size) {
-      throw new DomainError("CONFLICT", "One or more items are unavailable");
+      const availableIds = new Set(snapshots.map((snapshot) => snapshot.itemId));
+      throw new DomainError(
+        "CONFLICT",
+        "One or more items are unavailable",
+        { unavailableItemIds: Array.from(quantities.keys()).filter((id) => !availableIds.has(id)) },
+      );
     }
 
     const byId = new Map(snapshots.map((snapshot) => [snapshot.itemId, snapshot]));

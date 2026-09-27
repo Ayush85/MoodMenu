@@ -100,6 +100,14 @@ export class OrderService {
     };
   }
 
+  async listOrders(actor: ActorContext, restaurantId: string): Promise<Order[]> {
+    this.assertRestaurantScope(actor, restaurantId);
+    if (!actorCan(actor, "view_orders")) {
+      throw new DomainError("FORBIDDEN", "You cannot view these orders");
+    }
+    return this.dependencies.orderRepository.listByRestaurant(restaurantId);
+  }
+
   private async createOrder(
     input: CreateOrderInput,
     customerOrder: boolean,
@@ -196,4 +204,3 @@ export class OrderService {
     };
   }
 }
-

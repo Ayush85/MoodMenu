@@ -1,45 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { withApiLogging } from "@/lib/api-handler";
-import { getRestaurantAccess } from "@/lib/restaurant-access";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import { createPrismaTableService } from "@/modules/table-service/infrastructure/prisma/create-table-service";
+import { resolveOrderActor } from "@/modules/ordering/infrastructure/http/order-actor";
 
-// PATCH /api/restaurants/[id]/sessions/[sessionId]
-// Body: { action: "close" }  — closes the session and marks all orders PAID
+const tableService = createPrismaTableService();
+
 export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; sessionId: string }> }
+  { params }: { params: Promise<{ id: string; sessionId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, sessionId } = await params;
-  if (!await getRestaurantAccess(id, { id: session.user.id, actorType: session.user.actorType })) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
+  const actor = await resolveOrderActor(id, {
+    id: session.user.id,
+    actorType: session.user.actorType,
+  });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const { action } = await req.json();
-
-  if (action === "close") {
-    const tableSession = await prisma.tableSession.findFirst({
-      where: { id: sessionId, restaurantId: id },
-    });
-    if (!tableSession) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-
-    // Close session and mark all non-canceled orders as PAID
-    await prisma.$transaction([
-      prisma.orderTicket.updateMany({
-        where: { sessionId, status: { notIn: ["CANCELED", "PAID"] } },
-        data: { status: "PAID" },
-      }),
-      prisma.tableSession.update({
-        where: { id: sessionId },
-        data: { status: "CLOSED", endedAt: new Date() },
-      }),
-    ]);
-
+  try {
+    const body = await req.json();
+    if (body?.action !== "close") {
+      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+    }
+    await tableService.closeSession(id, sessionId, new Date());
     return NextResponse.json({ success: true });
+  } catch (error) {
+    const mapped = domainErrorToHttp(error);
+    return NextResponse.json({ error: mapped.message }, { status: mapped.status });
   }
-
-  return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 });

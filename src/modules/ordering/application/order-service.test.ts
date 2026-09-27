@@ -58,6 +58,14 @@ class FakeTableService implements TableService {
   async closeIfAllOrdersTerminal() {
     this.closeCalls += 1;
   }
+
+  async listSessions() {
+    return [];
+  }
+
+  async closeSession() {
+    return undefined;
+  }
 }
 
 class FakeOrderRepository implements OrderRepository {

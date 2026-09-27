@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import type { CallStatus } from "@/generated/prisma/client";
 import { withApiLogging } from "@/lib/api-handler";
-import { getRestaurantAccess } from "@/lib/restaurant-access";
-import { can } from "@/modules/identity-access/domain/access";
+import { actorCan } from "@/modules/shared/application/actor";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import { PrismaWaiterCallRepository } from "@/modules/table-service/infrastructure/prisma/PrismaWaiterCallRepository";
+import { resolveOrderActor } from "@/modules/ordering/infrastructure/http/order-actor";
+import type { WaiterCallStatus } from "@/modules/table-service/domain/waiter-call";
 
-const VALID_TRANSITIONS: Record<CallStatus, CallStatus[]> = {
-  PENDING: ["ACKNOWLEDGED", "RESOLVED"],
-  ACKNOWLEDGED: ["RESOLVED"],
-  RESOLVED: [],
-};
+const waiterCalls = new PrismaWaiterCallRepository();
+const clock = { now: () => new Date() };
+const validStatuses: WaiterCallStatus[] = ["PENDING", "ACKNOWLEDGED", "RESOLVED"];
+
+function errorResponse(error: unknown) {
+  const mapped = domainErrorToHttp(error);
+  return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+}
 
 export const GET = withApiLogging(async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -22,32 +26,22 @@ export const GET = withApiLogging(async function GET(
   }
 
   const { id } = await params;
-  const access = await getRestaurantAccess(id, {
+  const actor = await resolveOrderActor(id, {
     id: session.user.id,
     actorType: session.user.actorType,
   });
-
-  if (!access) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (!can(access, "manage_waiter_calls")) {
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!actorCan(actor, "manage_waiter_calls")) {
     return NextResponse.json({ error: "Only waiters can access waiter calls" }, { status: 403 });
   }
 
-  const calls = await prisma.waiterCall.findMany({
-    where: { restaurantId: id },
-    include: { table: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
+  const calls = await waiterCalls.listByRestaurant(id);
   return NextResponse.json(calls);
 });
 
 export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -55,48 +49,25 @@ export const PATCH = withApiLogging(async function PATCH(
   }
 
   const { id } = await params;
-  const access = await getRestaurantAccess(id, {
+  const actor = await resolveOrderActor(id, {
     id: session.user.id,
     actorType: session.user.actorType,
   });
-
-  if (!access) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-  if (!can(access, "manage_waiter_calls")) {
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!actorCan(actor, "manage_waiter_calls")) {
     return NextResponse.json({ error: "Only waiters can update waiter calls" }, { status: 403 });
   }
-  const { callId, status } = await req.json();
 
-  if (!VALID_TRANSITIONS[status as CallStatus]) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  try {
+    const body = await req.json();
+    if (typeof body?.callId !== "string" || !validStatuses.includes(body.status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+    const existing = await waiterCalls.findById(id, body.callId);
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const updated = existing.advanceTo(body.status, clock, session.user.id);
+    return NextResponse.json(await waiterCalls.save(updated));
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  const existing = await prisma.waiterCall.findFirst({
-    where: { id: callId, restaurantId: id },
-    select: { status: true },
-  });
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (!VALID_TRANSITIONS[existing.status].includes(status)) {
-    return NextResponse.json(
-      { error: `Cannot move a call from ${existing.status} to ${status}` },
-      { status: 409 }
-    );
-  }
-
-  const call = await prisma.waiterCall.update({
-    where: { id: callId, restaurantId: id },
-    data: {
-      status,
-      handledBy: session.user.id,
-      acknowledgedAt: status === "ACKNOWLEDGED" ? new Date() : undefined,
-      resolvedAt: status === "RESOLVED" ? new Date() : undefined,
-    },
-    include: { table: true },
-  });
-
-  return NextResponse.json(call);
 });

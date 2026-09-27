@@ -1,23 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { OrderStatus } from "@/generated/prisma/client";
 import { withApiLogging } from "@/lib/api-handler";
-import { sendPush } from "@/lib/push";
-import { getRestaurantAccess } from "@/lib/restaurant-access";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import { PushNotificationPort } from "@/modules/shared/infrastructure/PushNotificationPort";
+import { createPrismaOrderService } from "@/modules/ordering/infrastructure/prisma/create-order-service";
+import { orderResponse } from "@/modules/ordering/infrastructure/http/order-response";
+import { resolveOrderActor } from "@/modules/ordering/infrastructure/http/order-actor";
+import type { OrderStatus } from "@/modules/ordering/domain/order-status";
 
-const validStatuses = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"] as const;
-const allowedNextStatuses: Record<OrderStatus, OrderStatus[]> = {
-  NEW: ["PREPARING", "CANCELED"],
-  PREPARING: ["SERVED", "CANCELED"],
-  SERVED: ["PAID"],
-  PAID: [],
-  CANCELED: [],
-};
+const orderService = createPrismaOrderService();
+const notifications = new PushNotificationPort();
+const validStatuses: OrderStatus[] = ["NEW", "PREPARING", "SERVED", "PAID", "CANCELED"];
+
+function errorResponse(error: unknown) {
+  const mapped = domainErrorToHttp(error);
+  return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+}
 
 export const PATCH = withApiLogging(async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string; orderId: string }> }
+  { params }: { params: Promise<{ id: string; orderId: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -25,110 +27,46 @@ export const PATCH = withApiLogging(async function PATCH(
   }
 
   const { id, orderId } = await params;
-  const body = await req.json();
-  const status = body?.status as (typeof validStatuses)[number] | undefined;
-
-  if (!status || !validStatuses.includes(status)) {
-    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-  }
-
-  const access = await getRestaurantAccess(id, {
+  const actor = await resolveOrderActor(id, {
     id: session.user.id,
     actorType: session.user.actorType,
   });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!access) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (access.kind === "STAFF") {
-    const waiterAllowed = new Set(["SERVED", "PAID", "CANCELED"]);
-    const kitchenAllowed = new Set(["PREPARING", "SERVED", "CANCELED"]);
-
-    if (access.role === "WAITER" && !waiterAllowed.has(status)) {
-      return NextResponse.json({ error: "Waiter cannot set this status" }, { status: 403 });
+  try {
+    const body = await req.json();
+    const status = body?.status as OrderStatus;
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    if ((access.role === "COOK" || access.role === "CHEF") && !kitchenAllowed.has(status)) {
-      return NextResponse.json({ error: "Kitchen staff cannot set this status" }, { status: 403 });
-    }
-  }
-
-  const order = await prisma.orderTicket.findFirst({
-    where: { id: orderId, restaurantId: id },
-    select: { id: true, status: true },
-  });
-
-  if (!order) {
-    return NextResponse.json({ error: "Order not found" }, { status: 404 });
-  }
-
-  if (!allowedNextStatuses[order.status].includes(status as OrderStatus)) {
-    return NextResponse.json(
-      { error: `Order cannot move from ${order.status} to ${status}` },
-      { status: 409 },
-    );
-  }
-
-  const updated = await prisma.orderTicket.update({
-    where: { id: orderId },
-    data: { status: status as OrderStatus },
-    include: { table: true, items: true },
-  });
-
-  // Auto-close the session when all its orders are terminal (PAID or CANCELED)
-  if ((status === "PAID" || status === "CANCELED") && updated.sessionId) {
-    const sibling = await prisma.orderTicket.findFirst({
-      where: {
-        sessionId: updated.sessionId,
-        status: { notIn: ["PAID", "CANCELED"] },
-      },
-      select: { id: true },
+    const result = await orderService.changeStatus(actor, {
+      restaurantId: id,
+      orderId,
+      status,
     });
 
-    if (!sibling) {
-      await prisma.tableSession.update({
-        where: { id: updated.sessionId },
-        data: { status: "CLOSED", endedAt: new Date() },
+    if (status === "SERVED") {
+      const tableLabel = result.order.table?.label || `Table ${result.order.table?.number ?? ""}`;
+      void notifications.sendToRestaurant({
+        restaurantId: id,
+        excludeUserId: session.user.id,
+        staffRoles: ["WAITER"],
+        title: `✅ Order ready — ${tableLabel}`,
+        body: `${result.order.lines.length} item${result.order.lines.length !== 1 ? "s" : ""} ready to serve`,
+        url: `/dashboard/restaurant/${id}/orders`,
+        data: {
+          type: "order_status",
+          orderId: result.order.id ?? orderId,
+          status: "SERVED",
+          tableNumber: String(result.order.table?.number ?? ""),
+          restaurantId: id,
+        },
       });
     }
+
+    return NextResponse.json(orderResponse(result.order));
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  // Kitchen marking an order SERVED is the signal a waiter needs to go
-  // pick it up — that's the one status change worth interrupting someone
-  // for. (NEW/PREPARING are visible on the order board already; PAID/
-  // CANCELED are low-urgency wrap-up steps.)
-  if (status === "SERVED") {
-    const recipients = await prisma.restaurant.findFirst({
-      where: { id },
-      select: {
-        ownerId: true,
-        staffMembers: { where: { isActive: true, role: "WAITER" }, select: { id: true } },
-      },
-    });
-
-    if (recipients) {
-      const recipientIds = [recipients.ownerId, ...recipients.staffMembers.map((s) => s.id)]
-        .filter((rid) => rid !== session.user!.id);
-
-      if (recipientIds.length > 0) {
-        const tableLabel = updated.table.label || `Table ${updated.table.number}`;
-        sendPush({
-          title: `✅ Order ready — ${tableLabel}`,
-          body: `${updated.items.length} item${updated.items.length !== 1 ? "s" : ""} ready to serve`,
-          userIds: recipientIds,
-          url: `/dashboard/restaurant/${id}/orders`,
-          data: {
-            type: "order_status",
-            orderId: updated.id,
-            status: "SERVED",
-            tableNumber: String(updated.table.number),
-            restaurantId: id,
-          },
-        });
-      }
-    }
-  }
-
-  return NextResponse.json(updated);
 });

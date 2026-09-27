@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { sendPush } from "@/lib/push";
 import { withApiLogging } from "@/lib/api-handler";
-import { can } from "@/modules/identity-access/domain/access";
-import { getRestaurantAccess } from "@/lib/restaurant-access";
+import { domainErrorToHttp } from "@/modules/shared/application/domain-error-http";
+import { PushNotificationPort } from "@/modules/shared/infrastructure/PushNotificationPort";
+import { createPrismaOrderService } from "@/modules/ordering/infrastructure/prisma/create-order-service";
+import { orderResponse } from "@/modules/ordering/infrastructure/http/order-response";
+import { resolveOrderActor } from "@/modules/ordering/infrastructure/http/order-actor";
 
-interface CreateOrderItem {
-  itemId?: unknown;
-  quantity?: unknown;
+const orderService = createPrismaOrderService();
+const notifications = new PushNotificationPort();
+
+function errorResponse(error: unknown) {
+  const mapped = domainErrorToHttp(error);
+  return NextResponse.json({ error: mapped.message }, { status: mapped.status });
 }
 
 export const GET = withApiLogging(async function GET(
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -21,32 +25,22 @@ export const GET = withApiLogging(async function GET(
   }
 
   const { id } = await params;
-
-  const access = await getRestaurantAccess(id, {
+  const actor = await resolveOrderActor(id, {
     id: session.user.id,
     actorType: session.user.actorType,
   });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!access) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  try {
+    const orders = await orderService.listOrders(actor, id);
+    return NextResponse.json(orders.map(orderResponse));
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  const orders = await prisma.orderTicket.findMany({
-    where: { restaurantId: id },
-    include: {
-      table: true,
-      items: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-
-  return NextResponse.json(orders);
 });
-
 export const POST = withApiLogging(async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -54,148 +48,44 @@ export const POST = withApiLogging(async function POST(
   }
 
   const { id } = await params;
-  const body = await req.json();
-
-  const tableId = body?.tableId as string | undefined;
-  const note = body?.note as string | undefined;
-  const items = Array.isArray(body?.items) ? body.items as CreateOrderItem[] : [];
-
-  if (!tableId || items.length === 0 || items.length > 50) {
-    return NextResponse.json({ error: "Table and at least one item are required" }, { status: 400 });
-  }
-
-  const access = await getRestaurantAccess(id, {
+  const actor = await resolveOrderActor(id, {
     id: session.user.id,
     actorType: session.user.actorType,
   });
+  if (!actor) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  if (!access) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
-  }
-
-  if (!can(access, "create_staff_order")) {
-    return NextResponse.json({ error: "Only waiters can take new orders" }, { status: 403 });
-  }
-
-  const table = await prisma.restaurantTable.findFirst({
-    where: { id: tableId, restaurantId: id },
-    select: { id: true },
-  });
-
-  if (!table) {
-    return NextResponse.json({ error: "Table not found" }, { status: 404 });
-  }
-
-  const quantities = new Map<string, number>();
-  for (const item of items) {
-    if (typeof item.itemId !== "string" || !item.itemId) {
-      return NextResponse.json({ error: "Order items are invalid" }, { status: 400 });
-    }
-    const quantity = Number(item.quantity);
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
-      return NextResponse.json({ error: "Each item quantity must be between 1 and 20" }, { status: 400 });
-    }
-    const nextQuantity = (quantities.get(item.itemId) || 0) + quantity;
-    if (nextQuantity > 20) {
-      return NextResponse.json({ error: "You can order up to 20 of each item" }, { status: 400 });
-    }
-    quantities.set(item.itemId, nextQuantity);
-  }
-
-  const menuItems = await prisma.menuItem.findMany({
-    where: {
-      id: { in: Array.from(quantities.keys()) },
-      isAvailable: true,
-      category: { restaurantId: id },
-    },
-    select: { id: true, name: true, price: true },
-  });
-
-  if (menuItems.length !== quantities.size) {
-    return NextResponse.json({ error: "One or more items are unavailable" }, { status: 409 });
-  }
-
-  const lineItems = menuItems.map((item) => {
-    const quantity = quantities.get(item.id)!;
-    return {
-      itemName: item.name,
-      quantity,
-      unitPrice: item.price,
-      lineTotal: item.price * quantity,
-    };
-  });
-
-  const total = lineItems.reduce((sum, line) => sum + line.lineTotal, 0);
-  if (!Number.isFinite(total) || total > 100000) {
-    return NextResponse.json({ error: "This order total is too large" }, { status: 400 });
-  }
-
-  const order = await prisma.$transaction(async (tx) => {
-    let tableSession = await tx.tableSession.findFirst({
-      where: { tableId, status: "ACTIVE" },
-      orderBy: { startedAt: "desc" },
+  try {
+    const body = await req.json();
+    const items = Array.isArray(body?.items)
+      ? body.items.map((item: { itemId?: unknown; quantity?: unknown }) => ({
+          itemId: item.itemId as string,
+          quantity: Number(item.quantity),
+        }))
+      : [];
+    const result = await orderService.createStaffOrder(actor, {
+      restaurantId: id,
+      tableId: body?.tableId,
+      items,
+      note: body?.note,
     });
-
-    if (!tableSession) {
-      tableSession = await tx.tableSession.create({
-        data: { restaurantId: id, tableId },
-      });
-    }
-
-    const created = await tx.orderTicket.create({
+    const response = orderResponse(result.order);
+    const tableLabel = result.order.table?.label || `Table ${result.order.table?.number ?? ""}`;
+    void notifications.sendToRestaurant({
+      restaurantId: id,
+      excludeUserId: session.user.id,
+      staffRoles: ["COOK", "CHEF"],
+      title: `🍽️ New Order — ${tableLabel}`,
+      body: `${result.order.lines.length} item(s) · Rs. ${result.order.total.toLocaleString("en-IN")}`,
+      url: `/dashboard/restaurant/${id}/orders`,
       data: {
+        type: "new_order",
+        orderId: result.order.id ?? "",
+        tableNumber: String(result.order.table?.number ?? ""),
         restaurantId: id,
-        tableId,
-        sessionId: tableSession.id,
-        note: note?.trim().slice(0, 240) || null,
-        total,
-        items: { create: lineItems },
       },
-      include: { table: true, items: true },
     });
-
-    await tx.tableSession.update({
-      where: { id: tableSession.id },
-      data: { totalAmount: { increment: total }, lastActivityAt: new Date() },
-    });
-
-    return created;
-  });
-
-  // Notify kitchen staff (non-blocking)
-  const restaurant = await prisma.restaurant.findUnique({
-    where: { id },
-    select: {
-      ownerId: true,
-      staffMembers: {
-        where: { isActive: true, role: { in: ["COOK", "CHEF"] } },
-        select: { id: true },
-      },
-    },
-  });
-
-  if (restaurant) {
-    const recipientIds = [
-      restaurant.ownerId,
-      ...restaurant.staffMembers.map((s) => s.id),
-    ].filter((rid) => rid !== session.user!.id);
-
-    if (recipientIds.length > 0) {
-      const tableLabel = order.table.label || `Table ${order.table.number}`;
-      sendPush({
-        title: `🍽️ New Order — ${tableLabel}`,
-        body: `${lineItems.length} item(s) · Rs. ${total.toLocaleString("en-IN")}`,
-        userIds: recipientIds,
-        url: `/dashboard/restaurant/${id}/orders`,
-        data: {
-          type: "new_order",
-          orderId: order.id,
-          tableNumber: String(order.table.number),
-          restaurantId: id,
-        },
-      });
-    }
+    return NextResponse.json(response, { status: 201 });
+  } catch (error) {
+    return errorResponse(error);
   }
-
-  return NextResponse.json(order, { status: 201 });
 });

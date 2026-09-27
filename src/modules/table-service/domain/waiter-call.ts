@@ -13,6 +13,7 @@ export type WaiterCallProps = {
   acknowledgedAt: Date | null;
   resolvedAt: Date | null;
   handledBy: string | null;
+  table?: { number: number; label: string | null };
 };
 
 export type CreateWaiterCallInput = {
@@ -33,6 +34,7 @@ export class WaiterCall {
   readonly acknowledgedAt: Date | null;
   readonly resolvedAt: Date | null;
   readonly handledBy: string | null;
+  readonly table?: { number: number; label: string | null };
 
   private constructor(props: WaiterCallProps) {
     this.id = props.id;
@@ -44,6 +46,7 @@ export class WaiterCall {
     this.acknowledgedAt = props.acknowledgedAt;
     this.resolvedAt = props.resolvedAt;
     this.handledBy = props.handledBy;
+    this.table = props.table;
   }
 
   static create(input: CreateWaiterCallInput): WaiterCall {
@@ -104,6 +107,7 @@ export class WaiterCall {
       acknowledgedAt: this.acknowledgedAt,
       resolvedAt: this.resolvedAt,
       handledBy: this.handledBy,
+      table: this.table,
     };
   }
 }

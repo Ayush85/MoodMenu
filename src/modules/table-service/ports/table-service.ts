@@ -9,10 +9,42 @@ export type TableReference = {
   label: string | null;
 };
 
+export type TableSessionReadModel = {
+  id: string;
+  restaurantId: string;
+  tableId: string;
+  status: "ACTIVE" | "CLOSED";
+  totalAmount: number;
+  startedAt: Date;
+  lastActivityAt: Date;
+  endedAt: Date | null;
+  table: { number: number; label: string | null };
+  orders: Array<{
+    id: string;
+    status: OrderStatus;
+    note: string | null;
+    total: number;
+    createdAt: Date;
+    updatedAt: Date;
+    items: Array<{
+      id: string;
+      itemName: string;
+      quantity: number;
+      unitPrice: number;
+      lineTotal: number;
+    }>;
+  }>;
+};
+
 export interface TableService {
   findTable(restaurantId: string, tableId: string): Promise<TableReference | null>;
   getOrStartActiveSession(restaurantId: string, tableId: string): Promise<TableSession>;
   closeIfAllOrdersTerminal(sessionId: string, now: Date): Promise<void>;
+  listSessions(
+    restaurantId: string,
+    status: "ACTIVE" | "CLOSED",
+  ): Promise<TableSessionReadModel[]>;
+  closeSession(restaurantId: string, sessionId: string, now: Date): Promise<void>;
 }
 
 export interface WaiterCallRepository {
@@ -25,4 +57,3 @@ export interface WaiterCallRepository {
 
 export type TerminalOrderStatuses = Extract<OrderStatus, "PAID" | "CANCELED">;
 export type { WaiterCallStatus };
-

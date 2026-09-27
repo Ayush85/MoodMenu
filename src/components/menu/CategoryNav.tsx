@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import { MoodTheme } from "@/types";
+import { getActiveCategoryId } from "./category-navigation";
 
 interface CategoryData {
   id: string;
@@ -19,50 +20,97 @@ interface Props {
 export default function CategoryNav({ categories, activeCategory, onCategoryChange, theme }: Props) {
   const isDark = theme.mode === "dark";
   const navRef = useRef<HTMLDivElement>(null);
+  const scrollFrameRef = useRef<number | null>(null);
+  const requestedCategoryRef = useRef<string | null>(null);
 
   const stableOnChange = useCallback((id: string) => {
     onCategoryChange(id);
   }, [onCategoryChange]);
 
-  // Intersection observer to auto-highlight on scroll
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const catId = entry.target.id.replace("cat-", "");
-            stableOnChange(catId);
-          }
-        }
-      },
-      { rootMargin: "-80px 0px -60% 0px", threshold: 0.1 }
-    );
+  const updateActiveCategory = useCallback(() => {
+    const nav = navRef.current;
+    if (!nav) return;
 
-    categories.forEach((cat) => {
-      const el = document.getElementById(`cat-${cat.id}`);
-      if (el) observer.observe(el);
+    const sections = categories.flatMap((category) => {
+      const section = document.getElementById(`cat-${category.id}`);
+      return section ? [{ id: category.id, top: section.getBoundingClientRect().top }] : [];
     });
-
-    return () => observer.disconnect();
+    const activationPoint = nav.parentElement?.getBoundingClientRect().bottom ?? 0;
+    const categoryId = getActiveCategoryId(sections, activationPoint);
+    if (categoryId) stableOnChange(categoryId);
   }, [categories, stableOnChange]);
 
-  // Scroll active pill into view
+  // Read section positions once per animation frame. Choosing the last
+  // section above the sticky header gives the same answer in either scroll
+  // direction and avoids IntersectionObserver entry-order races.
+  const scheduleActiveCategoryUpdate = useCallback(() => {
+    if (scrollFrameRef.current !== null) return;
+    scrollFrameRef.current = window.requestAnimationFrame(() => {
+      scrollFrameRef.current = null;
+      updateActiveCategory();
+    });
+  }, [updateActiveCategory]);
+
   useEffect(() => {
-    if (!activeCategory || !navRef.current) return;
-    const pill = navRef.current.querySelector(`[data-cat="${activeCategory}"]`);
-    if (pill) {
-      pill.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    scheduleActiveCategoryUpdate();
+    window.addEventListener("scroll", scheduleActiveCategoryUpdate, { passive: true });
+    window.addEventListener("resize", scheduleActiveCategoryUpdate);
+
+    return () => {
+      window.removeEventListener("scroll", scheduleActiveCategoryUpdate);
+      window.removeEventListener("resize", scheduleActiveCategoryUpdate);
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current);
+        scrollFrameRef.current = null;
+      }
+    };
+  }, [scheduleActiveCategoryUpdate]);
+
+  const scrollPillIntoView = useCallback((categoryId: string, behavior: ScrollBehavior, center: boolean) => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const pill = Array.from(nav.children).find((child) => child.getAttribute("data-cat") === categoryId);
+    if (!(pill instanceof HTMLElement)) return;
+
+    const maxScrollLeft = Math.max(0, nav.scrollWidth - nav.clientWidth);
+    const desiredScrollLeft = center
+      ? pill.offsetLeft - (nav.clientWidth - pill.offsetWidth) / 2
+      : pill.offsetLeft < nav.scrollLeft
+        ? pill.offsetLeft - 8
+        : pill.offsetLeft + pill.offsetWidth > nav.scrollLeft + nav.clientWidth
+          ? pill.offsetLeft + pill.offsetWidth - nav.clientWidth + 8
+          : nav.scrollLeft;
+    const targetScrollLeft = Math.max(0, Math.min(maxScrollLeft, desiredScrollLeft));
+
+    if (Math.abs(nav.scrollLeft - targetScrollLeft) > 1) {
+      nav.scrollTo({ left: targetScrollLeft, behavior });
     }
-  }, [activeCategory]);
+  }, []);
+
+  // Passive scrolling only nudges an off-screen active pill into view. A
+  // deliberate tap is centered smoothly, without repeatedly animating the
+  // category strip during a vertical swipe.
+  useEffect(() => {
+    if (!activeCategory) return;
+    const shouldCenter = requestedCategoryRef.current === activeCategory;
+    if (shouldCenter) requestedCategoryRef.current = null;
+    scrollPillIntoView(activeCategory, shouldCenter ? "smooth" : "auto", shouldCenter);
+  }, [activeCategory, scrollPillIntoView]);
 
   if (categories.length <= 1) return null;
 
   function handleClick(catId: string) {
+    if (catId === activeCategory) {
+      scrollPillIntoView(catId, "smooth", true);
+    } else {
+      requestedCategoryRef.current = catId;
+    }
     onCategoryChange(catId);
     const el = document.getElementById(`cat-${catId}`);
     if (el) {
-      const offset = 60;
-      const top = el.getBoundingClientRect().top + window.scrollY - offset;
+      const stickyHeight = navRef.current?.parentElement?.getBoundingClientRect().height ?? 56;
+      const top = el.getBoundingClientRect().top + window.scrollY - stickyHeight - 8;
       window.scrollTo({ top, behavior: "smooth" });
     }
   }
@@ -77,7 +125,7 @@ export default function CategoryNav({ categories, activeCategory, onCategoryChan
         borderBottom: `1px solid ${isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.04)"}`,
       }}
     >
-      <div ref={navRef} className="flex gap-2 overflow-x-auto no-scrollbar">
+      <div ref={navRef} className="flex gap-2 overflow-x-auto overscroll-x-contain no-scrollbar">
         {categories.map((cat) => {
           const isActive = activeCategory === cat.id;
           return (

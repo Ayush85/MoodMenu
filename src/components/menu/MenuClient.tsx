@@ -254,7 +254,7 @@ export default function MenuClient({
   }, [activeOrders, restaurant.slug, tableNumber, tableToken]);
 
   const handleCategoryChange = useCallback((id: string) => {
-    setActiveCategory(id);
+    setActiveCategory((current) => current === id ? current : id);
   }, []);
 
   // Check WiFi first, then open call modal

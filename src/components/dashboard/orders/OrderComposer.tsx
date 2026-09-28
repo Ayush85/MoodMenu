@@ -365,7 +365,9 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
                         <div key={item.id} className={`flex min-h-14 items-center gap-2 rounded-xl px-2 py-1.5 transition ${quantity > 0 ? "bg-orange-50 ring-1 ring-orange-200" : "hover:bg-gray-50"}`}>
                           <button type="button" onClick={() => incrementItem(item.id)} aria-label={`Add ${item.name}`} className="min-w-0 flex-1 rounded-lg px-1.5 py-1 text-left">
                             <p className="truncate text-sm font-bold text-gray-900">{item.name}</p>
-                            <p className={`text-xs ${quantity > 0 ? "font-semibold text-orange-600" : "text-gray-500"}`}>{quantity > 0 ? "Tap to add more" : `Rs. ${fmt(item.price)} · Tap to add`}</p>
+                            <p className={`text-xs ${quantity > 0 ? "font-semibold text-orange-600" : "text-gray-500"}`}>
+                              {quantity > 0 ? `Rs. ${fmt(item.price)} each · Rs. ${fmt(quantity * item.price)} total` : `Rs. ${fmt(item.price)} each · Tap to add`}
+                            </p>
                           </button>
                           <div className="flex shrink-0 items-center gap-2">
                             {quantity > 0 && <button type="button" onClick={() => decrementItem(item.id)} aria-label={`Remove one ${item.name}`} className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-200 text-lg font-bold text-gray-700">−</button>}
@@ -396,7 +398,10 @@ export default function OrderComposer({ restaurantId, canTakeOrders, open, onClo
                 ) : (
                   orderDraft.map((row) => (
                     <div key={row.itemId} className="flex items-center justify-between gap-3 text-sm">
-                      <span>{row.quantity} × {row.itemName}</span>
+                      <div className="min-w-0">
+                        <span className="block truncate">{row.quantity} × {row.itemName}</span>
+                        <span className="block text-xs text-gray-500">{`Rs. ${fmt(row.unitPrice)} each`}</span>
+                      </div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">Rs. {fmt(row.lineTotal)}</span>
                         <button onClick={() => removeItem(row.itemId)} aria-label={`Remove ${row.itemName}`} className="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600">×</button>

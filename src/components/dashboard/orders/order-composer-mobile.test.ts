@@ -46,11 +46,17 @@ test("order composer supports category-first item discovery and tap to add", () 
   assert.match(composerSource, /selectedCategoryId/);
   assert.match(composerSource, /All items/);
   assert.match(composerSource, /Add \$\{item\.name\}/);
-  assert.match(composerSource, /Tap to add more/);
+  assert.match(composerSource, /Tap to add/);
 });
 
 test("order composer keeps the selected table and cart visible in the footer", () => {
   assert.match(composerSource, /sticky bottom-0/);
   assert.match(composerSource, /selectedTable \?/);
   assert.match(composerSource, /itemCount/);
+});
+
+test("order composer shows selected item pricing details", () => {
+  assert.match(composerSource, /Rs\. \$\{fmt\(item\.price\)\} each/);
+  assert.match(composerSource, /Rs\. \$\{fmt\(quantity \* item\.price\)\}/);
+  assert.match(composerSource, /Rs\. \$\{fmt\(row\.unitPrice\)\} each/);
 });

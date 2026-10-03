@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { hasVerifiedCustomDomain } from "@/lib/restaurant-site";
 import { isPlatformHost } from "@/lib/site-host";
 
+// Bump when the marketing pages' content changes.
+const MARKETING_UPDATED = new Date("2026-10-03");
+
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -82,6 +85,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 1.0,
     },
+    { url: `${base}/features`, lastModified: MARKETING_UPDATED, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/pricing`, lastModified: MARKETING_UPDATED, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${base}/guides/qr-menu-for-restaurants-nepal`, lastModified: MARKETING_UPDATED, changeFrequency: "monthly", priority: 0.7 },
     ...restaurantPages,
   ];
 }

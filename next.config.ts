@@ -32,6 +32,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    // One canonical host: send www to the apex so link equity is not split.
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.menuor.com" }],
+        destination: "https://menuor.com/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {

@@ -79,6 +79,7 @@ const jsonLd = {
       url: APP_URL,
       description: PRODUCT_DEFINITION,
       featureList: FEATURE_LIST,
+      offers: { "@type": "Offer", price: "0", priceCurrency: "NPR", availability: "https://schema.org/InStock", description: "Free during launch" },
       areaServed: { "@type": "Country", name: "Nepal" },
       audience: { "@type": "BusinessAudience", audienceType: "Restaurants and cafés" },
       publisher: { "@id": ORG_ID },

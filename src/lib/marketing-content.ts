@@ -13,6 +13,14 @@ export const PRODUCT_TAGLINE = "QR digital menu and restaurant management softwa
 export const PRODUCT_DEFINITION =
   "Menuor is restaurant management software built around a QR code digital menu. Restaurants and cafés in Nepal use it to publish menus, take table orders from guests' phones, handle waiter calls, manage staff roles, record expenses, and review sales analytics, without guests installing an app.";
 
+/**
+ * Pricing is free during launch. Only describe what is true today here and in
+ * the schema Offer (app/page.tsx): when paid or ad-supported plans exist, add
+ * a /pricing page with one Offer per plan instead of editing this claim.
+ */
+export const PRICING_ANSWER =
+  "Yes. Menuor is free to use during launch, including the QR digital menu and restaurant management tools. Any future plans will be announced in advance.";
+
 export const FEATURE_LIST = [
   "QR code digital menu with categories, photos, and prices",
   "Table-specific QR codes for guest ordering",
@@ -26,6 +34,7 @@ export const FEATURE_LIST = [
 
 export const FAQ_ITEMS: ReadonlyArray<readonly [question: string, answer: string]> = [
   ["What is Menuor?", PRODUCT_DEFINITION],
+  ["Is Menuor free?", PRICING_ANSWER],
   ["Do guests need to download an app?", "No. Guests scan the table QR code with their phone camera and open the menu in their browser. They can browse dishes without creating an account."],
   ["Can I update my menu without printing a new QR code?", "Yes. Changes to dishes, prices, photos, and availability appear on your online menu. You can keep using the same QR code for menu updates."],
   ["How does table ordering work?", "Guests open a table-specific QR link, add dishes, and submit their order. Staff manage it in the dashboard and update its status through service. Restaurants can also configure network restrictions for ordering."],

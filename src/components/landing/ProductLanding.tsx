@@ -1,32 +1,13 @@
 import Link from "next/link";
 import { FAQ_ITEMS as questions, PRODUCT_DEFINITION } from "@/lib/marketing-content";
-import { ArrowRight, Check, Coffee, UtensilsCrossed, ClipboardList, QrCode, BellRing, Users, Globe, Palette } from "lucide-react";
-
-const features = [
-  { icon: QrCode, title: "A digital menu that feels like you", text: "Organize dishes into categories, add photos and prices, and choose a layout that fits your restaurant. Share it with a QR code or a link." },
-  { icon: ClipboardList, title: "From the table to your team", text: "Guests order from their table QR link. Staff follow each order from new to preparing, served, and paid in one order board." },
-  { icon: BellRing, title: "Help, one tap away", text: "Let guests call a waiter from the menu. Your team can see and acknowledge requests without a guest having to wave across the room." },
-  { icon: Users, title: "The right tools for every role", text: "Give waiters, cooks, and chefs their own accounts. Manage staff access, review sales analytics, and record restaurant expenses." },
-  { icon: Globe, title: "Your restaurant, online", text: "Create a restaurant landing page and connect your own domain. Give guests a place to discover your restaurant and explore its menu." },
-  { icon: Palette, title: "A little personality", text: "Use weather and time-of-day rules to change themes and feature dishes. Bring warm drinks forward on a rainy evening." },
-];
-
-function Brand() {
-  return <Link href="/" className="marketing-logo" aria-label="Menuor home">menuor<span>.</span></Link>;
-}
+import { ArrowRight, Check, Coffee, UtensilsCrossed, ClipboardList } from "lucide-react";
+import MarketingShell from "./MarketingShell";
+import { features } from "./features";
 
 export default function ProductLanding() {
   return (
-    <div className="marketing">
-      <a className="marketing-skip" href="#main-content">Skip to content</a>
-      <header className="marketing-nav">
-        <nav className="marketing-container marketing-nav-inner" aria-label="Main navigation">
-          <Brand />
-          <div className="marketing-nav-links"><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#faq">FAQs</a></div>
-          <div className="marketing-nav-actions"><Link href="/login">Sign in</Link><Link href="/register" className="marketing-button marketing-button-small">Get started <ArrowRight size={16} /></Link></div>
-        </nav>
-      </header>
-      <main id="main-content">
+    <MarketingShell>
+      <>
         <section className="marketing-container marketing-hero">
           <div>
             <p className="marketing-eyebrow">For restaurants & cafés in Nepal</p>
@@ -76,11 +57,7 @@ export default function ProductLanding() {
           <div>{questions.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div>
         </section>
         <section className="marketing-container marketing-cta"><p className="marketing-eyebrow">Good food deserves a great experience</p><h2>Make room for<br /><span>better service.</span></h2><p>Your menu, your team, and your next order. Bring them together with Menuor.</p><Link href="/register" className="marketing-button">Create your restaurant <ArrowRight size={18} /></Link></section>
-      </main>
-      <footer className="marketing-footer">
-        <div className="marketing-container marketing-footer-top"><div><Brand /><p>Digital menus and restaurant management<br />for cafés and restaurants in Nepal.</p></div><nav aria-label="Footer navigation"><a href="#features">Features</a><a href="#how-it-works">How it works</a><a href="#faq">FAQs</a><Link href="/login">Sign in</Link></nav><div><strong>Let’s talk about your restaurant.</strong><a href="mailto:ayushrestha8585@gmail.com">ayushrestha8585@gmail.com</a><a href="tel:+9779844453285">+977 9844453285</a></div></div>
-        <div className="marketing-container marketing-footer-bottom"><span>© {new Date().getFullYear()} Menuor</span><span>Made for the people behind good food.</span></div>
-      </footer>
-    </div>
+      </>
+    </MarketingShell>
   );
 }

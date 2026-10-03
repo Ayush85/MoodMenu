@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FAQ_ITEMS as questions, PRODUCT_DEFINITION } from "@/lib/marketing-content";
 import { ArrowRight, Check, Coffee, UtensilsCrossed, ClipboardList, QrCode, BellRing, Users, Globe, Palette } from "lucide-react";
 
 const features = [
@@ -8,15 +9,6 @@ const features = [
   { icon: Users, title: "The right tools for every role", text: "Give waiters, cooks, and chefs their own accounts. Manage staff access, review sales analytics, and record restaurant expenses." },
   { icon: Globe, title: "Your restaurant, online", text: "Create a restaurant landing page and connect your own domain. Give guests a place to discover your restaurant and explore its menu." },
   { icon: Palette, title: "A little personality", text: "Use weather and time-of-day rules to change themes and feature dishes. Bring warm drinks forward on a rainy evening." },
-];
-
-const questions = [
-  ["What is Menuor?", "Menuor is restaurant management software built around a QR code digital menu. Restaurants and cafés can publish menus, accept table orders, manage waiter calls and staff roles, record expenses, and review sales analytics."],
-  ["Do guests need to download an app?", "No. Guests scan the table QR code with their phone camera and open the menu in their browser. They can browse dishes without creating an account."],
-  ["Can I update my menu without printing a new QR code?", "Yes. Changes to dishes, prices, photos, and availability appear on your online menu. You can keep using the same QR code for menu updates."],
-  ["How does table ordering work?", "Guests open a table-specific QR link, add dishes, and submit their order. Staff manage it in the dashboard and update its status through service. Restaurants can also configure network restrictions for ordering."],
-  ["Is Menuor suitable for restaurants and cafés in Nepal?", "Yes. Menuor supports menu prices in Nepalese rupees, table QR codes, staff accounts, and restaurant locations. Guests access the menu through a web browser."],
-  ["Can I use my own branding and domain?", "Yes. Customize your menu’s colors, fonts, and layout, create a restaurant landing page, and connect your domain after setup and verification."],
 ];
 
 function Brand() {
@@ -38,8 +30,8 @@ export default function ProductLanding() {
         <section className="marketing-container marketing-hero">
           <div>
             <p className="marketing-eyebrow">For restaurants & cafés in Nepal</p>
-            <h1>Your QR menu.<br />Your orders.<br /><span>One happy service.</span></h1>
-            <p className="marketing-lead">Give guests a digital menu they can order from. Keep your kitchen, tables, and team connected with restaurant management software built around your everyday service.</p>
+            <h1>QR menu &amp; ordering<br />for Nepal’s restaurants.<br /><span>One happy service.</span></h1>
+            <p className="marketing-lead">{PRODUCT_DEFINITION}</p>
             <div className="marketing-actions"><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={18} /></Link><a href="#product-preview" className="marketing-text-link">Explore the experience <ArrowRight size={17} /></a></div>
             <p className="marketing-note"><Check size={16} /> No app download for guests. Just scan and browse.</p>
           </div>
@@ -67,20 +59,20 @@ export default function ProductLanding() {
           <p><strong>Fresh menu, same QR.</strong><span>Update dishes and prices anytime</span></p>
           <p><strong>Everyone on the same page.</strong><span>Orders and roles for your team</span></p>
         </div></div>
-        <section id="features" className="marketing-container marketing-section">
-          <div className="marketing-section-heading"><div><p className="marketing-eyebrow">Built for the whole service</p><h2>A better guest experience.<br /><span>A clearer day for your team.</span></h2></div><p>Start with a QR code digital menu. Bring ordering, staff, and the everyday details of running your restaurant together.</p></div>
+        <section id="features" className="marketing-container marketing-section" aria-labelledby="features-heading">
+          <div className="marketing-section-heading"><div><p className="marketing-eyebrow">Built for the whole service</p><h2 id="features-heading">A better guest experience.<br /><span>A clearer day for your team.</span></h2></div><p>Start with a QR code digital menu. Bring ordering, staff, and the everyday details of running your restaurant together.</p></div>
           <div className="marketing-feature-grid">{features.map(({ icon: Icon, title, text }, i) => <article key={title}><div className="marketing-feature-top"><Icon size={25} aria-hidden="true" /><span>0{i + 1}</span></div><h3>{title}</h3><p>{text}</p></article>)}</div>
         </section>
-        <section id="how-it-works" className="marketing-workflow"><div className="marketing-container marketing-section">
-          <p className="marketing-eyebrow">From setup to service</p><h2>Your next service,<br /><span>a little simpler.</span></h2>
+        <section id="how-it-works" className="marketing-workflow" aria-labelledby="how-heading"><div className="marketing-container marketing-section">
+          <p className="marketing-eyebrow">From setup to service</p><h2 id="how-heading">Your next service,<br /><span>a little simpler.</span></h2>
           <div className="marketing-steps">{[
             ["Make it yours", "Create your restaurant, add your dishes, and choose your menu’s look. Update availability and prices whenever you need."],
             ["Put it on the table", "Create table QR codes and place them where guests can scan. Your menu opens right in their phone’s browser."],
             ["Bring your team together", "Add staff accounts, follow incoming orders, and respond to waiter calls from your restaurant dashboard."],
           ].map(([title, text], i) => <article key={title}><span>0{i + 1}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
         </div></section>
-        <section id="faq" className="marketing-container marketing-section marketing-faq">
-          <div><p className="marketing-eyebrow">Before your first service</p><h2>A few good<br /><span>questions.</span></h2><p>Need a hand getting started?<br /><a href="mailto:ayushrestha8585@gmail.com">Talk to us →</a></p></div>
+        <section id="faq" className="marketing-container marketing-section marketing-faq" aria-labelledby="faq-heading">
+          <div><p className="marketing-eyebrow">Before your first service</p><h2 id="faq-heading">A few good<br /><span>questions.</span></h2><p>Need a hand getting started?<br /><a href="mailto:ayushrestha8585@gmail.com">Talk to us →</a></p></div>
           <div>{questions.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div>
         </section>
         <section className="marketing-container marketing-cta"><p className="marketing-eyebrow">Good food deserves a great experience</p><h2>Make room for<br /><span>better service.</span></h2><p>Your menu, your team, and your next order. Bring them together with Menuor.</p><Link href="/register" className="marketing-button">Create your restaurant <ArrowRight size={18} /></Link></section>

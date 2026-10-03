@@ -14,19 +14,37 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   // sitemap references, so this must match the host being crawled.
   const sitemapOrigin = hostname && !isPlatformHost(hostname) ? `https://${hostname}` : base;
 
+  const disallow = [
+    "/dashboard/",
+    "/admin/",
+    "/api/",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/uploads/",
+  ];
+
+  // Search and AI answer-engine crawlers are named explicitly so the policy
+  // is unambiguous: public pages may be indexed, cited, and used for
+  // retrieval. Private app areas stay blocked for all of them.
+  const aiCrawlers = [
+    "GPTBot",
+    "OAI-SearchBot",
+    "ChatGPT-User",
+    "ClaudeBot",
+    "Claude-SearchBot",
+    "Claude-User",
+    "PerplexityBot",
+    "Perplexity-User",
+    "Google-Extended",
+    "Applebot-Extended",
+  ];
+
   return {
     rules: [
-      {
-        userAgent: "*",
-        allow: ["/", "/menu/", "/landing/"],
-        disallow: [
-          "/dashboard/",
-          "/admin/",
-          "/api/",
-          "/login",
-          "/register",
-        ],
-      },
+      { userAgent: "*", allow: ["/", "/menu/", "/landing/", "/llms.txt"], disallow },
+      { userAgent: aiCrawlers, allow: ["/", "/menu/", "/landing/", "/llms.txt"], disallow },
     ],
     sitemap: `${sitemapOrigin}/sitemap.xml`,
   };

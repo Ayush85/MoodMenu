@@ -47,10 +47,16 @@ export const metadata: Metadata = {
   authors: [{ name: APP_NAME }],
   creator: APP_NAME,
   publisher: APP_NAME,
-  robots: { index: true, follow: true },
+  category: "business",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
+  },
   openGraph: {
     type: "website",
     siteName: APP_NAME,
+    locale: "en_NP",
     title: APP_TITLE,
     description: APP_DESC,
     url: APP_URL,

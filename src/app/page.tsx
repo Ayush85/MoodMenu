@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ProductLanding from "@/components/landing/ProductLanding";
 import { serializeJsonLd } from "@/lib/structured-data";
 import { getAppBaseUrl } from "@/lib/restaurant-site";
+import { FAQ_ITEMS, FEATURE_LIST, PRODUCT_DEFINITION, PRODUCT_NAME, PRODUCT_TAGLINE } from "@/lib/marketing-content";
 import "./marketing.css";
 
 const APP_URL = getAppBaseUrl();
@@ -12,55 +13,93 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: { canonical: APP_URL },
-  openGraph: { type: "website", siteName: "Menuor", title: TITLE, description: DESCRIPTION, url: APP_URL },
+  keywords: [
+    "QR code menu Nepal",
+    "digital menu Nepal",
+    "restaurant management software Nepal",
+    "restaurant ordering system",
+    "table ordering QR code",
+    "cafe menu software",
+  ],
+  openGraph: { type: "website", siteName: "Menuor", locale: "en_NP", title: TITLE, description: DESCRIPTION, url: APP_URL },
   twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
 };
 
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "@id": APP_URL + "/#organization",
-  name: "Menuor",
-  url: APP_URL,
-  logo: APP_URL + "/logo.svg",
-  founder: { "@type": "Person", name: "Ayush Shrestha" },
-  contactPoint: {
-    "@type": "ContactPoint",
-    contactType: "customer support",
-    telephone: "+977-9844453285",
-    email: "ayushrestha8585@gmail.com",
-  },
-};
+const ORG_ID = APP_URL + "/#organization";
 
-const softwareJsonLd = {
+// One linked @graph: entities reference each other by @id so crawlers and
+// AI engines resolve a single coherent "Menuor" entity instead of several
+// disconnected fragments.
+const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  "@id": APP_URL + "/#software",
-  name: "Menuor",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  url: APP_URL,
-  publisher: { "@id": APP_URL + "/#organization" },
-  description:
-    "A restaurant management system combining a QR-code digital menu with table ordering, waiter calls, staff management, expense tracking, and analytics.",
-};
-
-const websiteJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  "@id": APP_URL + "/#website",
-  name: "Menuor",
-  url: APP_URL,
-  inLanguage: "en",
-  publisher: { "@id": APP_URL + "/#organization" },
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": ORG_ID,
+      name: PRODUCT_NAME,
+      url: APP_URL,
+      logo: { "@type": "ImageObject", url: APP_URL + "/logo.svg" },
+      description: PRODUCT_TAGLINE,
+      areaServed: { "@type": "Country", name: "Nepal" },
+      founder: { "@type": "Person", name: "Ayush Shrestha" },
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        telephone: "+977-9844453285",
+        email: "ayushrestha8585@gmail.com",
+        availableLanguage: ["English", "Nepali"],
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": APP_URL + "/#website",
+      name: PRODUCT_NAME,
+      url: APP_URL,
+      inLanguage: "en",
+      publisher: { "@id": ORG_ID },
+    },
+    {
+      "@type": "WebPage",
+      "@id": APP_URL + "/#webpage",
+      url: APP_URL,
+      name: TITLE,
+      description: DESCRIPTION,
+      inLanguage: "en",
+      isPartOf: { "@id": APP_URL + "/#website" },
+      about: { "@id": APP_URL + "/#software" },
+      primaryImageOfPage: { "@type": "ImageObject", url: APP_URL + "/opengraph-image" },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": APP_URL + "/#software",
+      name: PRODUCT_NAME,
+      applicationCategory: "BusinessApplication",
+      applicationSubCategory: "Restaurant management software",
+      operatingSystem: "Web",
+      url: APP_URL,
+      description: PRODUCT_DEFINITION,
+      featureList: FEATURE_LIST,
+      areaServed: { "@type": "Country", name: "Nepal" },
+      audience: { "@type": "BusinessAudience", audienceType: "Restaurants and cafés" },
+      publisher: { "@id": ORG_ID },
+    },
+    {
+      "@type": "FAQPage",
+      "@id": APP_URL + "/#faq",
+      isPartOf: { "@id": APP_URL + "/#webpage" },
+      mainEntity: FAQ_ITEMS.map(([name, text]) => ({
+        "@type": "Question",
+        name,
+        acceptedAnswer: { "@type": "Answer", text },
+      })),
+    },
+  ],
 };
 
 export default function LandingPage() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(organizationJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(softwareJsonLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(websiteJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
       <ProductLanding />
     </>
   );

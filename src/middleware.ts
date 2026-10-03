@@ -6,7 +6,7 @@ import { hasVerifiedCustomDomain } from "@/lib/restaurant-site";
 export const config = {
   runtime: "nodejs",
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|twitter-image|robots.txt|sitemap.xml|api/|uploads/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|opengraph-image|twitter-image|robots.txt|sitemap.xml|llms.txt|api/|uploads/).*)",
   ],
 };
 

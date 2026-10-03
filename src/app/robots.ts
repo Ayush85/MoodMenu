@@ -25,26 +25,24 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     "/uploads/",
   ];
 
-  // Search and AI answer-engine crawlers are named explicitly so the policy
-  // is unambiguous: public pages may be indexed, cited, and used for
-  // retrieval. Private app areas stay blocked for all of them.
-  const aiCrawlers = [
-    "GPTBot",
+  // Answer engines and AI search/agent crawlers may fetch public pages so
+  // Menuor can be cited. Model-training crawlers are blocked, matching the
+  // Cloudflare AI bot policy (Search: allow, Agent: allow, Training: disallow).
+  const aiAnswerCrawlers = [
     "OAI-SearchBot",
     "ChatGPT-User",
-    "ClaudeBot",
     "Claude-SearchBot",
     "Claude-User",
     "PerplexityBot",
     "Perplexity-User",
-    "Google-Extended",
-    "Applebot-Extended",
   ];
+  const aiTrainingCrawlers = ["GPTBot", "ClaudeBot", "Google-Extended", "Applebot-Extended", "CCBot"];
 
   return {
     rules: [
       { userAgent: "*", allow: ["/", "/menu/", "/landing/", "/llms.txt"], disallow },
-      { userAgent: aiCrawlers, allow: ["/", "/menu/", "/landing/", "/llms.txt"], disallow },
+      { userAgent: aiAnswerCrawlers, allow: ["/", "/menu/", "/landing/", "/llms.txt"], disallow },
+      { userAgent: aiTrainingCrawlers, disallow: "/" },
     ],
     sitemap: `${sitemapOrigin}/sitemap.xml`,
   };

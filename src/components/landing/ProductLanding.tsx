@@ -1,63 +1,64 @@
+import Image from "next/image";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { FAQ_ITEMS as questions, PRODUCT_DEFINITION } from "@/lib/marketing-content";
-import { ArrowRight, Check, Coffee, UtensilsCrossed, ClipboardList } from "lucide-react";
 import MarketingShell from "./MarketingShell";
 import { features } from "./features";
+
+const steps = [
+  ["Add your menu", "Create your restaurant, add categories and dishes with photos and prices, and choose how the menu looks. Update prices and availability whenever you need."],
+  ["Print table QR codes", "Generate a QR code for each table and place it where guests sit. The menu opens in the phone’s browser, with no app to install."],
+  ["Run service from the dashboard", "Add staff accounts, follow incoming orders on the order board, and respond to waiter calls."],
+];
 
 export default function ProductLanding() {
   return (
     <MarketingShell>
-      <>
-        <section className="marketing-container marketing-hero">
-          <div>
-            <p className="marketing-eyebrow">For restaurants & cafés in Nepal</p>
-            <h1>QR menu &amp; ordering<br />for Nepal’s restaurants.<br /><span>One happy service.</span></h1>
-            <p className="marketing-lead">{PRODUCT_DEFINITION}</p>
-            <div className="marketing-actions"><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={18} /></Link><a href="#product-preview" className="marketing-text-link">Explore the experience <ArrowRight size={17} /></a></div>
-            <p className="marketing-note"><Check size={16} /> No app download for guests. Just scan and browse.</p>
+      <section className="marketing-container marketing-hero">
+        <div>
+          <h1>QR menus and table ordering for restaurants in Nepal</h1>
+          <p className="marketing-lead">Publish your menu, take orders from the table, and manage your team in one place. Guests scan a QR code and order from their own phone. There is nothing to install.</p>
+          <div className="marketing-actions">
+            <Link href="/register" className="marketing-button">Create your menu <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link href="/menu/kalash-food-cafe" className="marketing-button marketing-button-secondary">View a live menu</Link>
           </div>
-          <div id="product-preview" className="marketing-preview" aria-label="Illustrative guest menu and kitchen order">
-            <div className="marketing-preview-top"><span>A little less busywork.</span><span>A little more hospitality.</span></div>
-            <div className="marketing-phone">
-              <div className="marketing-phone-notch" />
-              <div className="marketing-phone-header"><Coffee size={22} /><span>The Corner Café<small>Kathmandu · Table 04</small></span></div>
-              <p className="marketing-phone-greeting">Something delicious<br />starts here.</p>
-              <div className="marketing-preview-tabs"><span>Popular</span><span>Momo</span><span>Drinks</span></div>
-              {[["Steam momo", "Steamed and served with achar", "Rs. 220"], ["Iced latte", "Espresso, milk, a little chill", "Rs. 180"], ["Veg chow mein", "Wok-tossed noodles & vegetables", "Rs. 190"]].map(([name, description, price], i) => (
-                <div className="marketing-preview-dish" key={name}>
-                  <div className={"marketing-dish-icon marketing-dish-icon-" + i}>{i === 1 ? <Coffee size={26} /> : <UtensilsCrossed size={26} />}</div>
-                  <div><strong>{name}</strong><p>{description}</p><b>{price}</b></div><span className="marketing-preview-plus" aria-hidden="true">+</span>
-                </div>
-              ))}
-              <div className="marketing-preview-order">Your order <span>2 items · Rs. 400</span></div>
-            </div>
-            <div className="marketing-kitchen-card"><ClipboardList size={24} /><div><strong>Table 04 · New order</strong><p>1 × Steam momo · 1 × Iced latte</p><span>Ready for the kitchen</span></div></div>
-            <p className="marketing-preview-caption">Example menu and order · Illustrative data</p>
-          </div>
-        </section>
-        <div className="marketing-benefits"><div className="marketing-container marketing-benefits-inner">
-          <p><strong>Scan. Browse. Order.</strong><span>A menu that opens in the browser</span></p>
-          <p><strong>Fresh menu, same QR.</strong><span>Update dishes and prices anytime</span></p>
-          <p><strong>Everyone on the same page.</strong><span>Orders and roles for your team</span></p>
-        </div></div>
-        <section id="features" className="marketing-container marketing-section" aria-labelledby="features-heading">
-          <div className="marketing-section-heading"><div><p className="marketing-eyebrow">Built for the whole service</p><h2 id="features-heading">A better guest experience.<br /><span>A clearer day for your team.</span></h2></div><p>Start with a QR code digital menu. Bring ordering, staff, and the everyday details of running your restaurant together.</p></div>
-          <div className="marketing-feature-grid">{features.map(({ icon: Icon, title, text }, i) => <article key={title}><div className="marketing-feature-top"><Icon size={25} aria-hidden="true" /><span>0{i + 1}</span></div><h3>{title}</h3><p>{text}</p></article>)}</div>
-        </section>
-        <section id="how-it-works" className="marketing-workflow" aria-labelledby="how-heading"><div className="marketing-container marketing-section">
-          <p className="marketing-eyebrow">From setup to service</p><h2 id="how-heading">Your next service,<br /><span>a little simpler.</span></h2>
-          <div className="marketing-steps">{[
-            ["Make it yours", "Create your restaurant, add your dishes, and choose your menu’s look. Update availability and prices whenever you need."],
-            ["Put it on the table", "Create table QR codes and place them where guests can scan. Your menu opens right in their phone’s browser."],
-            ["Bring your team together", "Add staff accounts, follow incoming orders, and respond to waiter calls from your restaurant dashboard."],
-          ].map(([title, text], i) => <article key={title}><span>0{i + 1}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
-        </div></section>
-        <section id="faq" className="marketing-container marketing-section marketing-faq" aria-labelledby="faq-heading">
-          <div><p className="marketing-eyebrow">Before your first service</p><h2 id="faq-heading">A few good<br /><span>questions.</span></h2><p>Need a hand getting started?<br /><a href="mailto:ayushrestha8585@gmail.com">Talk to us →</a></p></div>
-          <div>{questions.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div>
-        </section>
-        <section className="marketing-container marketing-cta"><p className="marketing-eyebrow">Good food deserves a great experience</p><h2>Make room for<br /><span>better service.</span></h2><p>Your menu, your team, and your next order. Bring them together with Menuor.</p><Link href="/register" className="marketing-button">Create your restaurant <ArrowRight size={18} /></Link></section>
-      </>
+          <p className="marketing-hero-note">Free during launch.</p>
+        </div>
+        <figure className="marketing-hero-media">
+          <div className="marketing-phone"><Image src="/menu-preview.jpg" alt="A restaurant menu on Menuor, shown on a phone with photos, prices, and categories" width={780} height={1514} priority sizes="280px" /></div>
+          <figcaption>A live menu published with Menuor</figcaption>
+        </figure>
+      </section>
+
+      <div className="marketing-facts"><div className="marketing-container marketing-facts-inner">
+        <p><strong>No app for guests</strong><span>The menu opens in the phone’s browser</span></p>
+        <p><strong>No reprinting</strong><span>Update dishes and prices behind the same QR code</span></p>
+        <p><strong>Roles for your team</strong><span>Separate access for waiters, cooks, and chefs</span></p>
+      </div></div>
+
+      <section className="marketing-container marketing-section marketing-about" aria-labelledby="about-heading">
+        <h2 id="about-heading">What is Menuor?</h2>
+        <p>{PRODUCT_DEFINITION}</p>
+      </section>
+
+      <section id="features" className="marketing-section marketing-section-alt" aria-labelledby="features-heading"><div className="marketing-container">
+        <div className="marketing-section-head"><h2 id="features-heading">Everything a restaurant uses during service</h2><p>Start with a QR menu. Add ordering, staff accounts, and analytics as you need them.</p></div>
+        <div className="marketing-feature-grid">{features.map(({ icon: Icon, title, text }) => <article key={title}><div className="marketing-feature-icon"><Icon size={20} aria-hidden="true" /></div><h3>{title}</h3><p>{text}</p></article>)}</div>
+      </div></section>
+
+      <section id="how-it-works" className="marketing-container marketing-section" aria-labelledby="how-heading">
+        <div className="marketing-section-head"><h2 id="how-heading">Set up in three steps</h2></div>
+        <div className="marketing-steps">{steps.map(([title, text]) => <article key={title}><h3>{title}</h3><p>{text}</p></article>)}</div>
+      </section>
+
+      <section id="faq" className="marketing-section marketing-section-alt" aria-labelledby="faq-heading"><div className="marketing-container marketing-faq">
+        <div className="marketing-faq-aside"><h2 id="faq-heading">Frequently asked questions</h2><p>Can’t find an answer? <a href="mailto:ayushrestha8585@gmail.com">Email us</a>.</p></div>
+        <div>{questions.map(([question, answer]) => <details key={question}><summary>{question}<span aria-hidden="true">+</span></summary><p>{answer}</p></details>)}</div>
+      </div></section>
+
+      <section className="marketing-container marketing-section" style={{ paddingBottom: 0 }}>
+        <div className="marketing-cta"><h2>Put your menu on the table</h2><p>Create your restaurant and print your first QR code today. Free during launch.</p><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={16} aria-hidden="true" /></Link></div>
+      </section>
     </MarketingShell>
   );
 }

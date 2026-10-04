@@ -65,17 +65,16 @@ export default function GuidePage() {
   return (
     <MarketingShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <article className="marketing-container marketing-section" style={{ maxWidth: 760 }}>
-        <p className="marketing-eyebrow">Guide</p>
-        <h1 style={{ fontSize: "clamp(32px, 5vw, 48px)", lineHeight: 1.1, margin: "12px 0 20px" }}>How to make a QR code menu for your restaurant or café in Nepal</h1>
-        <p className="marketing-lead">A QR code menu lets guests open your menu on their own phone by scanning a code on the table. Here is how to set one up with Menuor, from first dish to first order.</p>
-        <p style={{ fontSize: 13, color: "#58655d" }}>By Ayush Shrestha · <time dateTime={PUBLISHED}>3 October 2026</time></p>
-        <ol style={{ listStyle: "none", padding: 0, margin: "36px 0", display: "grid", gap: 28 }}>
-          {steps.map(([title, text], i) => <li key={title}><h2 style={{ fontSize: 22, marginBottom: 8 }}>{i + 1}. {title}</h2><p style={{ lineHeight: 1.8, color: "#58655d" }}>{text}</p></li>)}
+      <article className="marketing-container marketing-prose">
+        <h1>How to make a QR code menu for your restaurant or café in Nepal</h1>
+        <p className="marketing-lead">A QR code menu lets guests open your menu on their own phone by scanning a code on the table. Here is how to set one up with Menuor, from the first dish to the first order.</p>
+        <p className="marketing-byline">By Ayush Shrestha · <time dateTime={PUBLISHED}>3 October 2026</time></p>
+        <ol>
+          {steps.map(([title, text]) => <li key={title}><h2>{title}</h2><p>{text}</p></li>)}
         </ol>
-        <h2 style={{ fontSize: 22, marginBottom: 12 }}>Common questions</h2>
-        {faq.map(([q, a]) => <div key={q} style={{ marginBottom: 16 }}><h3 style={{ fontSize: 17 }}>{q}</h3><p style={{ color: "#58655d", lineHeight: 1.8 }}>{a}</p></div>)}
-        <p style={{ marginTop: 32 }}><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={18} /></Link></p>
+        <h2>Common questions</h2>
+        {faq.map(([q, a]) => <div key={q}><h3>{q}</h3><p>{a}</p></div>)}
+        <div className="marketing-actions"><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={16} aria-hidden="true" /></Link></div>
       </article>
     </MarketingShell>
   );

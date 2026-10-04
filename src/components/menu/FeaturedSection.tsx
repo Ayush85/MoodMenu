@@ -32,7 +32,7 @@ export default function FeaturedSection({ items, ruleName, theme, onTap }: Props
           </h2>
         </div>
         <p className="text-xs opacity-40 mt-0.5">
-          {ruleName === "Default" ? "A few favourites to get you started" : `Picked for today&apos;s mood — ${ruleName}`}
+          {ruleName === "Default" ? "A few favourites to get you started" : `Picked for today's mood — ${ruleName}`}
         </p>
       </div>
 

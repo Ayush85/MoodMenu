@@ -28,11 +28,16 @@ export default function FeaturesPage() {
   return (
     <MarketingShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <section className="marketing-container marketing-section">
-        <div className="marketing-section-heading"><div><p className="marketing-eyebrow">Features</p><h1>Everything for the<br /><span>whole service.</span></h1></div><p>Menuor starts with a QR code digital menu and adds ordering, staff, and the everyday details of running a restaurant or café in Nepal.</p></div>
-        <div className="marketing-feature-grid">{features.map(({ icon: Icon, title, text }, i) => <article key={title}><div className="marketing-feature-top"><Icon size={25} aria-hidden="true" /><span>0{i + 1}</span></div><h2 style={{ fontSize: 20 }}>{title}</h2><p>{text}</p></article>)}</div>
+      <div className="marketing-container marketing-page-header">
+        <h1>Features for restaurants and cafés</h1>
+        <p className="marketing-lead">Menuor starts with a QR code digital menu and adds ordering, staff accounts, and analytics for running a restaurant in Nepal.</p>
+      </div>
+      <section className="marketing-container marketing-section" style={{ paddingTop: 24 }} aria-label="Feature list">
+        <div className="marketing-feature-grid">{features.map(({ icon: Icon, title, text }) => <article key={title}><div className="marketing-feature-icon"><Icon size={20} aria-hidden="true" /></div><h2 style={{ fontSize: 17 }}>{title}</h2><p>{text}</p></article>)}</div>
       </section>
-      <section className="marketing-container marketing-cta"><p className="marketing-eyebrow">Free during launch</p><h2>Try it in<br /><span>your restaurant.</span></h2><p>Create your menu and print your first table QR code today.</p><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={18} /></Link></section>
+      <section className="marketing-container" style={{ paddingTop: 16 }}>
+        <div className="marketing-cta"><h2>Try it in your restaurant</h2><p>Create your menu and print your first table QR code today. Free during launch.</p><Link href="/register" className="marketing-button">Create your menu <ArrowRight size={16} aria-hidden="true" /></Link></div>
+      </section>
     </MarketingShell>
   );
 }

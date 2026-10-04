@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import MarketingShell from "@/components/landing/MarketingShell";
 import { serializeJsonLd } from "@/lib/structured-data";
 import { getAppBaseUrl } from "@/lib/restaurant-site";
@@ -28,11 +28,16 @@ const included = [
   "Restaurant landing page and custom domain",
 ];
 
-const planned = [
-  "Menu management stays free",
-  "Free plan has a limited number of menu updates",
-  "Free plan is supported by ads",
-  "Ordering, staff, and analytics tools are planned as paid features",
+const freePlanned = [
+  "Digital menu and QR code",
+  "A limited number of menu updates",
+  "Supported by ads",
+];
+
+const paidPlanned = [
+  "Table ordering and the live order board",
+  "Staff accounts and roles",
+  "Sales analytics and expense tracking",
 ];
 
 const faq: ReadonlyArray<readonly [string, string]> = [
@@ -53,28 +58,36 @@ export default function PricingPage() {
   return (
     <MarketingShell>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }} />
-      <section className="marketing-container marketing-section">
-        <div className="marketing-section-heading"><div><p className="marketing-eyebrow">Pricing</p><h1>Free while we launch.<br /><span>Simple plans next.</span></h1></div><p>{PRICING_ANSWER}</p></div>
-        <div className="marketing-feature-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
-          <article>
-            <p className="marketing-eyebrow">Available now</p>
-            <h2 style={{ fontSize: 24 }}>Launch plan · Rs. 0</h2>
-            <p>Everything in Menuor is free to use during launch.</p>
-            <ul style={{ listStyle: "none", padding: 0, margin: "18px 0 24px", display: "grid", gap: 10 }}>{included.map((i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 14 }}><Check size={16} aria-hidden="true" />{i}</li>)}</ul>
-            <Link href="/register" className="marketing-button">Create your menu <ArrowRight size={18} /></Link>
-          </article>
-          <article>
-            <p className="marketing-eyebrow">Planned, not live yet</p>
-            <h2 style={{ fontSize: 24 }}>Free menu plan</h2>
-            <p>How we intend to price Menuor after launch. Details and limits will be announced in advance.</p>
-            <ul style={{ listStyle: "none", padding: 0, margin: "18px 0 0", display: "grid", gap: 10 }}>{planned.map((i) => <li key={i} style={{ display: "flex", gap: 8, fontSize: 14 }}><Check size={16} aria-hidden="true" />{i}</li>)}</ul>
-          </article>
-        </div>
-      </section>
-      <section className="marketing-container marketing-section marketing-faq" aria-labelledby="pricing-faq">
-        <div><p className="marketing-eyebrow">Pricing questions</p><h2 id="pricing-faq">Good to <span>know.</span></h2></div>
+      <div className="marketing-container marketing-page-header">
+        <h1>Simple pricing, free during launch</h1>
+        <p className="marketing-lead">{PRICING_ANSWER}</p>
+      </div>
+      <div className="marketing-container marketing-plans">
+        <section className="marketing-plan marketing-plan-current" aria-labelledby="plan-launch">
+          <header><h2 id="plan-launch">Launch plan</h2><span className="marketing-badge">Available now</span></header>
+          <p className="marketing-plan-price">Rs. 0<small>Free during launch</small></p>
+          <p>Everything in Menuor, with no limits on menu updates.</p>
+          <ul>{included.map((i) => <li key={i}>{i}</li>)}</ul>
+          <Link href="/register" className="marketing-button">Create your menu <ArrowRight size={16} aria-hidden="true" /></Link>
+        </section>
+        <section className="marketing-plan marketing-plan-planned" aria-labelledby="plan-free">
+          <header><h2 id="plan-free">Free plan</h2><span className="marketing-badge marketing-badge-muted">Planned</span></header>
+          <p className="marketing-plan-price">Rs. 0<small>Not live yet</small></p>
+          <p>Menu management that stays free, with limits.</p>
+          <ul>{freePlanned.map((i) => <li key={i}>{i}</li>)}</ul>
+        </section>
+        <section className="marketing-plan marketing-plan-planned" aria-labelledby="plan-paid">
+          <header><h2 id="plan-paid">Restaurant plan</h2><span className="marketing-badge marketing-badge-muted">Planned</span></header>
+          <p className="marketing-plan-price">To be announced<small>Not live yet</small></p>
+          <p>Tools for running service.</p>
+          <ul>{paidPlanned.map((i) => <li key={i}>{i}</li>)}</ul>
+        </section>
+      </div>
+      <div className="marketing-container marketing-fineprint"><p>Planned plans are not available yet and may change. Any change will be announced in advance before it takes effect.</p></div>
+      <section className="marketing-section marketing-section-alt" aria-labelledby="pricing-faq"><div className="marketing-container marketing-faq">
+        <div className="marketing-faq-aside"><h2 id="pricing-faq">Pricing questions</h2></div>
         <div>{faq.map(([q, a]) => <details key={q}><summary>{q}<span aria-hidden="true">+</span></summary><p>{a}</p></details>)}</div>
-      </section>
+      </div></section>
     </MarketingShell>
   );
 }

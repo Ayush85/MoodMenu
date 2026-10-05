@@ -148,12 +148,14 @@ export default function Sidebar() {
 
   const currentRestaurantId = useMemo(() => {
     const match = pathname.match(/\/dashboard\/restaurant\/([^/]+)/);
-    if (match?.[1]) return match[1];
+    if (match?.[1] && match[1] !== "new") return match[1];
     return primaryRestaurantId || "";
   }, [pathname, primaryRestaurantId]);
 
+  // "/dashboard/restaurant/new" is the create flow, not a restaurant workspace,
+  // so it must show the account-level nav rather than restaurant-scoped links.
   const insideRestaurant = useMemo(
-    () => /\/dashboard\/restaurant\/[^/]+/.test(pathname),
+    () => /\/dashboard\/restaurant\/(?!new(?:\/|$))[^/]+/.test(pathname),
     [pathname]
   );
 

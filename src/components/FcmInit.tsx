@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Bell, X } from "lucide-react";
 import { getToken, onMessage } from "firebase/messaging";
 import { getFcmMessaging } from "@/lib/firebase-client";
 
@@ -14,6 +16,26 @@ async function registerToken(token: string) {
     });
   } catch {
     // Ignore — user can still use the app without push
+  }
+}
+
+const DISMISS_KEY = "menuor:push-banner-dismissed-at";
+const DISMISS_FOR_MS = 7 * 24 * 60 * 60 * 1000;
+
+function wasRecentlyDismissed() {
+  try {
+    const at = Number(localStorage.getItem(DISMISS_KEY));
+    return Boolean(at) && Date.now() - at < DISMISS_FOR_MS;
+  } catch {
+    return false;
+  }
+}
+
+function rememberDismissal() {
+  try {
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+  } catch {
+    // Private mode / blocked storage — the banner just reappears next visit
   }
 }
 
@@ -31,6 +53,7 @@ async function unregisterToken(token: string) {
 
 export default function FcmInit() {
   const { data: session, status } = useSession();
+  const pathname = usePathname();
   const didInit = useRef(false);
   const currentToken = useRef<string | null>(null);
   const [showBanner, setShowBanner] = useState(false);
@@ -116,7 +139,7 @@ export default function FcmInit() {
     Boolean(vapidKey) && status !== "loading" && Boolean(session?.user) && permState === "default";
 
   useEffect(() => {
-    if (!shouldOfferPrompt) return;
+    if (!shouldOfferPrompt || wasRecentlyDismissed()) return;
     const timer = setTimeout(() => setShowBanner(true), 3000);
     return () => clearTimeout(timer);
   }, [shouldOfferPrompt]);
@@ -135,70 +158,42 @@ export default function FcmInit() {
     setShowBanner(false);
   }, [syncToken]);
 
+  const dismiss = () => {
+    rememberDismissal();
+    setShowBanner(false);
+  };
+
   if (!displayBanner) return null;
 
+  // Phones show the restaurant quick-nav bar at the bottom; sit above it.
+  const aboveQuickNav = /\/dashboard\/restaurant\/(?!new(?:\/|$))[^/]+/.test(pathname);
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        padding: "14px 16px",
-        background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        boxShadow: "0 -4px 20px rgba(0,0,0,0.25)",
-        animation: "slideUp .3s ease-out",
-      }}
+    <section
+      aria-label="Enable notifications"
+      className={`animate-fade-in-up fixed inset-x-3 z-50 flex items-center gap-3 rounded-2xl border border-gray-200 bg-white p-3 pl-4 shadow-xl md:inset-x-auto md:bottom-4 md:right-4 md:max-w-md ${
+        aboveQuickNav ? "bottom-[calc(5.25rem+env(safe-area-inset-bottom))]" : "bottom-[calc(0.75rem+env(safe-area-inset-bottom))]"
+      }`}
     >
-      <div style={{ fontSize: "22px", flexShrink: 0 }}>🔔</div>
-      <p style={{ fontSize: "13px", lineHeight: 1.4, flex: 1, margin: 0 }}>
-        Enable notifications to get alerted about waiter calls and new orders — even when this tab isn&apos;t open.
+      <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-lg bg-orange-100 text-orange-800">
+        <Bell className="size-4.5" />
+      </span>
+      <p className="flex-1 text-sm leading-snug text-gray-700">
+        Get alerted about waiter calls and new orders, even when this tab isn&apos;t open.
       </p>
       <button
         onClick={handleEnable}
-        style={{
-          background: "#6366f1",
-          color: "#fff",
-          border: "none",
-          borderRadius: "8px",
-          padding: "8px 18px",
-          fontSize: "13px",
-          fontWeight: 700,
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
+        className="min-h-11 shrink-0 rounded-lg bg-orange-700 px-4 text-sm font-semibold text-white transition hover:bg-orange-800"
       >
         Enable
       </button>
       <button
-        onClick={() => setShowBanner(false)}
-        aria-label="Dismiss"
-        style={{
-          background: "transparent",
-          color: "rgba(255,255,255,0.4)",
-          border: "none",
-          fontSize: "20px",
-          cursor: "pointer",
-          padding: "2px 6px",
-          lineHeight: 1,
-          flexShrink: 0,
-        }}
+        onClick={dismiss}
+        aria-label="Dismiss notification prompt"
+        className="grid size-11 shrink-0 place-items-center rounded-lg text-gray-600 transition hover:bg-gray-100"
       >
-        ×
+        <X className="size-4" aria-hidden="true" />
       </button>
-
-      <style>{`
-        @keyframes slideUp {
-          from { transform: translateY(100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
-    </div>
+    </section>
   );
 }

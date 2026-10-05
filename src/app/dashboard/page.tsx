@@ -73,13 +73,13 @@ export default function DashboardPage() {
       {/* Welcome header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight">
             {getGreeting()},{" "}
             <span className="gradient-text">
               {session?.user?.name?.split(" ")[0] || "there"}
             </span>
           </h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <p className="text-gray-600 text-sm mt-1">
             {restaurants.length > 0
               ? `Managing ${restaurants.length} restaurant${restaurants.length !== 1 ? "s" : ""} · ${totalItems} menu items`
               : "Let's get your first restaurant set up"}
@@ -107,7 +107,7 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               ),
-              color: "text-orange-600",
+              color: "text-orange-700",
               bg: "bg-orange-50",
             },
             {
@@ -129,8 +129,8 @@ export default function DashboardPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a4 4 0 014-4z" />
                 </svg>
               ),
-              color: "text-violet-600",
-              bg: "bg-violet-50",
+              color: "text-amber-700",
+              bg: "bg-amber-50",
             },
             {
               label: "Active",
@@ -149,7 +149,7 @@ export default function DashboardPage() {
                 {s.icon}
               </div>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400">{s.label}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-600">{s.label}</p>
                 <p className={`text-xl font-extrabold ${s.color} leading-tight`}>{s.value}</p>
               </div>
             </div>
@@ -170,11 +170,11 @@ export default function DashboardPage() {
           ) : (
             <>
               <div className="text-center mb-10">
-                <div className="w-16 h-16 rounded-2xl bg-linear-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-200">
+                <div className="w-16 h-16 rounded-2xl bg-orange-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-orange-900/15">
                   <Rocket className="w-7 h-7 text-white" />
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-1">Set up your first restaurant</h2>
-                <p className="text-gray-500 text-sm">Follow these steps to prepare for your first service</p>
+                <h2 className="font-display text-2xl font-semibold text-gray-900 mb-1">Set up your first restaurant</h2>
+                <p className="text-gray-600 text-sm">Follow these steps to prepare for your first service</p>
               </div>
 
               <div className="max-w-lg mx-auto space-y-3">
@@ -197,19 +197,19 @@ export default function DashboardPage() {
                     className={`flex gap-4 p-4 rounded-2xl border transition ${
                       item.active
                         ? "bg-orange-50 border-orange-200"
-                        : "bg-gray-50 border-gray-100 opacity-50"
+                        : "bg-gray-50 border-gray-200 text-gray-600"
                     }`}
                   >
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-base ${
-                        item.active ? "bg-linear-to-br from-orange-500 to-rose-500 text-white shadow-sm" : "bg-gray-200 text-gray-500"
+                        item.active ? "bg-orange-700 text-white shadow-sm" : "bg-gray-200 text-gray-600"
                       }`}
                     >
                       {i === 0 ? item.step : item.icon}
                     </div>
                     <div className="flex-1">
                       <h3 className="font-bold text-gray-900 text-sm">{item.title}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{item.desc}</p>
                       {item.href && (
                         <Link href={item.href} className="btn-primary text-xs! px-4! py-2! mt-3 inline-flex">
                           {item.btn}
@@ -225,7 +225,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {!isStaff && restaurants.some(r => !r.categories.some(c => c.items.length)) && <section className="surface-card mb-6 p-5">
-            <h2 className="text-lg font-bold text-gray-900">Continue your restaurant setup</h2>
+            <h2 className="font-display text-lg font-semibold text-gray-900">Continue your restaurant setup</h2>
             <p className="mt-1 text-sm text-gray-600">Add your first dishes, set up tables, then preview and print your QR codes.</p>
             {restaurants.filter(r => !r.categories.some(c => c.items.length)).map(r => <div key={r.id} className="mt-4">
               <h3 className="font-semibold">{r.name}</h3>
@@ -238,7 +238,7 @@ export default function DashboardPage() {
           </section>}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-gray-800">Your Restaurants</h2>
-            <span className="text-xs text-gray-400">{restaurants.length} total</span>
+            <span className="text-xs text-gray-600">{restaurants.length} total</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {restaurants.map((r, i) => {
@@ -251,19 +251,19 @@ export default function DashboardPage() {
                 >
                   {/* Top bar */}
                   <div className="flex items-start justify-between gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-xl bg-linear-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white font-bold text-base shrink-0 shadow-sm shadow-orange-200/50">
+                    <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-800 flex items-center justify-center font-bold text-base shrink-0">
                       {r.name[0].toUpperCase()}
                     </div>
-                    <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-1 rounded-full">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
                       Active
                     </span>
                   </div>
 
-                  <h3 className="text-base font-bold text-gray-900 group-hover:text-orange-600 transition-colors leading-tight">
+                  <h3 className="text-base font-bold text-gray-900 group-hover:text-orange-700 transition-colors leading-tight">
                     {r.name}
                   </h3>
-                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-gray-600 mt-1 flex items-center gap-1">
                     <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -272,17 +272,17 @@ export default function DashboardPage() {
                   </p>
 
                   <div className="flex items-center gap-2 mt-4">
-                    <span className="text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
+                    <span className="text-[11px] font-medium text-gray-600 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
                       {r.categories.length} categories
                     </span>
-                    <span className="text-[11px] font-medium text-gray-500 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
+                    <span className="text-[11px] font-medium text-gray-600 bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg">
                       {itemCount} items
                     </span>
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-50 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400 font-mono">/menu/{r.slug}</span>
-                    <span className="text-[11px] font-semibold text-orange-500 group-hover:text-orange-600 transition-colors flex items-center gap-1">
+                    <span className="text-[11px] text-gray-600 font-mono">/menu/{r.slug}</span>
+                    <span className="text-[11px] font-semibold text-orange-700 group-hover:text-orange-800 transition-colors flex items-center gap-1">
                       Manage
                       <svg className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -305,8 +305,8 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-600 group-hover:text-orange-600 transition-colors">Add Restaurant</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Set up a new location</p>
+                  <p className="text-sm font-semibold text-gray-700 group-hover:text-orange-700 transition-colors">Add Restaurant</p>
+                  <p className="text-xs text-gray-600 mt-0.5">Set up a new location</p>
                 </div>
               </Link>
             )}

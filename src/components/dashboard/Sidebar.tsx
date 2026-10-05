@@ -2,12 +2,12 @@
 
 import { readJson } from "@/lib/read-json";
 import type { ChangeEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import NavLink from "@/components/ui/NavLink";
-import { BookOpen, ClipboardList, MoreHorizontal, Users } from "lucide-react";
+import { BookOpen, ClipboardList, MoreHorizontal, Users, X } from "lucide-react";
 
 interface RestaurantOption {
   id: string;
@@ -122,6 +122,9 @@ export default function Sidebar() {
   const [retryRestaurants, setRetryRestaurants] = useState(0);
   const [restaurants, setRestaurants] = useState<RestaurantOption[]>([]);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const drawerRef = useRef<HTMLElement>(null);
+  const drawerCloseRef = useRef<HTMLButtonElement>(null);
+  const lastTriggerRef = useRef<HTMLElement | null>(null);
   const isSuperAdmin = session?.user?.role === "SUPER_ADMIN";
   const isStaff = session?.user?.actorType === "STAFF";
   const primaryRestaurantId = session?.user?.restaurantId || session?.user?.restaurantIds?.[0];
@@ -161,16 +164,58 @@ export default function Sidebar() {
 
   const currentRestaurant = restaurants.find((r) => r.id === currentRestaurantId);
 
-  const close = () => setMobileOpen(false);
+  const close = useCallback(() => setMobileOpen(false), []);
+
+  // Mobile drawer behaves as a modal dialog: Escape closes it, Tab stays
+  // inside it, the page behind does not scroll, and focus returns to the
+  // control that opened it.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    lastTriggerRef.current = document.activeElement as HTMLElement | null;
+    drawerCloseRef.current?.focus();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        close();
+        return;
+      }
+      if (e.key !== "Tab" || !drawerRef.current) return;
+      const focusable = drawerRef.current.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), select, input, [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      lastTriggerRef.current?.focus();
+    };
+  }, [mobileOpen, close]);
 
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="px-4 py-5 border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2.5 group" onClick={close}>
+          <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#263b32] text-base font-extrabold leading-none tracking-tight text-[#fbfaf6]">
+            m<span className="text-[#c65b36]">.</span>
+          </span>
           <div>
             <span className="text-[15px] font-bold text-gray-900 block leading-none">Menuor</span>
-            <span className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mt-0.5 block">
+            <span className="text-[11px] text-gray-500 font-medium uppercase tracking-widest mt-1 block">
               {isStaff ? "Staff Portal" : "Dashboard"}
             </span>
           </div>
@@ -185,7 +230,7 @@ export default function Sidebar() {
             {/* Restaurant switcher */}
             {restaurants.length > 1 ? (
               <div className="mb-3">
-                <label htmlFor="restaurant-switcher" className="block text-xs font-bold uppercase tracking-widest text-gray-500 px-2 mb-1.5">
+                <label htmlFor="restaurant-switcher" className="block text-xs font-bold uppercase tracking-widest text-gray-600 px-2 mb-1.5">
                   Restaurant
                 </label>
                 <select id="restaurant-switcher"
@@ -197,7 +242,7 @@ export default function Sidebar() {
                     const supported = RESTAURANT_NAV.some(item => item.suffix === "/" + workspace);
                     router.push(`/dashboard/restaurant/${nextId}/${supported ? workspace : "orders"}`);
                   }}
-                  className="w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition"
+                  className="w-full rounded-xl bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700 outline-none focus-visible:border-orange-700 focus-visible:ring-2 focus-visible:ring-orange-700/30 transition"
                 >
                   {restaurants.map((r) => (
                     <option key={r.id} value={r.id}>{r.name}</option>
@@ -206,24 +251,24 @@ export default function Sidebar() {
               </div>
             ) : currentRestaurant ? (
               <div className="flex items-center gap-2.5 px-2 mb-3">
-                <div className="w-7 h-7 rounded-lg bg-linear-to-br from-orange-400 to-rose-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-800 flex items-center justify-center text-xs font-bold shrink-0">
                   {currentRestaurant.name[0].toUpperCase()}
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{currentRestaurant.name}</p>
-                  <p className="text-[10px] text-gray-400">Current restaurant</p>
+                  <p className="text-xs text-gray-500">Current restaurant</p>
                 </div>
               </div>
             ) : null}
 
             {/* Restaurant sub-nav */}
-            <nav className="space-y-0.5">
+            <nav aria-label="Restaurant" className="space-y-0.5">
               {[
                 { label: "Daily operations", keys: ["orders", "tables", "staff"] },
                 { label: "Menu & guest experience", keys: ["menu", "offers", "qr", "design", "mood"] },
                 { label: "Business", keys: ["analytics", "expenses"] },
               ].map(group => <div key={group.label} className="mb-4">
-                <p className="px-2 py-2 text-xs font-semibold text-gray-500">{group.label}</p>
+                <p className="px-2 py-2 text-xs font-semibold text-gray-600">{group.label}</p>
                 {group.keys.map(key => {
                   const item = RESTAURANT_NAV.find(item => item.key === key)!;
                   return <NavLink key={item.key} href={`/dashboard/restaurant/${currentRestaurantId}${item.suffix}`} pathname={pathname} label={item.label} icon={item.icon} onClick={close} />;
@@ -258,7 +303,7 @@ export default function Sidebar() {
                 exact
                 onClick={close}
                 label="All Restaurants"
-                accentClassName="bg-orange-50 text-orange-700"
+                accentClassName="bg-orange-50 text-orange-800"
                 icon={
                   <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
@@ -271,7 +316,7 @@ export default function Sidebar() {
 
         {/* Staff inside restaurant */}
         {insideRestaurant && isStaff && (
-          <nav className="space-y-0.5">
+          <nav aria-label="Staff" className="space-y-0.5">
             <NavLink
               href={`/dashboard/restaurant/${currentRestaurantId}/orders`}
               pathname={pathname}
@@ -284,8 +329,8 @@ export default function Sidebar() {
 
         {/* Default nav — when NOT inside a restaurant */}
         {!insideRestaurant && (
-          <nav className="space-y-0.5">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 mb-1.5">Navigation</p>
+          <nav aria-label="Dashboard" className="space-y-0.5">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 px-2 mb-1.5">Navigation</p>
             <NavLink
               href="/dashboard"
               pathname={pathname}
@@ -323,7 +368,7 @@ export default function Sidebar() {
           <Link
             href="/admin"
             onClick={close}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 transition text-sm font-medium"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-700 hover:bg-red-50 transition min-h-11 text-sm font-medium"
           >
             <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -335,20 +380,20 @@ export default function Sidebar() {
 
         {/* User info */}
         <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50">
-          <div className="w-7 h-7 rounded-lg bg-linear-to-br from-orange-500 via-rose-500 to-violet-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-orange-100 text-orange-800 flex items-center justify-center text-xs font-bold shrink-0" aria-hidden="true">
             {session?.user?.name?.[0]?.toUpperCase() || "U"}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-800 truncate leading-tight">
               {session?.user?.name || "User"}
             </p>
-            <p className="text-[10px] text-gray-400 truncate">{session?.user?.email || ""}</p>
+            <p className="text-xs text-gray-500 truncate">{session?.user?.email || ""}</p>
           </div>
         </div>
 
         <button
           onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:text-red-600 hover:bg-red-50 transition w-full text-sm font-medium"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-600 hover:text-red-700 hover:bg-red-50 transition w-full min-h-11 text-sm font-medium"
         >
           <svg className="w-4.25 h-4.25" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -364,11 +409,14 @@ export default function Sidebar() {
       {/* Mobile top bar */}
       <div className="md:hidden sticky top-0 z-40 px-4 h-14 flex items-center justify-between bg-white border-b border-gray-100">
         <Link href="/dashboard" className="flex items-center gap-2">
+          <span aria-hidden="true" className="grid size-7 place-items-center rounded-md bg-[#263b32] text-sm font-extrabold leading-none text-[#fbfaf6]">
+            m<span className="text-[#c65b36]">.</span>
+          </span>
           <span className="text-sm font-bold text-gray-900">Menuor</span>
         </Link>
         <div className="flex items-center gap-1">
           {isSuperAdmin && (
-            <Link href="/admin" className="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 transition">
+            <Link href="/admin" aria-label="Super admin" className="size-11 rounded-lg flex items-center justify-center text-red-700 hover:bg-red-50 transition">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -380,7 +428,7 @@ export default function Sidebar() {
             aria-expanded={mobileOpen}
             aria-controls="mobile-dashboard-drawer"
             aria-label={mobileOpen ? "Close navigation" : "Open navigation"}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-600 hover:bg-gray-100 transition"
+            className="size-11 rounded-lg flex items-center justify-center text-gray-700 hover:bg-gray-100 transition"
           >
             {mobileOpen ? (
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -398,8 +446,23 @@ export default function Sidebar() {
       {/* Mobile drawer */}
       {mobileOpen && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={close} />
-          <aside id="mobile-dashboard-drawer" className="fixed top-0 left-0 bottom-0 z-50 w-[min(18rem,86vw)] bg-white md:hidden animate-slide-in-right shadow-xl">
+          <div aria-hidden="true" className="fixed inset-0 z-40 bg-black/40 md:hidden" onClick={close} />
+          <aside
+            ref={drawerRef}
+            id="mobile-dashboard-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Dashboard navigation"
+            className="fixed top-0 left-0 bottom-0 z-50 w-[min(18rem,86vw)] bg-white md:hidden animate-slide-in-right shadow-xl"
+          >
+            <button
+              ref={drawerCloseRef}
+              onClick={close}
+              aria-label="Close navigation"
+              className="absolute right-2 top-3 z-10 grid size-11 place-items-center rounded-lg text-gray-700 hover:bg-gray-100"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </button>
             {sidebarContent}
           </aside>
         </>
@@ -408,16 +471,16 @@ export default function Sidebar() {
       {/* Mobile quick navigation keeps the daily actions one tap away. */}
       {insideRestaurant && currentRestaurantId && <nav className={`fixed inset-x-0 bottom-0 z-30 grid ${mobileQuickNav.length === 1 ? "grid-cols-2" : "grid-cols-4"} border-t border-gray-200 bg-white/95 px-2 pb-[env(safe-area-inset-bottom)] pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden`} aria-label="Quick navigation">
         {mobileQuickNav.map((item) => (
-            <Link key={item.suffix} href={`/dashboard/restaurant/${currentRestaurantId}/${item.suffix}`} onClick={close} className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold ${item.active ? "bg-orange-50 text-orange-600" : "text-gray-500"}`}>
+            <Link key={item.suffix} href={`/dashboard/restaurant/${currentRestaurantId}/${item.suffix}`} onClick={close} className={`flex min-h-12 flex-col items-center justify-center rounded-xl text-[11px] font-bold ${item.active ? "bg-orange-50 text-orange-800" : "text-gray-600"}`} aria-current={item.active ? "page" : undefined}>
               <item.icon className="mb-0.5 h-4 w-4" />
               {item.label}
             </Link>
         ))}
-        <button onClick={() => setMobileOpen(true)} className="flex min-h-12 flex-col items-center justify-center rounded-xl text-[10px] font-bold text-gray-500"><MoreHorizontal className="mb-0.5 h-4 w-4" />More</button>
+        <button onClick={() => setMobileOpen(true)} aria-haspopup="dialog" aria-controls="mobile-dashboard-drawer" className="flex min-h-12 flex-col items-center justify-center rounded-xl text-[11px] font-bold text-gray-600"><MoreHorizontal className="mb-0.5 h-4 w-4" />More</button>
       </nav>}
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex md:flex-col md:w-60 md:h-screen md:sticky md:top-0 md:shrink-0 bg-white border-r border-gray-100">
+      <aside aria-label="Dashboard sidebar" className="hidden md:flex md:flex-col md:w-60 md:h-screen md:sticky md:top-0 md:shrink-0 bg-white border-r border-gray-100">
         {sidebarContent}
       </aside>
     </>

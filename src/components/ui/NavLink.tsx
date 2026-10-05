@@ -19,7 +19,7 @@ interface NavLinkProps {
   accentClassName?: string;
   /** Active-state icon color class */
   accentIconClassName?: string;
-  /** Active-indicator bar gradient classes, e.g. "from-orange-500 to-rose-500" */
+  /** Active-indicator bar gradient classes, e.g. "from-orange-700 to-orange-800" */
   indicatorGradient?: string;
   /** Extra classes on the indicator bar (e.g. "hidden md:block" for admin's horizontal mobile nav) */
   indicatorClassName?: string;
@@ -28,7 +28,7 @@ interface NavLinkProps {
 }
 
 const BASE_INACTIVE: Record<"light" | "dark", string> = {
-  light: "text-gray-500 hover:text-gray-800 hover:bg-gray-50",
+  light: "text-gray-600 hover:text-gray-900 hover:bg-gray-100/70",
   dark: "text-gray-400 hover:text-white hover:bg-white/[0.04]",
 };
 
@@ -41,25 +41,26 @@ export default function NavLink({
   onClick,
   external = false,
   theme = "light",
-  accentClassName = "bg-orange-50 text-orange-700",
-  accentIconClassName = "text-orange-500",
-  indicatorGradient = "from-orange-500 to-rose-500",
+  accentClassName = "bg-orange-50 text-orange-800",
+  accentIconClassName = "text-orange-700",
+  indicatorGradient = "from-orange-700 to-orange-800",
   indicatorClassName = "",
   showIndicator = true,
 }: NavLinkProps) {
   const active = exact ? pathname === href : pathname.startsWith(href);
-  const iconInactive = theme === "dark" ? "text-gray-500" : "text-gray-400 group-hover:text-gray-500";
-  const className = `relative flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-150 text-sm font-medium group ${
+  const iconInactive = theme === "dark" ? "text-gray-500" : "text-gray-500 group-hover:text-gray-700";
+  const className = `relative flex min-h-11 items-center gap-3 px-3 py-2.5 rounded-xl transition-colors duration-150 text-sm font-medium group ${
     active ? `${accentClassName} font-semibold` : BASE_INACTIVE[theme]
   }`;
 
   const content = (
     <>
       {active && showIndicator && (
-        <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b ${indicatorGradient} ${indicatorClassName}`} />
+        <div aria-hidden="true" className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.75 h-5 rounded-r-full bg-linear-to-b ${indicatorGradient} ${indicatorClassName}`} />
       )}
-      {icon && <span className={active ? accentIconClassName : iconInactive}>{icon}</span>}
+      {icon && <span aria-hidden="true" className={active ? accentIconClassName : iconInactive}>{icon}</span>}
       {label}
+      {external && <span className="sr-only"> (opens in a new tab)</span>}
     </>
   );
 
@@ -72,7 +73,7 @@ export default function NavLink({
   }
 
   return (
-    <Link href={href} onClick={onClick} className={className}>
+    <Link href={href} onClick={onClick} className={className} aria-current={active ? "page" : undefined}>
       {content}
     </Link>
   );

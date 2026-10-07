@@ -49,6 +49,7 @@ export default function ProductLanding() {
       <section id="how-it-works" className="marketing-container marketing-section" aria-labelledby="how-heading">
         <div className="marketing-section-head"><h2 id="how-heading">Set up in three steps</h2></div>
         <div className="marketing-steps">{steps.map(([title, text]) => <article key={title}><h3>{title}</h3><p>{text}</p></article>)}</div>
+        <p style={{ marginTop: 28 }}>New to QR menus? Read our step-by-step <Link href="/guides/qr-menu-for-restaurants-nepal" style={{ textDecoration: "underline" }}>guide to making a QR code menu for your restaurant or café in Nepal</Link>.</p>
       </section>
 
       <section id="faq" className="marketing-section marketing-section-alt" aria-labelledby="faq-heading"><div className="marketing-container marketing-faq">

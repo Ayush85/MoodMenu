@@ -5,7 +5,7 @@ import { hasVerifiedCustomDomain } from "@/lib/restaurant-site";
 import { isPlatformHost } from "@/lib/site-host";
 
 // Bump when the marketing pages' content changes.
-const MARKETING_UPDATED = new Date("2026-10-03");
+const MARKETING_UPDATED = new Date("2026-10-07");
 
 export const dynamic = "force-dynamic";
 

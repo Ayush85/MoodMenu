@@ -66,7 +66,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  // 24h lifetime, extended while the user stays active (refreshed hourly).
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24, updateAge: 60 * 60 },
   pages: {
     signIn: "/login",
   },

@@ -1,15 +1,34 @@
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
+// No credentials live in the repo. Set SEED_SUPER_ADMIN_PASSWORD /
+// SEED_ADMIN_PASSWORD to choose them; otherwise a random one is generated and
+// printed once at the end of the run.
+const SUPER_ADMIN_EMAIL = process.env.SEED_SUPER_ADMIN_EMAIL ?? "ayush85.dev@gmail.com";
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "ayushrestha8585@gmail.com";
+const generated: string[] = [];
+
+function seedPassword(envName: string): string {
+  const fromEnv = process.env[envName];
+  if (fromEnv) return fromEnv;
+  const random = randomBytes(12).toString("base64url");
+  generated.push(envName);
+  return random;
+}
+
 async function main() {
+  const superAdminPlain = seedPassword("SEED_SUPER_ADMIN_PASSWORD");
+  const adminPlain = seedPassword("SEED_ADMIN_PASSWORD");
+
   // Create requested super admin
-  const superAdminPassword = await bcrypt.hash("Admin@123", 12);
+  const superAdminPassword = await bcrypt.hash(superAdminPlain, 12);
   const superAdmin = await prisma.user.upsert({
-    where: { email: "ayush85.dev@gmail.com" },
+    where: { email: SUPER_ADMIN_EMAIL },
     update: {
       name: "Ayush Super Admin",
       password: superAdminPassword,
@@ -17,7 +36,7 @@ async function main() {
       isActive: true,
     },
     create: {
-      email: "ayush85.dev@gmail.com",
+      email: SUPER_ADMIN_EMAIL,
       name: "Ayush Super Admin",
       password: superAdminPassword,
       role: "SUPER_ADMIN",
@@ -27,9 +46,9 @@ async function main() {
   console.log("Super Admin ready:", superAdmin.email);
 
   // Create requested admin user
-  const adminPassword = await bcrypt.hash("admin@123", 12);
+  const adminPassword = await bcrypt.hash(adminPlain, 12);
   const adminUser = await prisma.user.upsert({
-    where: { email: "ayushrestha8585@gmail.com" },
+    where: { email: ADMIN_EMAIL },
     update: {
       name: "Ayush Admin",
       password: adminPassword,
@@ -37,7 +56,7 @@ async function main() {
       isActive: true,
     },
     create: {
-      email: "ayushrestha8585@gmail.com",
+      email: ADMIN_EMAIL,
       name: "Ayush Admin",
       password: adminPassword,
       role: "ADMIN",
@@ -278,8 +297,8 @@ async function main() {
     "Seeded requested test restaurant with menu items, rules, and tables",
   );
   console.log("\n--- Login Credentials ---");
-  console.log("Super Admin: ayush85.dev@gmail.com / Admin@123");
-  console.log("Admin User:  ayushrestha8585@gmail.com / admin@123");
+  console.log(`Super Admin: ${SUPER_ADMIN_EMAIL}${generated.includes("SEED_SUPER_ADMIN_PASSWORD") ? ` / ${superAdminPlain}  (generated, shown once)` : " (password from SEED_SUPER_ADMIN_PASSWORD)"}`);
+  console.log(`Admin User:  ${ADMIN_EMAIL}${generated.includes("SEED_ADMIN_PASSWORD") ? ` / ${adminPlain}  (generated, shown once)` : " (password from SEED_ADMIN_PASSWORD)"}`);
   console.log("Restaurant:  Ayush Test Kitchen (slug: ayush-test-kitchen)");
 }
 

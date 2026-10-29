@@ -56,6 +56,14 @@ const nextConfig: NextConfig = {
           { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
         ],
       },
+      // Signed-in pages must never be served from the browser or bfcache after
+      // logout (e.g. via the Back button).
+      ...["/dashboard", "/admin"].flatMap((base) =>
+        [base, `${base}/:path*`].map((source) => ({
+          source,
+          headers: [{ key: "Cache-Control", value: "private, no-store, max-age=0" }],
+        })),
+      ),
     ];
   },
 };

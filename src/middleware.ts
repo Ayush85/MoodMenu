@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/db";
 import { isPlatformHost } from "@/lib/site-host";
 import { hasVerifiedCustomDomain } from "@/lib/restaurant-site";
@@ -10,7 +11,40 @@ export const config = {
   ],
 };
 
+// Routes that need a signed-in user. The layouts also call auth(), but a layout
+// does not re-render on client-side navigation, so after logout (or session
+// expiry) the old page keeps working until a full reload. Checking here covers
+// every navigation, including RSC and prefetch requests.
+function isPrivatePath(pathname: string): boolean {
+  return ["/dashboard", "/admin", "/staff"].some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`),
+  );
+}
+
+// Optimistic check only: verifies the session JWT signature and expiry, with
+// no database call. Role and isActive are still enforced by auth() in layouts
+// and API routes.
+async function hasValidSession(request: NextRequest): Promise<boolean> {
+  const secure =
+    request.headers.get("x-forwarded-proto") === "https" ||
+    request.nextUrl.protocol === "https:";
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    secureCookie: secure,
+  });
+  return typeof token?.id === "string" && token.id.length > 0;
+}
+
 export async function middleware(request: NextRequest) {
+  if (isPrivatePath(request.nextUrl.pathname) && !(await hasValidSession(request))) {
+    // Relative Location: request.url can carry an internal host behind the proxy.
+    return new NextResponse(null, {
+      status: 307,
+      headers: { Location: "/login", "Cache-Control": "no-store" },
+    });
+  }
+
   const hostHeader = request.headers.get("host") || "";
   const hostname = hostHeader.split(":")[0].toLowerCase();
 

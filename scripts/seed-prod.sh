@@ -11,9 +11,22 @@ if [ "$COUNT" != "0" ] && [ "$COUNT" != "" ]; then
   exit 0
 fi
 
+# No credentials live in the repo: the seed users are only created when their
+# passwords are provided through the environment.
+if [ -z "$SEED_SUPER_ADMIN_PASSWORD" ] || [ -z "$SEED_ADMIN_PASSWORD" ]; then
+  echo "SEED_SUPER_ADMIN_PASSWORD and SEED_ADMIN_PASSWORD must both be set to seed an empty database. Skipping seed." >&2
+  exit 0
+fi
+
+SUPER_ADMIN_EMAIL="${SEED_SUPER_ADMIN_EMAIL:-ayush85.dev@gmail.com}"
+ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-ayushrestha8585@gmail.com}"
+case "$SUPER_ADMIN_EMAIL$ADMIN_EMAIL" in
+  *[!A-Za-z0-9@._+-]*) echo "Seed emails contain unsupported characters. Skipping seed." >&2; exit 0 ;;
+esac
+
 echo "Generating password hashes..."
-HASH1=$(node -e "require('bcryptjs').hash('Admin@123',12).then(h=>process.stdout.write(h))")
-HASH2=$(node -e "require('bcryptjs').hash('admin@123',12).then(h=>process.stdout.write(h))")
+HASH1=$(node -e "require('bcryptjs').hash(process.env.SEED_SUPER_ADMIN_PASSWORD,12).then(h=>process.stdout.write(h))")
+HASH2=$(node -e "require('bcryptjs').hash(process.env.SEED_ADMIN_PASSWORD,12).then(h=>process.stdout.write(h))")
 
 echo "Inserting seed data..."
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<SQL
@@ -21,8 +34,8 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<SQL
 -- Users
 INSERT INTO "User" (id, email, name, password, role, "isActive", "createdAt")
 VALUES
-  ('sa1', 'ayush85.dev@gmail.com', 'Ayush Super Admin', '$HASH1', 'SUPER_ADMIN', true, NOW()),
-  ('ad1', 'ayushrestha8585@gmail.com', 'Ayush Admin', '$HASH2', 'ADMIN', true, NOW());
+  ('sa1', '$SUPER_ADMIN_EMAIL', 'Ayush Super Admin', '$HASH1', 'SUPER_ADMIN', true, NOW()),
+  ('ad1', '$ADMIN_EMAIL', 'Ayush Admin', '$HASH2', 'ADMIN', true, NOW());
 
 -- Restaurant
 INSERT INTO "Restaurant" (id, slug, name, city, "wifiSsid", "wifiPassword", "ownerId", "createdAt", "updatedAt")
@@ -63,7 +76,7 @@ SQL
 echo ""
 echo "============================="
 echo "  Seed complete!"
-echo "  Super Admin: ayush85.dev@gmail.com / Admin@123"
-echo "  Admin: ayushrestha8585@gmail.com / admin@123"
+echo "  Super Admin: $SUPER_ADMIN_EMAIL (password from SEED_SUPER_ADMIN_PASSWORD)"
+echo "  Admin: $ADMIN_EMAIL (password from SEED_ADMIN_PASSWORD)"
 echo "  Menu: /menu/ayush-test-kitchen"
 echo "============================="
